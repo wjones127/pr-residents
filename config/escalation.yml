@@ -1,0 +1,54 @@
+# SHARED: hard-escalation rules (§5). These are BRIGHT-LINE and SEPARATE from
+# the learned relevance/confidence model. Any PR matching a rule below ALWAYS
+# goes to full fresh rounds regardless of resident confidence or low acuity.
+# A confident score must never suppress a mandatory escalation.
+#
+# Each rule sets acuity.risk = high and forces lane = fresh (never fast-track).
+# `reason` is surfaced verbatim in the SOAP Assessment so the escalation is
+# attributable.
+
+path_rules:
+  - id: secrets
+    reason: "Touches credentials/secret material"
+    any_path_matches:
+      - "**/*secret*"
+      - "**/*credential*"
+      - "**/.env*"
+      - "**/*.pem"
+      - "**/*token*"
+
+  - id: payments
+    reason: "Touches billing/payments code"
+    any_path_matches:
+      - "**/billing/**"
+      - "**/payment*/**"
+
+  - id: schema-migrations
+    reason: "Schema or data migration — irreversible blast radius"
+    any_path_matches:
+      - "**/migrations/**"
+      - "**/*migration*"
+      - "**/schema/**"
+
+  - id: public-api
+    reason: "Public API surface — breaking-change risk for downstream users"
+    any_path_matches:
+      - "**/*.pyi"
+      - "python/**/__init__.py"
+      - "**/protos/**"
+      - "**/*.proto"
+
+label_rules:
+  - id: breaking-change
+    reason: "Labeled breaking change"
+    any_label_matches:
+      - "breaking-change"
+      - "breaking"
+
+# Size-based escalation: very large diffs always get full rounds (blast radius),
+# independent of where they touch. Effort != risk, but XL is a risk signal on
+# its own.
+size_rules:
+  - id: large-blast-radius
+    reason: "Large blast radius (XL diff)"
+    min_total_lines: 1000

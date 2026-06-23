@@ -1,0 +1,13 @@
+# SHARED: target repositories the residents triage and work up.
+# Config-driven so widening scope is an edit here, not a code change (§12).
+repos:
+  - lance-format/lance
+  - lancedb/lancedb
+
+# Globally excluded paths (matched against changed-file paths). Mirrors the
+# legacy fetch-review-prs.sh exclusions. Java bindings are not reviewed here.
+exclude_paths:
+  - "java/**"
+
+# Author whose own PRs are never surfaced for self-review.
+self_login: wjones127

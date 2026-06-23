@@ -1,0 +1,18 @@
+# PER-USER template. Copy to config/user.yml (gitignored) and fill in.
+# Nothing user-specific is ever hardcoded in a skill — skills read this by path.
+
+# Your GitHub login. Used to derive blocked_on=me, filter your own PRs, and
+# attribute conditions to your posted review comments.
+github_login: your-login-here
+
+# Subset of config/repos.yml you personally subscribe to. Empty = all of them.
+subscribed_repos: []
+
+# Where the routine pushes per-user state back to (§6). Default branch is the
+# safe `claude/`-prefixed option that works without unrestricted branch pushes.
+state_branch: claude/state
+
+# Env var names the resident reads secrets from (values live in env, not here).
+env:
+  github_token: GITHUB_TOKEN       # fine-grained read-only PAT
+  embedding_api_key: ANTHROPIC_API_KEY  # slice 4 (pr-relevance); unused before

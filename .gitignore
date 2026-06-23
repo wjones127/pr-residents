@@ -1,0 +1,17 @@
+# Per-user state — never in shared history (SQLite, LanceDB, logs, cursors)
+state/*
+!state/.gitkeep
+
+# Per-user config (real copy); only user.example.yml is tracked
+config/user.yml
+
+# Secrets — env files, tokens
+.env
+*.pat
+*.token
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
