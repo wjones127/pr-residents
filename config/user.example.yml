@@ -13,6 +13,10 @@ subscribed_repos: []
 state_branch: claude/state
 
 # Env var names the resident reads secrets from (values live in env, not here).
+# Fine-grained PATs are single-owner, so tokens are per-org: pr-sync reads
+# GITHUB_TOKEN_<ORG> (org upper-snake-cased, e.g. lance-format ->
+# GITHUB_TOKEN_LANCE_FORMAT) derived from each repo's owner. No mapping needed
+# here unless you override the convention below.
 env:
-  github_token: GITHUB_TOKEN       # fine-grained read-only PAT
+  github_token_prefix: GITHUB_TOKEN   # -> GITHUB_TOKEN_<ORG>
   embedding_api_key: ANTHROPIC_API_KEY  # slice 4 (pr-relevance); unused before
