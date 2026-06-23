@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
-DERIVE_VERSION = "4"
+DERIVE_VERSION = "5"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -145,6 +145,20 @@ def derive_effort(additions: int, deletions: int, files: int) -> dict[str, Any]:
     }
 
 
+def derive_author_status(merged_count: int | None) -> str:
+    """Contributor familiarity from prior merged PRs in this repo (triage input).
+    `None` means we couldn't count (search failed) -> 'unknown', never guessed."""
+    if merged_count is None:
+        return "unknown"
+    if merged_count == 0:
+        return "first_time"
+    if merged_count <= 3:
+        return "infrequent"
+    if merged_count <= 10:
+        return "regular"
+    return "core"
+
+
 def derive_blocked_on(detail: dict, viewer: str, requested: bool) -> tuple[str, dict | None]:
     """Return (blocked_on, my_latest_review). Pure SHA-identity logic (trap #1)."""
     head = detail.get("headRefOid")
@@ -217,6 +231,7 @@ def derive_lane(blocked_on: str, last_reviewed_sha: str | None,
 
 def build_record(detail: dict, viewer: str, requested: bool,
                  escalation_rules: dict[str, Any], now: datetime | None = None,
+                 author_merged_count: int | None = None,
                  ) -> dict[str, Any] | None:
     """Build a PRRecord dict, or None if the PR should not be surfaced."""
     now = now or datetime.now(timezone.utc)
@@ -273,7 +288,10 @@ def build_record(detail: dict, viewer: str, requested: bool,
         "number": detail["number"],
         "url": detail["url"],
         "title": detail["title"],
+        "body": detail.get("body") or "",
         "author": author,
+        "author_status": derive_author_status(author_merged_count),
+        "files_changed": files,
         "blocked_on": blocked_on,
         "age_in_state_hrs": age_hrs,
         "lane": lane,

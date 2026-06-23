@@ -38,6 +38,26 @@ def _eprint(*args) -> None:
     print(*args, file=sys.stderr)
 
 
+def _author_merged_count(client: GitHubClient, repo: str, detail: dict, viewer: str,
+                         cache: dict[tuple[str, str], int]) -> int | None:
+    """Prior merged PRs by this author in this repo, for contributor status.
+    Deduped per (repo, author) within a run; one extra search per unique author.
+    Returns None (-> 'unknown') for my own PRs or if the search fails."""
+    author = (detail.get("author") or {}).get("login")
+    if not author or author == viewer:
+        return None
+    key = (repo, author)
+    if key not in cache:
+        try:
+            cache[key] = client.search_count(
+                f"repo:{repo} is:pr is:merged author:{author}"
+            )
+        except GitHubError as exc:
+            _eprint(f"[warn] {repo}: merged-count for {author} failed: {exc}")
+            return None
+    return cache[key]
+
+
 def sync(config_dir: str, cache_path: str, now: datetime | None = None) -> list[dict]:
     now = now or datetime.now(timezone.utc)
     cfg = config_mod.load(config_dir)
@@ -49,6 +69,7 @@ def sync(config_dir: str, cache_path: str, now: datetime | None = None) -> list[
     cache.ensure_fingerprint(fingerprint)
     clients: dict[str, GitHubClient] = {}
     viewers: dict[str, str] = {}
+    merged_counts: dict[tuple[str, str], int] = {}  # (repo, author) -> merged PRs
     records: list[dict] = []
 
     for repo in cfg.active_repos():
@@ -94,8 +115,12 @@ def sync(config_dir: str, cache_path: str, now: datetime | None = None) -> list[
                 except GitHubError as exc:
                     _eprint(f"[error] {repo}#{number}: detail failed: {exc}")
                     continue
+                merged_count = _author_merged_count(
+                    client, repo, detail, viewer, merged_counts
+                )
                 record = derive.build_record(
-                    detail, viewer, requested, cfg.escalation, now=now
+                    detail, viewer, requested, cfg.escalation, now=now,
+                    author_merged_count=merged_count,
                 )
                 if record is not None:
                     record["repo"] = repo

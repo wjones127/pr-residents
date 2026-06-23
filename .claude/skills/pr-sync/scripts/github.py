@@ -31,6 +31,13 @@ query($q: String!, $cursor: String) {
 }
 """
 
+# Count-only pass: how many PRs a query matches (e.g. an author's merged PRs).
+_SEARCH_COUNT_QUERY = """
+query($q: String!) {
+  search(query: $q, type: ISSUE, first: 0) { issueCount }
+}
+"""
+
 # Heavy pass: full detail for a single PR, fetched only on cache miss / change.
 _DETAIL_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
@@ -39,6 +46,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       number
       title
       url
+      body
       isDraft
       createdAt
       updatedAt
@@ -152,11 +160,12 @@ class GitHubClient:
         reviewed, not GitHub's built-in 'changes since')."""
         return self.rest_get(f"/repos/{owner}/{name}/compare/{base}...{head}")
 
-    def pull_files(self, owner: str, name: str, number: int) -> list[str]:
-        """The PR's own net changed-file paths (author's changes vs base), used
-        to scope a delta diff so a branch that merged main isn't swamped by
-        main's churn."""
-        paths: list[str] = []
+    def pull_files_full(self, owner: str, name: str, number: int) -> list[dict[str, Any]]:
+        """The PR's net changed files WITH patches — the 3-dot diff vs the merge
+        base, so a long-lived branch that merged main in is NOT swamped by main's
+        churn. GitHub omits `patch` for binary / very large files. For a fresh
+        review."""
+        files: list[dict[str, Any]] = []
         page = 1
         while True:
             batch = self.rest_get(
@@ -164,11 +173,16 @@ class GitHubClient:
             )
             if not batch:
                 break
-            paths.extend(f["filename"] for f in batch)
+            files.extend(batch)
             if len(batch) < 100:
                 break
             page += 1
-        return paths
+        return files
+
+    def pull_files(self, owner: str, name: str, number: int) -> list[str]:
+        """Just the net changed-file paths (see pull_files_full), used to scope a
+        re-review delta so a branch that merged main isn't swamped by its churn."""
+        return [f["filename"] for f in self.pull_files_full(owner, name, number)]
 
     def search_light(self, query: str) -> list[dict[str, Any]]:
         """Return [{repo, number, updatedAt, headRefOid}] for a search query."""
@@ -193,6 +207,11 @@ class GitHubClient:
                 break
             cursor = page["endCursor"]
         return out
+
+    def search_count(self, query: str) -> int:
+        """Total matches for a search query (e.g. an author's merged PR count)."""
+        data = self.graphql(_SEARCH_COUNT_QUERY, {"q": query})
+        return int(data["search"]["issueCount"])
 
     def fetch_detail(self, owner: str, name: str, number: int) -> dict[str, Any]:
         data = self.graphql(

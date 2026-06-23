@@ -177,6 +177,36 @@ class TestBuildRecord(unittest.TestCase):
         self.assertEqual(rec["acuity"]["risk"], "low")
 
 
+class TestAuthorStatus(unittest.TestCase):
+    def test_buckets(self):
+        self.assertEqual(derive.derive_author_status(0), "first_time")
+        self.assertEqual(derive.derive_author_status(1), "infrequent")
+        self.assertEqual(derive.derive_author_status(3), "infrequent")
+        self.assertEqual(derive.derive_author_status(4), "regular")
+        self.assertEqual(derive.derive_author_status(10), "regular")
+        self.assertEqual(derive.derive_author_status(11), "core")
+
+    def test_unknown_when_uncounted(self):
+        # A failed count must read as 'unknown', never silently first_time.
+        self.assertEqual(derive.derive_author_status(None), "unknown")
+
+
+class TestTriageFields(unittest.TestCase):
+    def test_record_carries_triage_inputs(self):
+        d = detail(body="Fixes #123", files={"nodes": [{"path": "rust/src/foo.rs"},
+                                                        {"path": "docs/x.md"}]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW,
+                                  author_merged_count=0)
+        self.assertEqual(rec["body"], "Fixes #123")
+        self.assertEqual(rec["author_status"], "first_time")
+        self.assertEqual(rec["files_changed"], ["rust/src/foo.rs", "docs/x.md"])
+
+    def test_author_status_unknown_without_count(self):
+        # build_record default (count not supplied) must not fabricate a status.
+        rec = derive.build_record(detail(), "wjones127", True, ESCALATION, now=NOW)
+        self.assertEqual(rec["author_status"], "unknown")
+
+
 class TestRealEscalationConfig(unittest.TestCase):
     """Guard the shared escalation policy against known false positives."""
 

@@ -1,8 +1,10 @@
 # `PRRecord` — the producer/consumer contract
 
 `pr-sync` (slice 1, deterministic, no LLM) is the **sole producer**. Everything
-downstream — renderer, residents, `re-review-delta`, `pr-relevance`,
-`assemble-rounds` — **consumes** this and does not re-fetch from GitHub.
+downstream — renderer, residents (`fresh-review`, `re-review-delta`),
+`pr-relevance`, `assemble-rounds` — **consumes** this and does not re-fetch PR
+*metadata* from GitHub. (Diff *content* — patches — is intentionally not on the
+record; the residents' packet builders fetch it.)
 
 Pinning this now (slice 0) is the interface lock: consumers code against these
 field semantics, not against GraphQL.
@@ -15,7 +17,10 @@ PRRecord {
   number            : int
   url               : string
   title             : string
+  body              : string                              # PR description (triage input)
   author            : string                              # GitHub login
+  author_status     : first_time | infrequent | regular | core | unknown
+  files_changed     : [path...]                           # net changed paths (≤100)
 
   blocked_on        : me | author | merge | other_reviewer
   age_in_state_hrs  : number                              # hours since the event that put it in this state
@@ -165,6 +170,23 @@ conspicuous.
 `pr-sync` emits a *deterministic baseline* acuity from paths/size/keywords;
 residents (slice 3) may raise it with evidence but the bright-line escalations
 are non-negotiable.
+
+## Triage inputs (slice 3)
+
+`pr-triage` (a resident) consumes the record and re-fetches **nothing**, so the
+producer carries the few fields triage needs beyond the universal ones:
+
+- **`body`** — the PR description, for the one-liner and to spot referenced
+  issues / intent.
+- **`author_status`** — derived from the author's prior *merged* PRs in this
+  repo (`first_time` 0, `infrequent` 1–3, `regular` 4–10, `core` >10). Counted
+  once per author per run via search. `unknown` when the count couldn't be
+  fetched — never guessed. Drives the `needs_ci_approval` recommendation and the
+  first-time welcome draft. Cached with the record, so it can lag a slow-moving
+  contributor between runs; acceptable for a triage hint.
+- **`files_changed`** — the net changed paths, so triage maps components and
+  scope without a diff fetch. Same list `escalation` and `acuity` are computed
+  from, exposed for the resident to read.
 
 ## Producer/consumer notes
 
