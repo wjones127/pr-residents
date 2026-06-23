@@ -86,9 +86,22 @@ Forced escalation overrides: `escalation.forced` ⇒ `lane = fresh`.
 These are latent in manual practice and are the reason `pr-sync` is the
 highest-correctness-risk piece, de-risked first.
 
-1. **Use `pushedDate`, not `committedDate`.** Rebases and force-pushes scramble
-   `committedDate`; `pushedDate` reflects when the head actually arrived. All
-   "did the author act since I looked" logic keys off `pushedDate`.
+1. **Detect "author acted since I looked" via SHA identity + timeline events —
+   NOT `pushedDate`.** `Commit.pushedDate` is **confirmed dead**: GitHub's
+   GraphQL API returns `null` for it on every commit (verified across both
+   target repos, Spike A 2026-06-23). Do not reach for it. Instead:
+   - **"Did the author push since my last review?"** → `headRefOid` ≠
+     `last_reviewed_sha` (SHA identity; see trap #2). No timestamp needed, and
+     it is immune to rebases/force-pushes scrambling `committedDate`.
+   - **Detect a rebase/force-push** → `HeadRefForcePushedEvent` timeline nodes
+     (`createdAt`, `beforeCommit`/`afterCommit`), which is exactly the case that
+     scrambles `committedDate`.
+   - **`age_in_state_hrs`** → the `createdAt` of the governing timeline event
+     (my last `PullRequestReview`, or the latest commit / force-push after it),
+     ordered by the timeline — not by `committedDate`, which a rebase rewrites.
+
+   `committedDate` is acceptable only as an approximate *display* timestamp for
+   an ordinary (non-force) push; correctness never depends on it.
 2. **Delta anchors on `last_reviewed_sha`**, the specific commit I last
    reviewed — **not** GitHub's built-in "changes since" (which anchors on its
    own notion and misses force-push history).
