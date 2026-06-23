@@ -22,9 +22,10 @@ from cache import Cache
 from github import GitHubClient, GitHubError
 
 # Search qualifiers per relevance category. `@me` resolves to the token owner.
+# `-author:@me` excludes my own PRs — reviewing them is not this tool's job.
 _CATEGORIES = {
-    "requested": "review-requested:@me",
-    "reviewed": "reviewed-by:@me",
+    "requested": "review-requested:@me -author:@me",
+    "reviewed": "reviewed-by:@me -author:@me",
 }
 
 

@@ -171,6 +171,9 @@ are non-negotiable.
 - `relevance` is populated for triage *candidates* only; `requested: bool`
   (colleague- or self-requested) is known from the timeline before any ML, so it
   is always present even when `score` is absent (pre-slice-4).
+- **My own PRs are never surfaced** (`author == viewer` ⇒ dropped). This is a
+  review tool; tracking my own authored work is a separate concern with an
+  inverted framing (I am the author waiting on reviewers/CI), out of scope here.
 - `delta` is `null` outside the `re_review` lane.
 - All timestamps are derived into `age_in_state_hrs` by `pr-sync` at emit time;
   consumers never parse raw dates.

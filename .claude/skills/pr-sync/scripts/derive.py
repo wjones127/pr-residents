@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
-DERIVE_VERSION = "3"
+DERIVE_VERSION = "4"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -220,6 +220,11 @@ def build_record(detail: dict, viewer: str, requested: bool,
                  ) -> dict[str, Any] | None:
     """Build a PRRecord dict, or None if the PR should not be surfaced."""
     now = now or datetime.now(timezone.utc)
+    author = (detail.get("author") or {}).get("login")
+    if author == viewer:
+        # Never surface my own PRs for review. Tracking my own work is a
+        # separate concern with an inverted blocked_on framing (see docs).
+        return None
     repo = None  # filled by caller context; detail has no nameWithOwner here
     head = detail.get("headRefOid")
     files = [f["path"] for f in (detail.get("files") or {}).get("nodes") or []]
@@ -268,7 +273,7 @@ def build_record(detail: dict, viewer: str, requested: bool,
         "number": detail["number"],
         "url": detail["url"],
         "title": detail["title"],
-        "author": (detail.get("author") or {}).get("login"),
+        "author": author,
         "blocked_on": blocked_on,
         "age_in_state_hrs": age_hrs,
         "lane": lane,

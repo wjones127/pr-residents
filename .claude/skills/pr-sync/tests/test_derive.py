@@ -141,6 +141,13 @@ class TestBuildRecord(unittest.TestCase):
         self.assertEqual(rec["lane"], "housekeeping")
         self.assertEqual(rec["blocked_on"], "merge")
 
+    def test_own_pr_never_surfaced(self):
+        # A PR I authored is never a review candidate, regardless of state.
+        d = detail(author={"login": "wjones127"},
+                   reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
+        self.assertIsNone(rec)
+
     def test_other_reviewer_dropped(self):
         rec = derive.build_record(detail(), "wjones127", False, ESCALATION, now=NOW)
         self.assertIsNone(rec)
