@@ -10,12 +10,16 @@
 path_rules:
   - id: secrets
     reason: "Touches credentials/secret material"
+    # Match credential-bearing FILES, not substrings — `**/*token*` wrongly
+    # flagged "tokenizer" code (lance #5583). Secret material is rarely
+    # identifiable by arbitrary substring in a data library.
     any_path_matches:
-      - "**/*secret*"
-      - "**/*credential*"
       - "**/.env*"
       - "**/*.pem"
-      - "**/*token*"
+      - "**/*.key"
+      - "**/*.keystore"
+      - "**/secrets.*"
+      - "**/credentials.*"
 
   - id: payments
     reason: "Touches billing/payments code"
