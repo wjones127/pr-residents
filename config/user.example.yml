@@ -8,6 +8,16 @@ github_login: your-login-here
 # Subset of config/repos.yml you personally subscribe to. Empty = all of them.
 subscribed_repos: []
 
+# Path prefixes you care about, used by pr-relevance ONLY as a cold-start signal:
+# before you've reviewed enough PRs for path-affinity to mean anything, the
+# self-requested triage panel ranks candidates by overlap with these (plus
+# hard-escalation paths). Once your review history accumulates, learned
+# path-affinity takes over and these matter less. Examples:
+#   interests:
+#     - rust/lance-encoding
+#     - rust/lance-index
+interests: []
+
 # Where the routine pushes per-user state back to (§6). Default branch is the
 # safe `claude/`-prefixed option that works without unrestricted branch pushes.
 state_branch: claude/state

@@ -24,6 +24,7 @@ class Config:
     escalation: dict[str, Any]
     token_prefix: str = "GITHUB_TOKEN"
     subscribed_repos: list[str] = field(default_factory=list)
+    interests: list[str] = field(default_factory=list)  # path prefixes (cold-start relevance)
 
     def active_repos(self) -> list[str]:
         if self.subscribed_repos:
@@ -43,12 +44,14 @@ def load(config_dir: str) -> Config:
 
     token_prefix = "GITHUB_TOKEN"
     subscribed: list[str] = []
+    interests: list[str] = []
     user_path = os.path.join(config_dir, "user.yml")
     if os.path.exists(user_path):
         user_cfg = miniyaml.load_file(user_path) or {}
         env = user_cfg.get("env") or {}
         token_prefix = env.get("github_token_prefix") or token_prefix
         subscribed = user_cfg.get("subscribed_repos") or []
+        interests = user_cfg.get("interests") or []
 
     return Config(
         repos=repos_cfg.get("repos") or [],
@@ -56,4 +59,5 @@ def load(config_dir: str) -> Config:
         escalation=escalation,
         token_prefix=token_prefix,
         subscribed_repos=subscribed,
+        interests=interests,
     )
