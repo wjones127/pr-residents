@@ -56,6 +56,15 @@ def _last_reviewed_sha(reviews: list[dict], viewer: str) -> str | None:
     return (latest.get("commit") or {}).get("oid")
 
 
+def scope_delta_files(compare_files: list[dict], pr_net_paths: set[str],
+                      ) -> tuple[list[dict], int]:
+    """Keep only files that are part of the PR's own net diff. Drops churn a
+    long-lived branch picked up by merging its base branch in. Returns
+    (kept_files, excluded_count)."""
+    kept = [f for f in compare_files if f.get("filename") in pr_net_paths]
+    return kept, len(compare_files) - len(kept)
+
+
 def _truncate_patch(patch: str | None) -> tuple[str | None, bool]:
     if not patch:
         return patch, False
@@ -84,7 +93,7 @@ def build_packet(repo: str, number: int, config_dir: str) -> dict:
     ledger = conditions.reconstruct(threads, viewer)
 
     delta: dict = {"base": last_reviewed, "head": head, "files": [], "commit_count": 0,
-                   "note": None}
+                   "files_off_branch_excluded": 0, "note": None}
     if not last_reviewed:
         delta["note"] = "no prior review by viewer; nothing to anchor a delta on"
     elif last_reviewed == head:
@@ -92,7 +101,13 @@ def build_packet(repo: str, number: int, config_dir: str) -> dict:
     else:
         cmp = client.compare(owner, name, last_reviewed, head)
         delta["commit_count"] = len(cmp.get("commits") or [])
-        for f in cmp.get("files") or []:
+        # Scope to the author's OWN changes: a long-lived branch that merged main
+        # in shows all of main's churn in compare(base...head). Intersect with the
+        # PR's net changed files so the delta reflects the author's work, not main.
+        pr_net = set(client.pull_files(owner, name, number))
+        kept, excluded = scope_delta_files(cmp.get("files") or [], pr_net)
+        delta["files_off_branch_excluded"] = excluded
+        for f in kept:
             patch, truncated = _truncate_patch(f.get("patch"))
             delta["files"].append({
                 "path": f.get("filename"),
@@ -102,6 +117,11 @@ def build_packet(repo: str, number: int, config_dir: str) -> dict:
                 "patch": patch,
                 "patch_truncated": truncated,
             })
+        if delta["files_off_branch_excluded"]:
+            delta["note"] = (
+                f"scoped to author's changes: excluded "
+                f"{delta['files_off_branch_excluded']} files that changed on the "
+                f"branch via merges from the base branch, not the PR's own work")
 
     return {
         "pr": {"repo": repo, "number": number, "title": pr["title"], "url": pr["url"],

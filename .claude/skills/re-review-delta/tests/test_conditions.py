@@ -87,5 +87,26 @@ class TestReconstruct(unittest.TestCase):
         self.assertEqual(led[0]["location"], "rust/src/foo.rs:42")
 
 
+class TestScopeDeltaFiles(unittest.TestCase):
+    def test_excludes_off_branch_churn(self):
+        import rereview
+        compare_files = [
+            {"filename": "src/a.rs"},          # author's file
+            {"filename": "src/b.rs"},          # author's file
+            {"filename": "vendor/main_churn.rs"},  # merged in from base, not the PR
+        ]
+        pr_net = {"src/a.rs", "src/b.rs"}
+        kept, excluded = rereview.scope_delta_files(compare_files, pr_net)
+        self.assertEqual([f["filename"] for f in kept], ["src/a.rs", "src/b.rs"])
+        self.assertEqual(excluded, 1)
+
+    def test_nothing_excluded_when_all_on_branch(self):
+        import rereview
+        files = [{"filename": "x"}, {"filename": "y"}]
+        kept, excluded = rereview.scope_delta_files(files, {"x", "y"})
+        self.assertEqual(excluded, 0)
+        self.assertEqual(len(kept), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,10 @@ python3 .claude/skills/re-review-delta/scripts/rereview.py OWNER/REPO NUMBER --o
 
 The packet has: `pr` (with `last_reviewed_sha` → `head`), `conditions` (your
 reconstructed ledger, each `status: open`), and `delta` (the commit-anchored
-diff `last_reviewed_sha...head` — trap #2, NOT GitHub "changes since").
+diff `last_reviewed_sha...head` — trap #2, NOT GitHub "changes since"). The
+delta is **scoped to the PR's own changed files**: a long-lived branch that
+merged its base in would otherwise swamp the diff with the base branch's churn.
+`delta.files_off_branch_excluded` reports how many such files were dropped.
 
 ## Step 2 — Section A: closed-ended conditions ledger
 

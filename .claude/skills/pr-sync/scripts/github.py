@@ -152,6 +152,24 @@ class GitHubClient:
         reviewed, not GitHub's built-in 'changes since')."""
         return self.rest_get(f"/repos/{owner}/{name}/compare/{base}...{head}")
 
+    def pull_files(self, owner: str, name: str, number: int) -> list[str]:
+        """The PR's own net changed-file paths (author's changes vs base), used
+        to scope a delta diff so a branch that merged main isn't swamped by
+        main's churn."""
+        paths: list[str] = []
+        page = 1
+        while True:
+            batch = self.rest_get(
+                f"/repos/{owner}/{name}/pulls/{number}/files?per_page=100&page={page}"
+            )
+            if not batch:
+                break
+            paths.extend(f["filename"] for f in batch)
+            if len(batch) < 100:
+                break
+            page += 1
+        return paths
+
     def search_light(self, query: str) -> list[dict[str, Any]]:
         """Return [{repo, number, updatedAt, headRefOid}] for a search query."""
         out: list[dict[str, Any]] = []
