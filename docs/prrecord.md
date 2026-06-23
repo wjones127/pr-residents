@@ -49,10 +49,13 @@ PRRecord {
 > `escalation` is added beyond the §8 sketch: the bright-line rules (§5) must
 > ride on the record so consumers can't accidentally fast-track a forced PR.
 > Escalation is a **routing** signal, NOT a risk score — the two axes stay
-> separate (§5). If `escalation.forced`, the PR is pinned to full rounds
-> (`lane = fresh` when review is owed to me, and never fast-tracked), but
-> `acuity.risk` is scored independently on the change itself. A forced
-> escalation on a docs-only PR is still low risk; it just can't be skimmed.
+> separate (§5). `escalation.forced` means the PR can never be fast-tracked
+> (the skim lane, slice 5) and always appears in rounds with the ⚠ flag — but
+> it does **not** change which rounds lane the PR lands in. Lane is purely
+> `blocked_on`-driven: an escalated PR with new commits since my review stays
+> in `re_review` (collapsing it to `fresh` would drop its conditions ledger,
+> which high-stakes PRs need most). `acuity.risk` is likewise scored
+> independently: a forced escalation on a docs-only PR is still low risk.
 
 ## `blocked_on` derivation (GraphQL timeline, not ML — §2a)
 
@@ -82,7 +85,8 @@ review submitted, author's last push, my approval), not from PR creation.
 | `author` | only if stale enough to ping | `housekeeping` (stale-ping) |
 | `other_reviewer` | — | not surfaced |
 
-Forced escalation overrides: `escalation.forced` ⇒ `lane = fresh`.
+Escalation does not change lane (see the `escalation` note above): it only
+blocks fast-tracking and sets the ⚠ flag.
 
 ## Correctness traps `pr-sync` must own (§8)
 

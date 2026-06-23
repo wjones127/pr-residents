@@ -145,14 +145,15 @@ class TestBuildRecord(unittest.TestCase):
         rec = derive.build_record(detail(), "wjones127", False, ESCALATION, now=NOW)
         self.assertIsNone(rec)
 
-    def test_escalation_pins_fresh_when_review_owed(self):
-        # Escalated PR with new commits since my review would be re_review;
-        # escalation pins it to fresh (full rounds), not a delta look.
+    def test_escalation_does_not_collapse_rereview(self):
+        # Escalated PR with new commits since my review stays in re_review:
+        # escalation must NOT drop the conditions ledger for high-stakes PRs.
         d = detail(files={"nodes": [{"path": "proto/format.proto"}]},
                    reviews={"nodes": [review("COMMENTED", OLD, 10)]})
         rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
         self.assertTrue(rec["escalation"]["forced"])
-        self.assertEqual(rec["lane"], "fresh")
+        self.assertEqual(rec["lane"], "re_review")
+        self.assertIsNotNone(rec["delta"])
 
     def test_escalation_decoupled_from_risk(self):
         # Decoupled (plan §5): a forced escalation does NOT auto-set risk=high.

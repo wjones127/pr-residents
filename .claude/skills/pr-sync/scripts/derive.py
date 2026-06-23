@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
-DERIVE_VERSION = "2"
+DERIVE_VERSION = "3"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -195,10 +195,13 @@ def derive_acuity(paths: list[str], blocked_on: str, age_hrs: float,
 
 
 def derive_lane(blocked_on: str, last_reviewed_sha: str | None,
-                delta: dict | None, escalation: dict, age_hrs: float,
+                delta: dict | None, age_hrs: float,
                 stale_author_hrs: float = 48.0) -> str | None:
-    if escalation["forced"] and blocked_on == "me":
-        return "fresh"
+    # Lane is purely blocked_on-driven. Escalation does NOT override it:
+    # fresh and re_review are both full-attention lanes, and collapsing
+    # re_review into fresh would drop the conditions ledger for exactly the
+    # high-stakes PRs that need it. Escalation only prevents fast-tracking
+    # (a slice-5 concern) and sets the ⚠ flag.
     if blocked_on == "me":
         if last_reviewed_sha and delta:
             return "re_review"
@@ -251,7 +254,7 @@ def build_record(detail: dict, viewer: str, requested: bool,
         ci_raw = rollup.get("state") if rollup else None
     ci = _CI_MAP.get(ci_raw, "pending")
 
-    lane = derive_lane(blocked_on, last_reviewed_sha, delta, escalation, age_hrs)
+    lane = derive_lane(blocked_on, last_reviewed_sha, delta, age_hrs)
     if lane is None:
         return None
 
