@@ -123,6 +123,35 @@ class GitHubClient:
         data = self.graphql("query { viewer { login } }", {})
         return data["viewer"]["login"]
 
+    def rest_get(self, path: str) -> Any:
+        """GET a REST endpoint (path like '/repos/o/r/compare/a...b')."""
+        url = "https://api.github.com" + path
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", f"Bearer {self.token}")
+        req.add_header("Accept", "application/vnd.github+json")
+        req.add_header("User-Agent", "pr-residents-sync")
+        for attempt in range(self.max_retries):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                if exc.code in (403, 429, 502, 503) and attempt < self.max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                detail = exc.read().decode("utf-8", "replace")
+                raise GitHubError(f"HTTP {exc.code}: {detail}") from exc
+            except urllib.error.URLError as exc:
+                if attempt < self.max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise GitHubError(str(exc)) from exc
+        raise GitHubError("rest_get exhausted retries")
+
+    def compare(self, owner: str, name: str, base: str, head: str) -> dict[str, Any]:
+        """Commit-anchored diff base...head (trap #2: anchor on the sha I last
+        reviewed, not GitHub's built-in 'changes since')."""
+        return self.rest_get(f"/repos/{owner}/{name}/compare/{base}...{head}")
+
     def search_light(self, query: str) -> list[dict[str, Any]]:
         """Return [{repo, number, updatedAt, headRefOid}] for a search query."""
         out: list[dict[str, Any]] = []
