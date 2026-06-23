@@ -47,9 +47,12 @@ PRRecord {
 ```
 
 > `escalation` is added beyond the §8 sketch: the bright-line rules (§5) must
-> ride on the record so consumers can't accidentally fast-track a forced PR. If
-> `escalation.forced`, lane is pinned to `fresh` and `acuity.risk` to `high`
-> regardless of any learned signal.
+> ride on the record so consumers can't accidentally fast-track a forced PR.
+> Escalation is a **routing** signal, NOT a risk score — the two axes stay
+> separate (§5). If `escalation.forced`, the PR is pinned to full rounds
+> (`lane = fresh` when review is owed to me, and never fast-tracked), but
+> `acuity.risk` is scored independently on the change itself. A forced
+> escalation on a docs-only PR is still low risk; it just can't be skimmed.
 
 ## `blocked_on` derivation (GraphQL timeline, not ML — §2a)
 
@@ -138,19 +141,22 @@ Never collapse risk into effort. A 1-line auth change is low-effort/high-risk; a
 | L | ≤ 600 |
 | XL | > 600 |
 
-**`acuity.risk`** — starting heuristics (slice 0; open question §12 to refine
-against real PRs). Risk is `high` if ANY of:
+**`acuity.risk`** — scored on the change itself, **independent of escalation**
+(escalation is routing, not risk). Starting heuristics (open question §12 to
+refine against real PRs):
 
-- A `config/escalation.yml` rule matches (`escalation.forced` — secrets,
-  payments, schema/migrations, public API, breaking-change label, XL size).
-- Touches concurrency/unsafe primitives (`unsafe`, lock/mutex, atomic ordering).
-- Touches IO correctness paths (file format read/write, serialization,
-  checksums).
+- `risk: low` — docs, comments, tests-only, dependency bumps, config.
+- `risk: med` — core library logic (the baseline `pr-sync` default).
+- `risk: high` — reserved for resident refinement (slice 3) reading diff
+  content: concurrency/`unsafe` primitives, IO-correctness paths (format
+  read/write, serialization, checksums). `pr-sync`'s path-only baseline does not
+  assert `high` on its own — it cannot see content, and over-asserting `high`
+  flattens the acuity ordering (lance is `.proto`/`.pyi`-heavy, so escalation
+  fires often; that must not masquerade as risk).
 
-`risk: med` — core library logic with no high-risk markers. `risk: low` — docs,
-comments, tests-only, dependency bumps, config. `urgency` is independent of risk
-(a low-risk PR can be release-blocking). `rationale` always states the driver in
-one line so an unsupported "high" is conspicuous.
+`urgency` is independent of risk (a low-risk PR can be release-blocking).
+`rationale` always states the driver in one line so an unsupported score is
+conspicuous.
 
 `pr-sync` emits a *deterministic baseline* acuity from paths/size/keywords;
 residents (slice 3) may raise it with evidence but the bright-line escalations

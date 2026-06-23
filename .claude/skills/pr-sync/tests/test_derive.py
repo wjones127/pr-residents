@@ -145,13 +145,23 @@ class TestBuildRecord(unittest.TestCase):
         rec = derive.build_record(detail(), "wjones127", False, ESCALATION, now=NOW)
         self.assertIsNone(rec)
 
-    def test_escalation_forces_fresh_high(self):
-        d = detail(files={"nodes": [{"path": "src/secret.rs"}]},
-                   reviews={"nodes": [review("APPROVED", HEAD, 5)]})
-        rec = derive.build_record(d, "wjones127", False, ESCALATION, now=NOW)
-        # Even though approved (would be housekeeping), escalation forces fresh/high.
+    def test_escalation_pins_fresh_when_review_owed(self):
+        # Escalated PR with new commits since my review would be re_review;
+        # escalation pins it to fresh (full rounds), not a delta look.
+        d = detail(files={"nodes": [{"path": "proto/format.proto"}]},
+                   reviews={"nodes": [review("COMMENTED", OLD, 10)]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
         self.assertTrue(rec["escalation"]["forced"])
-        self.assertEqual(rec["acuity"]["risk"], "high")
+        self.assertEqual(rec["lane"], "fresh")
+
+    def test_escalation_decoupled_from_risk(self):
+        # Decoupled (plan §5): a forced escalation does NOT auto-set risk=high.
+        # Label-escalated but docs-only change -> forced yet low risk.
+        d = detail(files={"nodes": [{"path": "docs/guide.md"}]},
+                   labels={"nodes": [{"name": "breaking-change"}]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
+        self.assertTrue(rec["escalation"]["forced"])
+        self.assertEqual(rec["acuity"]["risk"], "low")
 
     def test_low_risk_docs_only(self):
         d = detail(files={"nodes": [{"path": "docs/guide.md"}, {"path": "README.md"}]})

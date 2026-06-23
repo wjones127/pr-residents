@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
-DERIVE_VERSION = "1"
+DERIVE_VERSION = "2"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -170,12 +170,11 @@ def derive_blocked_on(detail: dict, viewer: str, requested: bool) -> tuple[str, 
     return ("other_reviewer", latest)
 
 
-def derive_acuity(escalation: dict, paths: list[str], blocked_on: str,
-                  age_hrs: float, ci: str) -> dict[str, Any]:
-    if escalation["forced"]:
-        risk = "high"
-        rationale = f"hard-escalation: {escalation['reason']}"
-    elif paths and all(
+def derive_acuity(paths: list[str], blocked_on: str, age_hrs: float,
+                  ci: str) -> dict[str, Any]:
+    # Risk is scored on the change itself, INDEPENDENT of hard-escalation
+    # (plan §5: escalation routes to full rounds, it is not a risk score).
+    if paths and all(
         any(path_matches(p, pat) for pat in _LOW_RISK_PATTERNS) for p in paths
     ):
         risk = "low"
@@ -256,9 +255,7 @@ def build_record(detail: dict, viewer: str, requested: bool,
     if lane is None:
         return None
 
-    acuity = derive_acuity(escalation, files, blocked_on, age_hrs, ci)
-    if escalation["forced"]:
-        acuity["risk"] = "high"
+    acuity = derive_acuity(files, blocked_on, age_hrs, ci)
 
     mergeable_raw = detail.get("mergeable")
     mergeable = {"MERGEABLE": True, "CONFLICTING": False}.get(mergeable_raw)
