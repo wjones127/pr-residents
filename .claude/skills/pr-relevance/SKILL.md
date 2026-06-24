@@ -13,6 +13,15 @@ strike. It does **not** assign or route anything.
 Per-user by construction: the affinity profile is built from *your* review
 history and cached under `state/` (must-not-share, §9).
 
+**Unclaimed only.** Candidates exclude PRs already *claimed* by someone else: a
+PR with a real review from another **human** (bots — `[bot]` logins / Bot
+accounts like CI or coderabbit — don't count; DISMISSED/PENDING reviews don't
+count) is dropped, on the assumption that if a colleague is already reviewing,
+you're not needed. Two escape hatches: (1) if you're explicitly
+**review-requested**, the PR is routed to you by `pr-sync` and never reaches this
+filter; (2) you can keep any candidate by confirming it in the panel. The drop
+count is logged to stderr (never silent).
+
 ## Step 1 — produce the panel (deterministic)
 
 ```sh

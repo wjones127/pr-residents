@@ -53,6 +53,7 @@ query($q: String!, $cursor: String) {
         author { login }
         repository { nameWithOwner }
         files(first: 100) { nodes { path } }
+        reviews(first: 20) { nodes { author { login __typename } state } }
       }
     }
   }
@@ -61,6 +62,34 @@ query($q: String!, $cursor: String) {
 
 def _eprint(*args) -> None:
     print(*args, file=sys.stderr)
+
+
+_BOT_SUFFIX = "[bot]"
+
+
+def _is_bot(login: str, typename: str | None) -> bool:
+    return typename == "Bot" or (login or "").endswith(_BOT_SUFFIX)
+
+
+def is_claimed(reviews, viewer: str) -> bool:
+    """A relevance candidate is 'claimed' once another *human* has left a real
+    review — someone else has it, so I'm not needed. Bots (CI, coderabbit, etc.)
+    don't count; my own reviews don't count; DISMISSED/PENDING don't count.
+
+    The "but I was explicitly requested" escape hatch is structural: the
+    candidate query already excludes `-review-requested:@me`, so any PR I'm
+    requested on is routed to me by pr-sync instead of appearing here. The
+    second escape hatch is the confirm/strike panel — I can keep one by hand."""
+    for r in reviews or []:
+        login = r.get("login") or ""
+        if not login or login == viewer:
+            continue
+        if _is_bot(login, r.get("type")):
+            continue
+        if r.get("state") in ("DISMISSED", "PENDING"):
+            continue
+        return True
+    return False
 
 
 def _search_prs_with_files(client: GitHubClient, query: str, limit: int) -> list[dict]:
@@ -80,6 +109,12 @@ def _search_prs_with_files(client: GitHubClient, query: str, limit: int) -> list
                 "author": (node.get("author") or {}).get("login"),
                 "repo": node["repository"]["nameWithOwner"],
                 "paths": [f["path"] for f in (node.get("files") or {}).get("nodes") or []],
+                "reviews": [
+                    {"login": (r.get("author") or {}).get("login"),
+                     "type": (r.get("author") or {}).get("__typename"),
+                     "state": r.get("state")}
+                    for r in (node.get("reviews") or {}).get("nodes") or []
+                ],
             })
             if len(out) >= limit:
                 break
@@ -257,6 +292,11 @@ def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
         except GitHubError as exc:
             _eprint(f"[error] {repo}: candidate search failed: {exc}")
             continue
+        before = len(candidates)
+        candidates = [c for c in candidates if not is_claimed(c.get("reviews"), viewer)]
+        dropped = before - len(candidates)
+        if dropped:
+            _eprint(f"[info] {repo}: excluded {dropped} already-claimed PR(s) (another human reviewed)")
         panel.extend(_score_repo(
             candidates, repo_profile, cfg, store=store, semantic=semantic,
             semantic_weight=semantic_weight, model=embed_model, host=embed_host))
