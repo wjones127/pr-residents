@@ -34,6 +34,7 @@ PRRecord {
 
   relevance         : { score: number, requested: bool }  # triage candidates (slice 4); requested known earlier
 
+  head_oid          : sha                                 # current head; workup-cache key (§3) + "did author push?" check vs last_reviewed_sha
   last_reviewed_sha : sha | null
   delta             : { commits: [sha...],
                         files_touched: [path...] } | null  # re_review only; null otherwise
@@ -102,7 +103,7 @@ highest-correctness-risk piece, de-risked first.
    NOT `pushedDate`.** `Commit.pushedDate` is **confirmed dead**: GitHub's
    GraphQL API returns `null` for it on every commit (verified across both
    target repos, Spike A 2026-06-23). Do not reach for it. Instead:
-   - **"Did the author push since my last review?"** → `headRefOid` ≠
+   - **"Did the author push since my last review?"** → `head_oid` ≠
      `last_reviewed_sha` (SHA identity; see trap #2). No timestamp needed, and
      it is immune to rebases/force-pushes scrambling `committedDate`.
    - **Detect a rebase/force-push** → `HeadRefForcePushedEvent` timeline nodes

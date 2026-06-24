@@ -68,9 +68,9 @@ the expensive part (~15–35K tokens), and it is still valid if the head SHA has
 not moved (a force-push is exactly what invalidates it, §3):
 
 ```sh
-# headRefOid comes from the PRRecord (state/cache/records.json).
+# The head SHA is the PRRecord's `head_oid` field (state/cache/records.json).
 python3 .claude/skills/assemble-rounds/scripts/workup.py get \
-    --repo owner/name --number 7416 --sha <headRefOid>
+    --repo owner/name --number 7416 --sha <head_oid>
 ```
 
 - **exit 0** → it prints the cached SOAP. Reuse it; **spawn no subagent.**
@@ -79,7 +79,7 @@ python3 .claude/skills/assemble-rounds/scripts/workup.py get \
 
 ```sh
 echo "<SOAP text>" | python3 .claude/skills/assemble-rounds/scripts/workup.py put \
-    --repo owner/name --number 7416 --sha <headRefOid> --at <cycle-iso>
+    --repo owner/name --number 7416 --sha <head_oid> --at <cycle-iso>
 ```
 
 Route by lane (wrap per repo in try/continue — **a failed repo or PR is

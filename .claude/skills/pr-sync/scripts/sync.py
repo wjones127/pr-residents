@@ -128,6 +128,10 @@ def sync(config_dir: str, cache_path: str, now: datetime | None = None) -> list[
                     cache.put(repo, number, light_row["updatedAt"],
                               light_row["headRefOid"], record)
             if record is not None:
+                # Current head SHA: the workup cache keys on it (§3 — a force-push
+                # invalidates a SOAP), and it's how a consumer detects the head
+                # moved since last_reviewed_sha without another fetch.
+                record["head_oid"] = light_row["headRefOid"]
                 records.append(record)
 
     cache.close()
