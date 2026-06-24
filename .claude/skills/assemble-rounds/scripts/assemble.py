@@ -4,14 +4,12 @@ assemble-rounds orchestrator fills with per-PR SOAP workups (from the
 fresh-review / re-review-delta residents). No LLM, no GitHub access.
 
 Usage:
-    python3 assemble.py [--records state/records.json] [--panel state/panel.json]
-                        [--state-dir state]
+    python3 assemble.py [--state-dir state]
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 
@@ -19,17 +17,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "pr-sync", "scripts"))
 
 import render  # noqa: E402  (the three-lane renderer)
+import store as store_mod  # noqa: E402
 
 import reconcile  # noqa: E402  (sibling, for agreement_rate)
-
-
-def _load(path: str | None):
-    if path and os.path.exists(path):
-        try:
-            return json.load(open(path, encoding="utf-8"))
-        except (OSError, ValueError):
-            return None
-    return None
 
 
 def reconciliation_banner(log: dict | None) -> str:
@@ -69,15 +59,13 @@ def assemble(records: list[dict] | None, panel: list[dict] | None,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Render the deterministic rounds frame.")
     repo_root = os.path.abspath(os.path.join(_HERE, "..", "..", "..", ".."))
-    state = os.path.join(repo_root, "state")
-    parser.add_argument("--records", default=os.path.join(state, "records.json"))
-    parser.add_argument("--panel", default=os.path.join(state, "panel.json"))
-    parser.add_argument("--state-dir", default=state)
+    parser.add_argument("--state-dir", default=os.path.join(repo_root, "state"))
     args = parser.parse_args(argv)
 
-    records = _load(args.records) or []
-    panel = _load(args.panel) or []
-    reconcile_log = _load(os.path.join(args.state_dir, "reconcile", "agreement.json"))
+    store = store_mod.FileStore(args.state_dir)
+    records = store.get_json(store_mod.RECORDS) or []
+    panel = store.get_json(store_mod.PANEL) or []
+    reconcile_log = store.get_json(store_mod.RECONCILE_AGREEMENT)
     print(assemble(records, panel, reconcile_log))
     return 0
 

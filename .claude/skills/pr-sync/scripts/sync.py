@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 import config as config_mod
 import derive
+import store as store_mod
 from cache import Cache
 from github import GitHubClient, GitHubError
 
@@ -138,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     here = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
     parser.add_argument("--config-dir", default=os.path.join(repo_root, "config"))
-    parser.add_argument("--cache", default=os.path.join(repo_root, "state", "pr_cache.sqlite"))
+    parser.add_argument("--cache", default=store_mod.FileStore().local_path(store_mod.PR_DETAIL_DB))
     parser.add_argument("--out", default="-", help="output path, or - for stdout")
     args = parser.parse_args(argv)
 

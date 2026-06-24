@@ -27,8 +27,8 @@ Verify locally before scheduling anything:
 
 ```sh
 set -a; source .env; set +a
-python3 .claude/skills/pr-sync/scripts/sync.py --out state/records.json   # should write N records
-python3 .claude/skills/assemble-rounds/scripts/assemble.py                # should render the frame
+python3 .claude/skills/pr-sync/scripts/sync.py --out state/cache/records.json  # should write N records
+python3 .claude/skills/assemble-rounds/scripts/assemble.py                     # should render the frame
 ```
 
 ## 3. Create the remote routine on claude.ai
@@ -45,13 +45,25 @@ python3 .claude/skills/assemble-rounds/scripts/assemble.py                # shou
 
 ## 4. State write-back
 
-Per-user state (the relevance profile, reconciliation logs, this cycle's
-dispositions) lives under `state/` and must persist between runs:
+Per-user state lives under `state/` and must persist between runs — a remote run
+is a fresh clone, so without this every night starts cold. The `assemble-rounds`
+skill handles it via `state_sync.py`: **hydrate** at the start (fetch
+`claude/state`, unpack it) and **persist** at the end (commit + push).
 
-- Default: the routine pushes to a **`claude/state`** branch (the safe option
-  that works without unrestricted branch pushes). The next run fetches it.
-- `state/` is gitignored on `main`, and per §9 it must **never** be shared — it's
-  your personal review history and learning logs.
+Two namespaces, two policies:
+- `state/cache/` — GitHub-derived (PRRecords, the relevance profile, the
+  PR-detail SQLite, the workup SOAPs). Best-effort; stale workups are pruned.
+- `state/ledger/` — your drafts and the accumulated draft-vs-posted learning
+  series (§5). Exists nowhere else; written once per cycle, never pruned.
+
+Credentials: the push to `claude/state` uses the **clone's own git credentials**,
+which is a *separate* path from the read-only `GITHUB_TOKEN_<ORG>` API PATs in
+§1. Those PATs stay read-only — they are never used to push. (If your routine
+host can't push with ambient git creds, give that push path a token scoped to
+**Contents: Write on this repo only** — never the org-wide API PATs.)
+
+`state/` is gitignored on `main`, and per §9 it must **never** be shared — it's
+your personal review history and learning logs.
 
 ## 5. The morning
 

@@ -14,9 +14,9 @@ no GitHub writes. Replaces the legacy `fetch-review-prs.sh` + `triage-prs`.
 1. `sync.py` — per configured repo, runs two GraphQL searches (`review-requested:@me`,
    `reviewed-by:@me`), derives `blocked_on` / `lane` / `acuity` / `effort` /
    `merge_state` / `escalation` for each PR, and emits `PRRecord` JSON. SQLite
-   cache (`state/pr_cache.sqlite`) skips the heavy detail fetch for PRs whose
-   `updatedAt` is unchanged; the cache auto-invalidates when `escalation.yml` or
-   the derivation logic changes.
+   cache (`state/cache/pr_detail.sqlite`, via the Store seam) skips the heavy
+   detail fetch for PRs whose `updatedAt` is unchanged; the cache auto-invalidates
+   when `escalation.yml` or the derivation logic changes.
 2. `render.py` — prints the three lanes: **fresh** (acuity-ordered), **re-review**
    (proximity-to-merge ordered), **housekeeping** (approved-not-merged +
    stale-waiting-on-author, batched).
@@ -34,13 +34,13 @@ python3 .claude/skills/pr-sync/scripts/sync.py | python3 .claude/skills/pr-sync/
 Or persist the JSON for downstream skills:
 
 ```sh
-python3 .claude/skills/pr-sync/scripts/sync.py --out state/records.json
-python3 .claude/skills/pr-sync/scripts/render.py state/records.json
+python3 .claude/skills/pr-sync/scripts/sync.py --out state/cache/records.json
+python3 .claude/skills/pr-sync/scripts/render.py state/cache/records.json
 ```
 
 Flags: `--config-dir` (default `config/`), `--cache` (default
-`state/pr_cache.sqlite`), `--out` (`-` for stdout). A repo whose org token is
-missing is skipped with a stderr note, not an error.
+`state/cache/pr_detail.sqlite`), `--out` (`-` for stdout). A repo whose org token
+is missing is skipped with a stderr note, not an error.
 
 ## Correctness traps owned here (see docs/prrecord.md)
 

@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(_HERE, "..", "..", "pr-sync", "scripts"))
 
 import config as config_mod  # noqa: E402
 import derive  # noqa: E402
+import store as store_mod  # noqa: E402
 from github import GitHubClient, GitHubError  # noqa: E402
 
 import affinity  # noqa: E402
@@ -50,9 +51,6 @@ query($q: String!, $cursor: String) {
   }
 }
 """
-
-PROFILE_FILE = "relevance_profile.json"
-
 
 def _eprint(*args) -> None:
     print(*args, file=sys.stderr)
@@ -106,22 +104,17 @@ def build_profiles(client: GitHubClient, repos: list[str], exclude: list[str],
     return profiles
 
 
-def _load_profiles(path: str, viewer: str) -> dict[str, dict] | None:
-    if not os.path.exists(path):
-        return None
-    try:
-        blob = json.load(open(path, encoding="utf-8"))
-    except (OSError, ValueError):
+def _load_profiles(store, viewer: str) -> dict[str, dict] | None:
+    blob = store.get_json(store_mod.RELEVANCE_PROFILE)
+    if not blob:
         return None
     if blob.get("viewer") != viewer:
         return None  # never reuse another identity's profile (§9)
     return blob.get("profiles")
 
 
-def _save_profiles(path: str, viewer: str, profiles: dict[str, dict]) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump({"viewer": viewer, "profiles": profiles}, fh, indent=2)
+def _save_profiles(store, viewer: str, profiles: dict[str, dict]) -> None:
+    store.put_json(store_mod.RELEVANCE_PROFILE, {"viewer": viewer, "profiles": profiles})
 
 
 def _score_repo(candidates: list[dict], repo_profile: dict, cfg) -> list[dict]:
@@ -154,7 +147,7 @@ def _score_repo(candidates: list[dict], repo_profile: dict, cfg) -> list[dict]:
 def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
         candidate_limit: int, top: int, min_score: float) -> list[dict]:
     cfg = config_mod.load(config_dir)
-    profile_path = os.path.join(state_dir, PROFILE_FILE)
+    store = store_mod.FileStore(state_dir)
 
     # One client per owner (token is per-org). Viewer must be consistent.
     clients: dict[str, GitHubClient] = {}
@@ -177,14 +170,14 @@ def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
 
     repos = [r for r in cfg.active_repos() if r.split("/", 1)[0] in clients]
 
-    profiles = None if rebuild else _load_profiles(profile_path, viewer)
+    profiles = None if rebuild else _load_profiles(store, viewer)
     if profiles is None:
         _eprint("[info] building review-history profile (this hits the API)…")
         profiles = {}
         for repo in repos:
             client = clients[repo.split("/", 1)[0]]
             profiles.update(build_profiles(client, [repo], cfg.exclude_paths, history_limit))
-        _save_profiles(profile_path, viewer, profiles)
+        _save_profiles(store, viewer, profiles)
 
     panel: list[dict] = []
     for repo in repos:

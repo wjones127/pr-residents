@@ -17,11 +17,11 @@ history and cached under `state/` (must-not-share, §9).
 
 ```sh
 set -a; source .env; set +a
-python3 .claude/skills/pr-relevance/scripts/relevance.py --top 10 --out state/panel.json
+python3 .claude/skills/pr-relevance/scripts/relevance.py --top 10 --out state/cache/panel.json
 ```
 
-First run builds your review-history profile from the API (one-time, cached to
-`state/relevance_profile.json`). Pass `--rebuild` to refresh it after you've
+First run builds your review-history profile from the API (one-time, cached via
+the Store seam to `state/cache/relevance_profile.json`). Pass `--rebuild` to refresh it after you've
 reviewed more PRs. Knobs: `--history-limit` (PRs sampled for the profile),
 `--candidate-limit` (open PRs scored per repo), `--min-score`, `--top`.
 

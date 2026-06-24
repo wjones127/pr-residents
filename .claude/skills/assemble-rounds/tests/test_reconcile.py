@@ -7,8 +7,10 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "pr-sync", "scripts"))
 
 import reconcile  # noqa: E402
+import store as store_mod  # noqa: E402
 
 
 class TestClassifyOutcome(unittest.TestCase):
@@ -84,15 +86,13 @@ class TestAnchoringFlag(unittest.TestCase):
 
 class TestFindUnreconciled(unittest.TestCase):
     def test_skips_already_reconciled(self):
-        import json
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            ddir = os.path.join(tmp, "dispositions")
-            os.makedirs(ddir)
+            store = store_mod.FileStore(tmp)
             for cyc in ("2026-06-20T00:00:00Z", "2026-06-21T00:00:00Z"):
-                with open(os.path.join(ddir, cyc.replace(":", "") + ".json"), "w") as fh:
-                    json.dump({"cycle": cyc, "dispositions": []}, fh)
-            pending = reconcile.find_unreconciled(tmp, {"2026-06-20T00:00:00Z"})
+                store.put_json(store_mod.disposition_key(cyc),
+                               {"cycle": cyc, "dispositions": []})
+            pending = reconcile.find_unreconciled(store, {"2026-06-20T00:00:00Z"})
             self.assertEqual([c["cycle"] for c in pending], ["2026-06-21T00:00:00Z"])
 
 

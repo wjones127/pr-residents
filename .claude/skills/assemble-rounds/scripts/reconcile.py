@@ -17,8 +17,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import glob
-import json
 import os
 import sys
 
@@ -26,6 +24,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "pr-sync", "scripts"))
 
 import config as config_mod  # noqa: E402
+import store as store_mod  # noqa: E402
 from github import GitHubClient, GitHubError  # noqa: E402
 
 # A domain needs at least this many reconciled samples before a flatlined
@@ -104,17 +103,12 @@ def anchoring_flag(stats: dict, min_samples: int = DEFAULT_MIN_SAMPLES) -> bool:
 
 # --- I/O ------------------------------------------------------------------
 
-def _dispositions_dir(state_dir: str) -> str:
-    return os.path.join(state_dir, "dispositions")
-
-
-def find_unreconciled(state_dir: str, reconciled_cycles: set[str]) -> list[dict]:
+def find_unreconciled(store, reconciled_cycles: set[str]) -> list[dict]:
     """Prior cycles' disposition files not yet folded in, oldest first."""
     out = []
-    for path in sorted(glob.glob(os.path.join(_dispositions_dir(state_dir), "*.json"))):
-        try:
-            blob = json.load(open(path, encoding="utf-8"))
-        except (OSError, ValueError):
+    for key in store.list_keys(store_mod.DISPOSITIONS_PREFIX):
+        blob = store.get_json(key)
+        if not blob:
             continue
         if blob.get("cycle") and blob["cycle"] not in reconciled_cycles:
             out.append(blob)
@@ -135,22 +129,18 @@ def fetch_posted_state(client: GitHubClient, owner: str, name: str, number: int,
     return max(mine, key=lambda r: r["submittedAt"]).get("state")
 
 
-def _load_log(path: str) -> dict:
-    if os.path.exists(path):
-        try:
-            return json.load(open(path, encoding="utf-8"))
-        except (OSError, ValueError):
-            pass
-    return {"domains": {}, "reconciled_cycles": []}
+def _load_log(store) -> dict:
+    return store.get_json(store_mod.RECONCILE_AGREEMENT) or {
+        "domains": {}, "reconciled_cycles": []}
 
 
 def run(config_dir: str, state_dir: str, min_samples: int = DEFAULT_MIN_SAMPLES) -> dict:
     cfg = config_mod.load(config_dir)
-    log_path = os.path.join(state_dir, "reconcile", "agreement.json")
-    log = _load_log(log_path)
+    store = store_mod.FileStore(state_dir)
+    log = _load_log(store)
     reconciled = set(log.get("reconciled_cycles") or [])
 
-    pending = find_unreconciled(state_dir, reconciled)
+    pending = find_unreconciled(store, reconciled)
     if not pending:
         return {"reconciled": 0, "note": "no unreconciled cycles", "log": log}
 
@@ -187,9 +177,7 @@ def run(config_dir: str, state_dir: str, min_samples: int = DEFAULT_MIN_SAMPLES)
     log["anchoring_flags"] = sorted(
         dom for dom, s in log["domains"].items() if anchoring_flag(s, min_samples))
 
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    with open(log_path, "w", encoding="utf-8") as fh:
-        json.dump(log, fh, indent=2)
+    store.put_json(store_mod.RECONCILE_AGREEMENT, log)
     return {"reconciled": processed, "log": log}
 
 
