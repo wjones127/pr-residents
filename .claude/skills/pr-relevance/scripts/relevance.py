@@ -31,6 +31,13 @@ import store as store_mod  # noqa: E402
 from github import GitHubClient, GitHubError  # noqa: E402
 
 import affinity  # noqa: E402
+import embed  # noqa: E402
+
+# How hard the semantic cosine (≈0–1) pushes on the blended score. Affinity
+# scores are integer area-overlap sums and cold-start scores are tiny, so a
+# weight of ~5 lets semantics reorder weak-lexical-signal candidates (its whole
+# point — that's where path-affinity is blind) while only nudging strong ones.
+DEFAULT_SEMANTIC_WEIGHT = 5.0
 
 # Search nodes carrying the changed paths we score on. `first` is small because
 # requesting files inflates GraphQL query cost.
@@ -117,26 +124,39 @@ def _save_profiles(store, viewer: str, profiles: dict[str, dict]) -> None:
     store.put_json(store_mod.RELEVANCE_PROFILE, {"viewer": viewer, "profiles": profiles})
 
 
-def _score_repo(candidates: list[dict], repo_profile: dict, cfg) -> list[dict]:
+def _score_repo(candidates: list[dict], repo_profile: dict, cfg, *,
+                store=None, semantic: bool = False,
+                semantic_weight: float = DEFAULT_SEMANTIC_WEIGHT,
+                model: str = embed.DEFAULT_MODEL, host: str = embed.DEFAULT_HOST) -> list[dict]:
     weights = repo_profile["weights"]
     reviews = repo_profile["reviews"]
+    centroid = repo_profile.get("centroid")
     cold = reviews < affinity.MIN_HISTORY
     panel: list[dict] = []
     for c in candidates:
         paths = _filtered(c["paths"], cfg.exclude_paths)
         if cold:
             esc = derive.match_escalation(paths, [], 0, cfg.escalation)
-            score, rationale = affinity.cold_start_score(
+            base, rationale = affinity.cold_start_score(
                 paths, cfg.interests, esc.get("rule_ids"))
             mode, matched = "cold_start", []
         else:
-            score, matched = affinity.score_candidate(paths, weights)
+            base, matched = affinity.score_candidate(paths, weights)
             rationale = affinity.affinity_rationale(matched)
             mode = "affinity"
+        sem = 0.0
+        if semantic and centroid and store is not None:
+            vec = embed.embed_cached(store, c["title"], model=model, host=host,
+                                     prefix=_task_prefix(model, "query"))
+            if vec is not None:
+                sem = embed.cosine(vec, centroid)
+                rationale += f" · semantic {sem:.2f}"
+        score = base + semantic_weight * sem
         panel.append({
             "repo": c["repo"], "number": c["number"], "title": c["title"],
             "url": c["url"], "author": c["author"],
-            "score": round(score, 2), "mode": mode, "rationale": rationale,
+            "score": round(score, 2), "base_score": round(base, 2),
+            "semantic": round(sem, 3), "mode": mode, "rationale": rationale,
             "matched_areas": [b for b, _ in matched],
             "files_changed_count": len(paths),
             "relevance": {"score": round(score, 2), "requested": False},
@@ -144,8 +164,36 @@ def _score_repo(candidates: list[dict], repo_profile: dict, cfg) -> list[dict]:
     return panel
 
 
+def _task_prefix(model: str, kind: str) -> str:
+    """nomic-embed-text is an asymmetric retrieval model — it expects a task
+    instruction prefix, and reviewed history (the corpus) vs a candidate (the
+    query) get different ones, which spreads otherwise-bunched cosines. Harmless
+    to skip for models that don't use prefixes."""
+    if "nomic" in model.lower():
+        return "search_document: " if kind == "document" else "search_query: "
+    return ""
+
+
+def _semantic_centroid(client: GitHubClient, repo: str, store, exclude: list[str],
+                       history_limit: int, model: str, host: str):
+    """Centroid of the embeddings of my reviewed-PR titles in this repo — the
+    semantic analog of the path-affinity profile. None if no history / no daemon."""
+    reviewed = _search_prs_with_files(
+        client, f"repo:{repo} is:pr reviewed-by:@me -author:@me", history_limit)
+    prefix = _task_prefix(model, "document")
+    vecs = []
+    for pr in reviewed:
+        vec = embed.embed_cached(store, pr["title"], model=model, host=host, prefix=prefix)
+        if vec is not None:
+            vecs.append(vec)
+    return embed.centroid(vecs)
+
+
 def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
-        candidate_limit: int, top: int, min_score: float) -> list[dict]:
+        candidate_limit: int, top: int, min_score: float, *,
+        semantic: bool = False, semantic_weight: float = DEFAULT_SEMANTIC_WEIGHT,
+        embed_model: str = embed.DEFAULT_MODEL, embed_host: str = embed.DEFAULT_HOST
+        ) -> list[dict]:
     cfg = config_mod.load(config_dir)
     store = store_mod.FileStore(state_dir)
 
@@ -179,6 +227,24 @@ def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
             profiles.update(build_profiles(client, [repo], cfg.exclude_paths, history_limit))
         _save_profiles(store, viewer, profiles)
 
+    # Semantic half (§8 k-NN): opt-in, and only if the local embedder is up.
+    # Degrades silently to path-affinity otherwise — never blocks the round.
+    if semantic and not embed.available(embed_host):
+        _eprint(f"[warn] --semantic set but no embedder at {embed_host}; using path-affinity only")
+        semantic = False
+    if semantic:
+        dirty = False
+        for repo in repos:
+            rp = profiles.setdefault(repo, {"reviews": 0, "weights": {}})
+            if "centroid" not in rp:
+                client = clients[repo.split("/", 1)[0]]
+                rp["centroid"] = _semantic_centroid(
+                    client, repo, store, cfg.exclude_paths, history_limit,
+                    embed_model, embed_host)
+                dirty = True
+        if dirty:
+            _save_profiles(store, viewer, profiles)
+
     panel: list[dict] = []
     for repo in repos:
         client = clients[repo.split("/", 1)[0]]
@@ -191,7 +257,9 @@ def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
         except GitHubError as exc:
             _eprint(f"[error] {repo}: candidate search failed: {exc}")
             continue
-        panel.extend(_score_repo(candidates, repo_profile, cfg))
+        panel.extend(_score_repo(
+            candidates, repo_profile, cfg, store=store, semantic=semantic,
+            semantic_weight=semantic_weight, model=embed_model, host=embed_host))
 
     panel = [p for p in panel if p["score"] >= min_score]
     panel.sort(key=lambda p: (-p["score"], p["repo"], p["number"]))
@@ -209,11 +277,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidate-limit", type=int, default=50)
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--min-score", type=float, default=1.0)
+    parser.add_argument("--semantic", action="store_true",
+                        help="blend in local-embedding similarity (needs Ollama; §8 k-NN)")
+    parser.add_argument("--semantic-weight", type=float, default=DEFAULT_SEMANTIC_WEIGHT)
+    parser.add_argument("--embed-model", default=embed.DEFAULT_MODEL)
+    parser.add_argument("--embed-host", default=embed.DEFAULT_HOST)
     parser.add_argument("--out", default="-")
     args = parser.parse_args(argv)
 
     panel = run(args.config_dir, args.state_dir, args.rebuild, args.history_limit,
-                args.candidate_limit, args.top, args.min_score)
+                args.candidate_limit, args.top, args.min_score,
+                semantic=args.semantic, semantic_weight=args.semantic_weight,
+                embed_model=args.embed_model, embed_host=args.embed_host)
     payload = json.dumps(panel, indent=2)
     if args.out == "-":
         print(payload)

@@ -65,14 +65,37 @@ graduated-autonomy concern, slice 5 — not done here).
 - Relevance never auto-surfaces a PR into rounds; it only *proposes* it into the
   triage panel. The attending decides.
 
-## Extension point — semantic k-NN (not yet implemented)
+## Semantic half — local-embedding similarity (`--semantic`, opt-in)
 
-§8's second half: embed each reviewed PR's **title + description** (NOT the raw
-diff) and k-NN a candidate's embedding against that history — a *global*
-semantic signal that complements the *per-repo* path-overlap above (hybrid:
-combine the two scores). It switches on once history accumulates and needs an
-embedding API key (`config/user.yml: env.embedding_api_key`) and a vector store
-(LanceDB) under `state/`. Deferred: the path-overlap half delivers the
-high-value result first, and the remote sandbox is stdlib-only (no pip), so the
-vector half lands when that constraint is addressed. `affinity.py` exposes the
-scoring seam; a `semantic.py` sibling would add the k-NN score and a blender.
+§8's second half. `embed.py` embeds each reviewed PR's **title** and takes the
+centroid as a per-repo semantic profile; each candidate's title is embedded and
+scored by cosine against it. The blended score is
+`path-affinity (or cold-start) + semantic-weight × cosine` — so semantics refine
+where path-overlap already ranks, and *dominate* where it's blind (cold-start,
+cross-area work). Off by default; turn on with `--semantic`.
+
+```sh
+python3 .claude/skills/pr-relevance/scripts/relevance.py --semantic --top 10 --out state/cache/panel.json
+```
+
+How the stdlib/pip lock is sidestepped: the embedder runs in its **own process**
+(Ollama, a standalone binary — `brew install ollama`, `ollama pull
+nomic-embed-text`) and speaks HTTP, so `embed.py` only does a `urllib` POST plus
+cosine arithmetic — no pip, no torch, no LanceDB. Vectors ride the Store seam's
+`cache/embeddings/` namespace (keyed by model + content hash), so they
+round-trip via `claude/state` and the cosine scoring is pure stdlib that runs
+anywhere. **Local-first, graceful degrade:** if no Ollama daemon is reachable,
+`--semantic` warns and falls back to path-affinity — it never blocks the round.
+A remote run with no daemon still scores on cached vectors and uses
+path-affinity for anything not yet embedded.
+
+Knobs: `--semantic-weight` (default 5.0), `--embed-model` (default
+`nomic-embed-text`; the cache key is model-scoped so swapping is safe),
+`--embed-host` (default `$OLLAMA_HOST` or `http://localhost:11434`).
+nomic-style models get asymmetric task prefixes (`search_document:` for history,
+`search_query:` for candidates) automatically.
+
+Still deferred: a true vector **store** (LanceDB) for ANN over a large corpus —
+unnecessary at single-user scale, where brute-force cosine over cached vectors
+is microseconds. That lands with the LanceDB persistence backend (same pip
+constraint).

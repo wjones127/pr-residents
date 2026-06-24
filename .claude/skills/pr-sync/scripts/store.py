@@ -145,3 +145,9 @@ def workup_key(repo: str, number: int, sha: str) -> str:
     written against (§3 — a force-push invalidates it)."""
     owner, name = (repo.split("/", 1) + [""])[:2]
     return f"cache/workups/{_safe_segment(owner)}/{_safe_segment(name)}/{int(number)}/{_safe_segment(sha)}.json"
+
+
+def embedding_key(model: str, content_hash: str) -> str:
+    """Cache key for an embedding vector. Scoped by model name so swapping the
+    embedding model never serves stale vectors from a different one."""
+    return f"cache/embeddings/{_safe_segment(model)}/{_safe_segment(content_hash)}.json"

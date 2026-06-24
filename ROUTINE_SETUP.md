@@ -37,8 +37,12 @@ python3 .claude/skills/assemble-rounds/scripts/assemble.py                     #
   `~/.claude/`, which is why every skill is repo-committed).
 - **Driver prompt:** paste the contents of `routine-prompt.md`. Keep it thin —
   the logic is the `assemble-rounds` skill, versioned here.
-- **Environment:** add `GITHUB_TOKEN_<ORG>` for each org. (Optional, slice 4
-  extension: `ANTHROPIC_API_KEY` for relevance k-NN — unused today.)
+- **Environment:** add `GITHUB_TOKEN_<ORG>` for each org. (Optional: semantic
+  relevance (`--semantic`) needs a local Ollama embedder, which the cloud routine
+  won't have — it degrades to path-affinity there. Run `--semantic` locally so
+  vectors land in `claude/state`; set `OLLAMA_HOST` only if not the default
+  `localhost:11434`. No embedding API key, anywhere — Anthropic has no embeddings
+  endpoint; the model is local.)
 - **Schedule:** nightly, before your morning (e.g. 06:00 local). Remote runs with
   the laptop closed; local scheduled tasks don't (they need the app open and the
   machine awake), which is why this is a cloud routine.
