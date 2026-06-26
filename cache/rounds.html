@@ -145,49 +145,234 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2395">feat(python): handle strenum in pydantic</a> <span class="num">lancedb/lancedb#2395</span></span>
       <span class="meta"><span>382d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#2395 — feat(python): handle strenum in pydantic
+reviewed 7218282c → cad75301  (48 commits on branch; 3 files are the PR&#x27;s own work, 63 base-merge files excluded)
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior conditions: the packet reconstructed zero issue(blocking) comments from your last review of this PR — nothing to verify against the delta)
+
+FRESH-EYES DELTA
+
+  issue(blocking): plain str fields silently remapped from utf8 to dictionary
+  → python/python/lancedb/pydantic.py:271
+  The change folds StrEnum into the existing str branch:
+      elif py_type is str or (StrEnum is not None and issubclass(py_type, StrEnum)):
+          return pa.dictionary(pa.int16(), pa.string())
+  This was previously `elif py_type is str: return pa.utf8()`. Now every plain str field in every LanceModel maps to pa.dictionary(int16, string) instead of pa.utf8(). That is an unintended, breaking schema change for all existing string columns, not just the StrEnum case the PR targets. The two cases should be separate branches: str → pa.utf8(), StrEnum → pa.dictionary(...).
+
+  issue(blocking): issubclass(py_type, StrEnum) raises bare TypeError on non-class types
+  → python/python/lancedb/pydantic.py:271
+  _py_type_to_arrow_type is reached with non-class py_type values (e.g. via _pydantic_type_to_arrow_type&#x27;s fall-through past inspect.isclass, and via the recursive list/tuple child path). For a nested generic such as List[List[int]], the recursion reaches this branch with py_type = List[int], and issubclass(List[int], StrEnum) raises TypeError: issubclass() arg 1 must be a class (verified on 3.14). Guard with inspect.isclass(py_type) before issubclass.
+
+  issue(non-blocking): no regression test for plain str → utf8
+  → python/python/tests/test_pydantic.py
+  The added tests assert only StrEnum → dictionary. Nothing pins the existing str → pa.utf8() contract, so the regression above is silently uncovered. Add an assertion that a plain str field still yields pa.utf8().
+
+  (nit, non-blocking: test skip reason text says &quot;StrEnum where only introduced&quot; — &quot;where&quot; should be &quot;were&quot;, in both test files.)
+
+RECOMMENDATION: block on 2 conditions
+  confidence: high · what would make this wrong: if the LanceDB schema layer treats pa.dictionary(int16, string) and pa.utf8() as interchangeable downstream (it does not — dictionary encoding changes the on-disk column type), or if _py_type_to_arrow_type is in practice only ever called with concrete classes (it is not — the list-child recursion and isclass fall-through pass non-classes).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6215">feat: add manifest namespace extended properties</a> <span class="num">lance-format/lance#6215</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>90d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-namespace-impls</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#6215 — feat: add manifest namespace extended properties
+reviewed ed73cb73 → 95746654  (packet range spans 67 commits / base-branch churn; PR-authored delta = 1 commit, 3 source files)
+
+PACKET INTEGRITY NOTE (read first)
+  The deterministic packet is NOT trustworthy for this PR and was NOT used as the evidence base.
+  - It reported the three authored source files (`Cargo.toml`, `dir.rs`, `dir/manifest.rs`) as additions:0 deletions:0 patch:null while emitting only Cargo.lock churn.
+  - Root cause: `last_reviewed_sha` (ed73cb73) is NOT an ancestor of head (95746654) — the branch was rebased onto a new base (2a4daf13). The B..H range sweeps in 5 unrelated merged PRs and ~218 base files; the scoper kept the authored files but stripped their net patch to empty.
+  - Ground truth used instead: GitHub PR file list (6 files, +989/−104, commits=1) + the single authored commit diffed directly. PR is currently mergeable=false (base conflicts).
+
+CONDITIONS LEDGER (0/0 met)
+  (empty) No prior conditions reconstructed — no posted issue(blocking) comments existed on the reviewed SHA. This re-review is effectively a first substantive pass over the authored delta.
+
+FRESH-EYES DELTA
+  The authored change adds &quot;extended properties&quot;: property keys prefixed `lance.manifest.extended.` are stored as dedicated typed columns in the `__manifest` table; non-prefixed keys stay in the `metadata` JSON. Adds add/remove/list of extended columns, a `query_manifest`/`parse_manifest_object` refactor, and threads `extended_batch` through create/declare/register table + create namespace. Solid test coverage (8 new rstest cases). Findings:
+
+  issue(non-blocking): silent data loss for legitimate string value &quot;null&quot;.
+    rust/lance-namespace-impls/src/dir/manifest.rs:720-722 (is_nullish_extended_value) treats both &quot;&quot; and any case of &quot;null&quot; as absent and skips writing the column. A user storing the literal string &quot;null&quot; in a Utf8 extended column has it silently dropped on write and absent on read. The empty-string carve-out is also asymmetric with scalar_to_str. Suggest gating the &quot;null&quot; sentinel on non-Utf8 types only, or documenting it as reserved.
+
+  issue(non-blocking): API/shape mismatch between entries and extended batch.
+    manifest.rs:303-323 — insert_into_manifest_with_metadata takes Vec&lt;ManifestEntry&gt; (N rows) but extended_batch is always exactly 1 row. batch.merge errors when num_rows differ (rust/lance-arrow/src/lib.rs:636). Works today only because every caller passes a single entry. Either assert entries.len()==1 when extended_batch.is_some(), or build the extended batch per-row.
+
+  issue(non-blocking): read/modify schema race on extended columns.
+    create/declare/register/create_namespace read extended_manifest_schema() then insert later; a concurrent remove_extended_properties dropping that column between read and insert would make the merge target a non-existent column. Matches the file&#x27;s existing concurrency posture, so not newly regressed — flagging for awareness.
+
+  nit: `use std::{ ..., f32, f64, ... }` (manifest.rs:47) imports the primitive modules unnecessarily.
+
+  No new memory-safety, unsafe, panic-on-untrusted-input, or SQL-injection regressions found: object_id is escaped for the filter (manifest.rs:236, 329), and extended column writes go through typed ScalarValue conversion with explicit error variants.
+
+RECOMMENDATION: comment (no blocking conditions)
+  confidence: medium-high on the delta review; LOW on the packet — the deterministic packet was defective and bypassed. what would make this wrong: the prior-review history may have held blocking conditions I could not reconstruct (packet returned an empty ledger, and the rebased/non-ancestor reviewed SHA means I could not anchor a prior conditions thread). The attending should confirm no outstanding blocking thread exists before co-signing. Also note PR is mergeable=false (base conflicts).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-namespace-impls</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2829">feat: support embedding at search on remote table</a> <span class="num">lancedb/lancedb#2829</span></span>
       <span class="meta"><span>74d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb/remote</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#2829 — feat: support embedding at search on remote table
+reviewed 655a02c3 → e7d6a857  (delta range spans 201 commits / 3 author-touched files; true PR net diff is 5 commits, +109/−32, 3 files)
+
+CONDITIONS LEDGER (0/0 met)
+  (no closed-ended conditions) — my prior review at 655a02c3 was a single COMMENTED review asking a question (&quot;I&#x27;m surprised this wouldn&#x27;t work already… why does this work now?&quot;), with no posted issue(blocking) comments. The packet reconstructed 0 conditions; confirmed against the PR&#x27;s review + inline-comment history.
+
+FRESH-EYES DELTA
+
+  ⚠ DELTA CONTAMINATION (read this first):
+  The commit-anchored delta 655a02c3...e7d6a857 reports +671 lines across the 3 files. None of that is this PR&#x27;s work. The base branch main advanced far past 655a02c3 and was merged into the PR branch (packet excluded 224 wholly-off-branch files; the 3 files surviving the scope filter are ones the PR also touches). PR is mergeable_state: dirty. Ground truth = GitHub net diff (.diff): +109/−32.
+
+  The PR&#x27;s actual change:
+  - remote/table.py::search() — when query is a FullTextQuery set query_type=&quot;fts&quot;, then resolve the column via infer_vector_column_name(schema=self.schema, query_type, query, vector_column_name) before building the query. self.schema is a @property returning pa.Schema (verified), so the call signature is correct.
+  - table.py — import reordering (isort) + the same search() whitespace tweak; the infer_vector_column_name call there already existed. No behavioral change.
+  - test_remote_db.py — adds a schema fixture, a vector_column assertion to existing query tests, and test_query_sync_embedding_function_auto_vector covering the new path (embedding-function table, .search(&quot;puppy&quot;) with no explicit column → asserts body[&quot;vector_column&quot;]==&quot;vector&quot; and the query embedding is computed).
+
+  This answers my prior question: previously remote search() forwarded vector_column_name (often None) straight to the server with no client-side inference; now infer_vector_column_name does it client-side. Logic verified against the util.py definition at head — FTS → None, explicit name → passthrough, otherwise infer (clear ValueError on 0 or &gt;1 vector columns).
+
+  - issue (non-blocking): behavioral change for vector search on a table with no vector column. The new path calls inf_vector_column_query, which now raises ValueError client-side before the request is sent, whereas the old code forwarded None and let the server respond. Likely the intended improvement, but worth a one-line confirmation that no remote flow relied on the server handling a null column.
+
+  No new bad code introduced by the author&#x27;s actual diff. Test coverage for the new path is present and targeted.
+
+RECOMMENDATION: approve (with one non-blocking note)
+  confidence: medium-high on the author&#x27;s real diff (small, well-tested, answers the open question). LOWER confidence that nothing harmful rides in via the merged-in main churn — but that churn is out of this PR&#x27;s scope and should be re-reviewed at its own source. The dirty merge state must be resolved before merge.
+  what would make this wrong: if RemoteTable.schema (the @property) triggers a network/describe call that fails or is expensive on every search() and that regresses callers — worth a glance, but the existing tests stub it and pass.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb/remote</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3235">feat: support date, datetime, bytes, and Decimal literals in expr builder</a> <span class="num">lancedb/lancedb#3235</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>73d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 4 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python</code> · Drafted blocking conditions: 4</div></div></details>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 4 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3235 — feat: support date, datetime, bytes, and Decimal literals in expr builder
+reviewed 397043fd → 9ec04acf  (6 commits, 5 files)
+
+CONDITIONS LEDGER (3/5 met)
+
+  ✓ met      [blocking] Pass Decimal directly into Rust; handle conversion in expr_lit (don&#x27;t lose precision via float)
+             → python/src/expr.rs expr_lit: Python lit() no longer floats/strings the Decimal; Rust now does Decimal → parse_decimal(&amp;s) → df_lit(ScalarValue::Decimal128(Some(val), precision, scale)). Decimal no longer routes through float. (Construction correctness flagged separately in FRESH-EYES FE-2.)
+
+  ✓ met      [blocking] Don&#x27;t require UTF-8-encodable bytes; pass raw bytes into a DataFusion ScalarValue
+             → python/src/expr.rs: raw bytes go straight into ScalarValue::Binary, no UTF-8 round-trip. Covered by new test_binary_integration (lit(b&quot;\x01&quot;)).
+
+  ✗ not_met  [blocking] Test datetime queries, esp. timestamp column tz A vs passed datetime tz B   (author marked resolved — NOT confirmed)
+             → No tz-cross integration test exists in the delta. test_lit_datetime_tz was weakened: the `assert &quot;+05:00&quot; in e.to_sql()` line was deleted, leaving only assert isinstance(e, Expr). Worse, the new Rust path stores datetimes as TimestampMicrosecond(Some(micros), None) (tz-less) computed from dt.timestamp(), which interprets naive datetimes in the host&#x27;s local TZ — the exact A-vs-B hazard the condition raised is now both untested and behaviorally suspect (see FE-1).
+
+  ✓ met      [blocking] Integration test using date comparisons in a real filter, not just SQL conversion
+             → test_date_integration: builds a Date32 table, runs .where(col(&quot;date&quot;) == lit(date(2024,1,1))).to_arrow(), asserts num_rows == 1. Exercises the engine filter path.
+
+  ✓ met      [blocking] Integration test using Decimal that validates a filter query works
+             → test_decimal_integration: creates a decimal128(4,2) table and runs .where(col(&quot;val&quot;) &lt; lit(val2)).to_arrow(), asserting num_rows == 1. (Caveat: no longer uses high-precision values, so it doesn&#x27;t prove the float-rounding fix it claims — see FE-4, non-blocking.)
+
+FRESH-EYES DELTA
+
+  issue(blocking): Naive datetimes are interpreted in the host&#x27;s local timezone and stored tz-less — non-deterministic results.
+    → python/src/expr.rs: ScalarValue::TimestampMicrosecond(Some(micros), None) from dt.timestamp(). Python&#x27;s datetime.timestamp() on a naive datetime assumes local system time, so lit(datetime(2024,1,1,10,0)) produces a different instant on a UTC box vs a UTC+5 box, then stored tz-less. Acceptance: interpret naive datetimes as UTC (or require tz-aware) and add a test pinning micros independent of TZ.
+
+  issue(blocking): parse_decimal mishandles scientific notation and can exceed/underflow Decimal128 limits.
+    → parse_decimal does s.replace(&#x27;.&#x27;, &quot;&quot;) then parse::&lt;i128&gt;(). str(Decimal(&quot;1E+2&quot;)) == &quot;1E+2&quot;, which fails to parse; any Decimal with &gt;38 significant digits yields precision &gt; 38, which DataFusion&#x27;s Decimal128 rejects at construction. Acceptance: normalize via Decimal and clamp/validate precision ≤ 38, with tests for Decimal(&quot;1E+2&quot;) and a &gt;38-digit value.
+
+  issue(blocking): Unit-test assertions for the typed literals were gutted — they no longer test what they claim.
+    → test_lit_date, test_lit_datetime, test_lit_datetime_tz, test_lit_decimal_precision all had their substantive assertions removed and now only assert isinstance(e, Expr), which is true for every literal. These pass vacuously. Acceptance: restore value-bearing assertions, especially the tz-offset and precision-preservation checks.
+
+  issue(non-blocking): test_decimal_integration no longer demonstrates the precision fix it documents.
+    → switched from Decimal(&quot;1.234567890123456789&quot;) to Decimal(&quot;1.50&quot;)/Decimal(&quot;2.50&quot;) while its docstring still says &quot;high-precision … avoid float-rounding,&quot; and an inline comment hedges. Restore a high-precision case.
+
+  note: the reflexive-operator test rewrites ((1 = x) → (x = 1)) are not driven by any source change in this delta&#x27;s files; they look like a rebase pickup of upstream canonicalization. No new defect attributable to this PR.
+
+RECOMMENDATION: block on 1 unmet condition + 3 fresh blocking issues
+  confidence: high — verified against the delta patch and the head-SHA file contents, not the resolved flags.
+  what would make this wrong: if a tz-cross integration test and the restored unit assertions exist in a file outside this PR&#x27;s changed-file set (delta is scoped to the PR&#x27;s own files, files_off_branch_excluded: 0, so unlikely), or if naive-datetime-as-local is an intentional, documented contract.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python</code> · Drafted blocking conditions: 4</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6255">feat: add transaction-level table_metadata_updates</a> <span class="num">lance-format/lance#6255</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>64d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 3 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>protos</code> · Drafted blocking conditions: 3</div></div></details>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 3 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#6255 — feat: add transaction-level table_metadata_updates
+reviewed 6a59ee74 → 22dddee2  (64 commits in range; 12 PR-owned files; 191 base-merge files excluded)
+
+CONDITIONS LEDGER (0/1 met)
+
+✗ not_met  [blocking] — All protobuf updates must be voted on by the PMC before merge, since they are a permanent format change (https://lance.org/community/voting/)
+  → The format-changing field is still present at head. `protos/transaction.proto` net delta `6a59ee7...22dddee` adds `optional UpdateMap table_metadata_updates = 9;` inside `message Transaction` (delta hunk `@@ -248,6 +248,12 @@`; confirmed at transaction.proto:256). No PMC vote is recorded in the PR thread, issue comments, or timeline.
+  → `author_resolved` is false, and the thread does not support a resolution. The author (fecet) replied: &quot;I&#x27;m fully sold on the Action direction [#5960] — strictly cleaner than the field this PR introduces&quot; and proposed a non-format-changing interim (reserve a `__table_metadata__.*` prefix in `transaction_properties`). The author has effectively conceded the proto change should be withdrawn, yet the field remains in the diff. Condition cannot be met while the unvoted proto change ships.
+
+FRESH-EYES DELTA
+
+The net delta from last review is dominated by (a) carrier plumbing for the new proto field — `python/src/transaction.rs`, `python/python/lance/dataset.py` `Update.table_metadata_updates`, `java/lance-jni/src/transaction.rs` — and (b) a large body of unrelated scanner/blob work pulled into the same range (`to_pandas(blob_mode=...)`, `batch_size_bytes`, `read_blobs`, `prewarm_index(with_position=...)`). The unrelated work is scope creep but not new-and-bad in itself.
+
+New concerns in the metadata-updates path (drafted as issue comments):
+
+- issue(blocking): The conflict-detection logic that guards this feature (`rust/lance/src/io/commit/conflict_resolver.rs`, `rust/lance/src/dataset/transaction.rs`) is net-unchanged across `6a59ee7...head` (+0 −0). The new `table_metadata_updates` conflict check only compares transaction-level field vs transaction-level field; a concurrent `UpdateConfig` carrying a metadata write lives inside `operation`, and `Append`↔`UpdateConfig` is allowed — so two commits mutating the same metadata key can both succeed, later rebase silently wins. Pre-existing gap, but the feature relies on it.
+
+- issue(blocking): `replace=true` semantics defeat `keys_overlap()`: a `replace` map and an incremental update to a disjoint key are treated as compatible, but the rebasing transaction discards the other&#x27;s entire metadata. Same caveat — logic is net-unchanged in-delta.
+
+- issue(non-blocking): `execute_batch()` synthesizes the merged append transaction with `table_metadata_updates: None`, so `commit_batch()` callers batching append+cursor would commit the data and silently drop every metadata mutation — breaking the stated atomic-append use case.
+
+RECOMMENDATION: block on 1 condition (the unvoted proto format change), plus the feature&#x27;s correctness rests on conflict-detection gaps that remain unaddressed in the delta.
+  confidence: high on the block — the format-changing field is present at head with no PMC vote, and the author has signaled intent to abandon it for the #5960 Action design. what would make this wrong: a PMC vote recorded outside the PR (mailing list / discussion) that I cannot see from the GitHub API, or a later commit beyond 22dddee removing the field.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>protos</code> · Drafted blocking conditions: 3</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/5583">feat: implemented tokenizer plugins in rust</a> <span class="num">lance-format/lance#5583</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>49d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-index</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#5583 — feat: implemented tokenizer plugins in rust
+reviewed 45ac7c20 → 2ee3adeb  (branch DIVERGED: +620 / −8; base advanced, see note)
+
+PACKET INTEGRITY NOTE (read first)
+  The deterministic packet&#x27;s scoped delta is unusable for this PR. `last_reviewed_sha` (45ac7c20) is NOT an ancestor of head — the branch diverged (ahead 620 / behind 8) and the base (main) jumped versions 2.0.0-beta.5 → 7.0.0-beta.2 (edition 2024, arrow 56→58, datafusion 50→53) in between. The scoper dropped 296 &quot;off-branch&quot; files, which silently swept out the actual tokenizer source (tokenizer.rs, plugin/{ffi,loader,tokenizer}.rs) — the very files my prior conditions live in. The packet also reconstructed 0 conditions. I reconstructed the ledger from my posted inline comments + the bot review, and verified each against the head blob of the real PR files (gh contents @ head), not the packet delta.
+
+CONDITIONS LEDGER (4/7 met)
+  ✓ met      [blocking] Return errors via an out-param, not get_error (thread-safe)
+             → header LanceError* out-param on every fallible fn (lance_tokenizer_plugin.h L86–122); Rust threads &amp;mut CError through all dispatch (loader.rs:1188,1211,1231; ffi.rs CError L1831)
+  ✓ met      [blocking] Drop null-terminated strings; use a zero-copy string-ref struct
+             → LanceStringRef in header (L37–40); CStringRef #[repr(C)] {data,length:u32} (ffi.rs:1776), with u32-overflow rejection (ffi.rs:1786–1806)
+  ✓ met      [blocking] Cache the factory only (factory load is ~MB-expensive)
+             → factory: Arc&lt;OwnedPluginFactory&gt; shared across Clones (tokenizer.rs:838,845,871–879); one factory per PluginTokenizer, reused by every FTS worker
+  ✓ met      [blocking] Unify plugin into build_base_tokenizer
+             → &quot;plugin&quot; =&gt; self.build_plugin_tokenizer() is now an arm of build_base_tokenizer (tokenizer.rs:499), not an early return; full filter pipeline in build() applies (L388–416)
+  ✗ not_met  [blocking] Add comments to the proto plugin fields (resolution rules)   (author marked resolved + commented &quot;I added some comments in proto&quot; — NOT confirmed)
+             → at head, protos/index_old.proto L42–43 are bare `optional string tokenizer_plugin_library = 12;` / `tokenizer_plugin_config = 13;` with ZERO doc comments. The claimed comments are absent from the head blob. (Doc moved into Rust docstrings instead, but the proto — the cross-library contract the condition targeted — is undocumented.)
+  ✗ not_met  [blocking] (bot) Recoverable plugin errors must not panic the process
+             → fixed on the fallible chain (loader.rs:1457–1476,1511–1538). BUT the tantivy TokenStream adapter still panics on recoverable plugin failures: PluginTokenStreamAdapter::new panics (tokenizer.rs:943,946); advance() panics on a negative next_token code (tokenizer.rs:999–1004); extract_token_text panics on NULL/!utf8 (tokenizer.rs:962,974). Documented as deliberate &quot;fail-loud&quot; because LanceTokenizer/TokenStream expose no Result. Still a process-level abort on a non-malicious plugin&#x27;s runtime error — mitigated by design, not met.
+  ~ moot     [blocking] (bot) Plugin path silently bypasses the filter pipeline + lance_tokenizer wrapping
+             → superseded: plugin now runs through build_base_tokenizer, so build()&#x27;s filters AND the doc-type wrapping all apply (tokenizer.rs:416–425). plugin() intentionally turns default filters OFF (tokenizer.rs:376–386) but they&#x27;re re-enableable; pinned by test_plugin_builder_{disables,allows_reenabling}_standard_filters. The &quot;silent bypass&quot; no longer exists.
+
+FRESH-EYES DELTA
+  issue (non-blocking): A plugin that returns a recoverable error MID-STREAM during a real FTS index build will panic the worker (tokenizer.rs advance() L999–1004; new() L943,946). The fallible-chain rework correctly returns Err up to PluginTokenizer::new, but once token streaming starts there is no Result channel, so a transient plugin fault aborts the in-flight build/search task. Documented and intentional; worth a follow-up. Not blocking.
+  praise: The unsafe story is unusually disciplined for FFI — REQUIRED_VTABLE_CALLBACKS compile-time size assertion (loader.rs:1107–1114); api_version read before any other field (loader.rs:1063–1095); compile_fail doctests pinning the borrow chain (loader.rs:1270–1306); poison-recovery in Drop.
+  No new correctness regressions found in code changed since last review.
+
+RECOMMENDATION: comment (block on the proto-doc condition if treated strictly)
+  The two genuine substance conditions and both ABI conditions are MET in the head blob. The proto doc-comment condition is NOT met and was marked resolved on a false claim — at minimum send it back. The panic-on-recoverable-error condition is mitigated on the fallible chain but remains by-design in the stream adapter; accept as documented or require a follow-up issue.
+  confidence: high on met/not_met (verified against head blobs). what would make this wrong: if the proto doc comments live in a different proto file than index_old.proto, or if the attending considers the documented fail-loud adapter policy a full discharge of the panic finding.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-index</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3028">fix: handle null type in _align_field_types for nullable struct fields</a> <span class="num">lancedb/lancedb#3028</span></span>
       <span class="meta"><span>24d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3028 — fix: handle null type in _align_field_types for nullable struct fields
+reviewed dfef90f7 → ad2d1d93  (1 commit, 1 file)
+
+CONDITIONS LEDGER (0/0 met)
+  (no blocking conditions on record)
+  Prior review by wjones127 was a single inline suggestion, not an issue(blocking), so no conditions were ledgered. For completeness, the suggestion&#x27;s disposition:
+  ✓ addressed  [non-blocking suggestion] specify new_table_data_storage_version=&quot;2.1&quot; so the nullable-struct test passes on a format version that supports null structs
+             → python/python/tests/test_table.py:343-346 — create_table(..., storage_options=dict(new_table_data_storage_version=&quot;2.1&quot;),); delta patch applies the suggested hunk verbatim. Verified against the diff, not the author&#x27;s &quot;done&quot; claim.
+
+FRESH-EYES DELTA
+  The delta is test-only and benign — it just threads the storage option into create_table. No new-and-bad code introduced since last review.
+  Two non-delta concerns worth flagging to the attending (context, not regressions in this push):
+  - issue (non-blocking): PR is mergeable: false / dirty — conflicts with main. Cannot land as-is regardless of review.
+  - note (non-blocking): the underlying table.py fix (is_null(field.type) branch in _align_field_types) is unchanged in this delta. Per the author&#x27;s own comment, this fix landed incidentally upstream via #3394, making this branch&#x27;s code change redundant; they split the regression test into #3483. If #3483 lands, the code half of this PR is moot and #3028 likely closes without merging. This is a should-we-still-merge question for the attending, not a code defect.
+
+RECOMMENDATION: comment (no blocking conditions; delta is clean test-only change)
+  confidence: high — delta is one self-evident test hunk verified line-for-line against the suggestion.
+  what would make this wrong: if the attending considers the unresolved merge conflict or the upstream-redundancy a blocker to landing, this shifts to block — but neither is a defect in the changed code.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
@@ -201,14 +386,44 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
       <span class="title"><a href="https://github.com/lance-format/lance/pull/7265">ci(python): typecheck arrow.py and test_arrow.py</a> <span class="num">lance-format/lance#7265</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>9d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lance</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#7265 — ci(python): typecheck arrow.py and test_arrow.py
+reviewed 0d8d5c13 → fdb65ccc  (1 commit, 2 files)
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior blocking conditions reconstructed — last review left no `issue(blocking)` comments; nothing to verify against the delta)
+
+FRESH-EYES DELTA
+  Delta is purely type-checker hygiene: adds `# pyright: ignore[...]` suppressions and one cosmetic line-wrap. No runtime behavior changes.
+
+  - `python/python/lance/arrow.py` @@ -283 (hunk 1): `fs.FileSystem.from_uri(uri.as_py())` is re-wrapped across lines with `# pyright: ignore[reportPrivateImportUsage]`. Same callee, same single argument — semantically identical. No concern.
+  - `arrow.py` @@ -303, -374, -489 (hunks 2,3,5): `from PIL import Image` gains `# pyright: ignore[reportMissingImports]`. PIL is an optional/lazy import already inside guarded local scopes; suppressing the missing-stub/import diagnostic is appropriate. No concern.
+  - `test_arrow.py` @@ -11: `import pytest # pyright: ignore[reportMissingImports]` — pytest is a dev-only dep; suppression is appropriate. No concern.
+  - nitpick (non-blocking): `arrow.py` @@ -389 (hunk 4) deletes the comment explaining tf.stack&#x27;s None-typed stub while keeping the `# pyright: ignore[reportOptionalCall]` on the next line. The suppression now stands without its rationale. Consider folding the reason into the ignore line. Not gating.
+
+  No new correctness, safety, API/compat, or test-integrity issues introduced. No suppression is broad enough to mask real defects (each is line-scoped to a specific rule).
+
+RECOMMENDATION: approve
+  confidence: high · what would make this wrong: if any of the `reportMissingImports`/`reportPrivateImportUsage` suppressions were masking a genuinely broken import path (rather than a stubs/optional-dep gap), or if the `from_uri` line-wrap had silently altered the call — both checked and ruled out against the patch. A CI-config reviewer would also want to confirm the accompanying pyright CI job actually gates these files, but that config is not present in this delta.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lance</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XS</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3536">docs(python): add missing parameter documentation for when_matched_update_all</a> <span class="num">lancedb/lancedb#3536</span></span>
       <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3536 — docs(python): add missing parameter documentation for when_matched_update_all
+reviewed f09c3a36 → ffd4d148  (1 commit, 1 file)
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior conditions — last review was an APPROVE with no posted issue(blocking) comments; nothing to reconcile)
+
+FRESH-EYES DELTA
+  Delta since last review is a single 1-line deletion in python/python/lancedb/merge.py: removal of a stray trailing-whitespace line between when_matched_update_all&#x27;s `return self` and the when_not_matched_insert_all def (delta hunk @@ -62,7 +62,6 @@).
+  - Verified head region (merge.py:40-70): the substantive docs added by this PR — the Parameters/where docstring block — remain intact and unchanged.
+  - The deletion leaves exactly one blank line between the two methods (correct PEP-8 separation). Pure whitespace cleanup; no behavioral or API change.
+  no new concerns.
+
+RECOMMENDATION: approve
+  confidence: high · what would make this wrong: if the removed line had been load-bearing (it was not — whitespace-only between two method defs), or if a condition existed off-delta that I failed to reconstruct (confirmed: 0 inline comments, 0 reconstructed conditions, prior review was a plain APPROVE).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>

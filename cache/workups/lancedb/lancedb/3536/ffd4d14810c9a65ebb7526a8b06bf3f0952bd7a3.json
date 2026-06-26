@@ -1,7 +1,7 @@
 {
   "repo": "lancedb/lancedb",
   "number": 3536,
-  "sha": "ffd4d148",
+  "sha": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3",
   "soap": "RE-REVIEW \u00b7 lancedb/lancedb#3536 \u2014 docs(python): add missing parameter documentation for when_matched_update_all\nreviewed f09c3a36 \u2192 ffd4d148  (1 commit, 1 file)\n\nCONDITIONS LEDGER (0/0 met)\n  (no prior conditions \u2014 last review was an APPROVE with no posted issue(blocking) comments; nothing to reconcile)\n\nFRESH-EYES DELTA\n  Delta since last review is a single 1-line deletion in python/python/lancedb/merge.py: removal of a stray trailing-whitespace line between when_matched_update_all's `return self` and the when_not_matched_insert_all def (delta hunk @@ -62,7 +62,6 @@).\n  - Verified head region (merge.py:40-70): the substantive docs added by this PR \u2014 the Parameters/where docstring block \u2014 remain intact and unchanged.\n  - The deletion leaves exactly one blank line between the two methods (correct PEP-8 separation). Pure whitespace cleanup; no behavioral or API change.\n  no new concerns.\n\nRECOMMENDATION: approve\n  confidence: high \u00b7 what would make this wrong: if the removed line had been load-bearing (it was not \u2014 whitespace-only between two method defs), or if a condition existed off-delta that I failed to reconstruct (confirmed: 0 inline comments, 0 reconstructed conditions, prior review was a plain APPROVE).\n",
   "cached_at": "2026-06-26T15:28:01Z"
 }
