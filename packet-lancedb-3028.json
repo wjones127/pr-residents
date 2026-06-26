@@ -1,0 +1,29 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3028,
+    "title": "fix: handle null type in _align_field_types for nullable struct fields",
+    "url": "https://github.com/lancedb/lancedb/pull/3028",
+    "head": "ad2d1d93b253087fa3979f1a0d43f86b990bebeb",
+    "last_reviewed_sha": "dfef90f7428f5fc000cf4302849fd253d7d90c9d",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "dfef90f7428f5fc000cf4302849fd253d7d90c9d",
+    "head": "ad2d1d93b253087fa3979f1a0d43f86b990bebeb",
+    "files": [
+      {
+        "path": "python/python/tests/test_table.py",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 1,
+        "patch": "@@ -340,7 +340,11 @@ def test_add_nullable_struct_with_none(mem_db: DBConnection):\n         ]\n     )\n \n-    table = mem_db.create_table(\"test_nullable_struct\", schema=schema)\n+    table = mem_db.create_table(\n+        \"test_nullable_struct\",\n+        schema=schema,\n+        storage_options=dict(new_table_data_storage_version=\"2.1\"),\n+    )\n \n     # Adding a row with a non-null struct should work\n     table.add([{\"id\": \"1\", \"data\": {\"x\": 1.0}}])",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}

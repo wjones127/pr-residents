@@ -1,0 +1,1879 @@
+[
+  {
+    "repo": "lance-format/lance",
+    "number": 7265,
+    "url": "https://github.com/lance-format/lance/pull/7265",
+    "title": "ci(python): typecheck arrow.py and test_arrow.py",
+    "body": "## Summary\r\n\r\nAdd `lance/arrow.py` and `tests/test_arrow.py` to the pyright include list and fix the resulting type errors. Closes #3292.\r\n\r\n- **arrow.py**: narrow union types via typed locals / `typing.cast`, annotate the internal decoder return types, switch the fallback to `pyarrow.compute as pc`, and add a single `# pyright: ignore[reportOptionalCall]` for `tf.stack` (typed as `None` by tensorflow's incomplete stubs).\r\n- **lance/lance/__init__.pyi**: fix the `bfloat16_array` stub signature from `List[str | None]` to `Sequence[float | None]` \u2014 the Rust function takes `Vec<Option<f32>>`, and `Sequence` (covariant) lets `list[float]` callers type-check.\r\n- **test_arrow.py**: add `import lance.arrow` so the `lance.arrow.*` attribute accesses resolve.\r\n\r\n\r\n## Test plan\r\n\r\n`tensorflow` is linux-only in `pyproject.toml`, so it was installed locally to mirror the CI (Linux) lint environment before checking.\r\n\r\n- `pyright` \u2192 **0 errors** (15 warnings, all pre-existing missing-stub warnings for pyarrow/pandas/etc.)\r\n- `ruff format --check` + `ruff check` \u2192 pass\r\n- `pytest python/tests/test_arrow.py` \u2192 **20 passed**",
+    "author": "YuangGao",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/pyproject.toml",
+      "python/python/lance/arrow.py",
+      "python/python/lance/lance/__init__.pyi",
+      "python/python/tests/test_arrow.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 213.1,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 41,
+      "deletions": 22,
+      "files": 4
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "0d8d5c132b0ce5f74bf771d87b582c8e759dc94d",
+    "delta": {
+      "commits": [
+        "fdb65ccce92457695231f6eb177d148b9d2b99e1"
+      ],
+      "files_touched": [
+        "python/pyproject.toml",
+        "python/python/lance/arrow.py",
+        "python/python/lance/lance/__init__.pyi",
+        "python/python/tests/test_arrow.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "fdb65ccce92457695231f6eb177d148b9d2b99e1"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7245,
+    "url": "https://github.com/lance-format/lance/pull/7245",
+    "title": "fix(python): use mimalloc as global allocator to fix RSS leak",
+    "body": "Resolves #7242\r\n\r\nThis PR configures `mimalloc` as the global allocator in the Python library (`pylance`) to resolve an unbounded RSS memory leak caused by glibc per-thread arena fragmentation.\r\n\r\n### Root Cause\r\nUnder glibc, sequential `merge_insert` workloads on Tokio worker threads allocate temporary buffers. Glibc does not eagerly return pages from these per-thread arenas to the OS after they are freed, causing RSS memory to grow monotonically until the process is terminated by the OOM killer.\r\n\r\n### Solution\r\n- Added `mimalloc` dependency to `python/Cargo.toml` (with `default-features = false` to keep dependencies minimal).\r\n- Registered `mimalloc::MiMalloc` as the `#[global_allocator]` in `python/src/lib.rs`.\r\n",
+    "author": "mansiverma897993",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/Cargo.lock",
+      "python/Cargo.toml",
+      "python/benchmark_allocators.py",
+      "python/src/lib.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 2.1,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 179,
+      "deletions": 1,
+      "files": 4
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "1b8d31d97e2e075935e3da27c6941394502004e6",
+    "delta": {
+      "commits": [
+        "686c79c1a4089de01296f16fe05405c815b04232"
+      ],
+      "files_touched": [
+        "python/Cargo.lock",
+        "python/Cargo.toml",
+        "python/benchmark_allocators.py",
+        "python/src/lib.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "686c79c1a4089de01296f16fe05405c815b04232"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7203,
+    "url": "https://github.com/lance-format/lance/pull/7203",
+    "title": "feat(index): support xabi scalar index plugins",
+    "body": "## Summary\n\nThis PR adds scalar index plugin support on top of `xabi`, allowing Lance to load session-scoped index implementations from dynamic libraries without making plugins depend on Lance internals.\n\n`xabi` is used as the stable ABI layer between Lance and plugins. In this model, `#[xabi::data]` defines versioned wire data types, and `#[xabi::xabi]` defines trait contracts that are lowered into C-compatible vtables, handles, borrowed references, futures, and owned byte buffers. Lance and a plugin communicate through those generated ABI contracts instead of Rust trait objects from the same crate build. Larger payloads stay format-oriented: Arrow data crosses the boundary as Arrow IPC, and query expressions cross as Substrait bytes plus host-side JSON context.\n\nThe Lance session now owns plugin registrations and exposes scalar index integration through the existing index registry. A fixture mock btree plugin lives outside the workspace as a test-only xabi dynamic library, so the end-to-end dynamic loading path is covered without adding another published crate.\n\n## Reviewing the ABI\n\nThe concrete ABI should be reviewed in these files:\n\n- `rust/lance-index-plugin-abi/src/lib.rs`\n  - Contract IDs and `ABI_VERSION`\n  - `#[xabi::data]` request/response structs\n  - `#[xabi::xabi]` traits for plugin, index, training data, index store, and build progress\n  - Arrow IPC and little-endian encoding helpers used at the boundary\n\n- `rust/lance-index-plugin-abi/xabi/snapshots/lance.*/*.txt`\n  - Generated xabi layout snapshots for each public contract\n  - Concrete field offsets, sizes, alignments, vtable sizes, and contract IDs for supported targets\n\nThe host-side adapter is in `rust/lance/src/session/xabi_index_plugin.rs`, and the test plugin implementation is in `rust/lance/tests/xabi_plugins/mock_btree/src/lib.rs`.\n\n## ABI stability\n\nThe ABI stability story is intentionally centered on xabi rather than Lance internals:\n\n- Public contracts use stable `lance.*` contract IDs and an explicit `ABI_VERSION`.\n- xabi data layouts include size and ABI version fields, allowing prefix-compatible extension.\n- xabi vtables track minimum and full sizes so older/newer sides can validate available methods.\n- Boundary validation checks ABI version, vtable size, null pointers, and field availability before use.\n- `xabi-assert` snapshots lock the generated ABI layout; intentional ABI changes require updating the snapshots.\n- The ABI crate avoids depending on Lance internals, so plugins bind to stable wire contracts instead of private Rust types.",
+    "author": "Xuanwo",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "Cargo.toml",
+      "python/Cargo.lock",
+      "python/python/tests/test_memory_leaks.py",
+      "rust/lance-index-plugin-abi/Cargo.toml",
+      "rust/lance-index-plugin-abi/src/lib.rs",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-build-progress/aarch64-apple-darwin.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-build-progress/aarch64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-build-progress/x86_64-pc-windows-msvc.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-build-progress/x86_64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-store/aarch64-apple-darwin.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-store/aarch64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-store/x86_64-pc-windows-msvc.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.index-store/x86_64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index-plugin/aarch64-apple-darwin.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index-plugin/aarch64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index-plugin/x86_64-pc-windows-msvc.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index-plugin/x86_64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index/aarch64-apple-darwin.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index/aarch64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index/x86_64-pc-windows-msvc.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.scalar-index/x86_64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.training-data/aarch64-apple-darwin.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.training-data/aarch64-unknown-linux-gnu.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.training-data/x86_64-pc-windows-msvc.txt",
+      "rust/lance-index-plugin-abi/xabi/snapshots/lance.training-data/x86_64-unknown-linux-gnu.txt",
+      "rust/lance-index/src/registry.rs",
+      "rust/lance-index/src/scalar/bitmap.rs",
+      "rust/lance-index/src/scalar/registry.rs",
+      "rust/lance/Cargo.toml",
+      "rust/lance/src/dataset.rs",
+      "rust/lance/src/index.rs",
+      "rust/lance/src/index/scalar.rs",
+      "rust/lance/src/session.rs",
+      "rust/lance/src/session/xabi_index_plugin.rs",
+      "rust/lance/tests/xabi_plugins/mock_btree/.gitignore",
+      "rust/lance/tests/xabi_plugins/mock_btree/Cargo.toml",
+      "rust/lance/tests/xabi_plugins/mock_btree/src/lib.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 224.3,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 6265,
+      "deletions": 85,
+      "files": 38
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "429f89d1ca9f081cf8b93d8a1cf3c1f06ff56dff",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "large-blast-radius"
+      ],
+      "reason": "Large blast radius (XL diff)"
+    },
+    "head_oid": "429f89d1ca9f081cf8b93d8a1cf3c1f06ff56dff"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6920,
+    "url": "https://github.com/lance-format/lance/pull/6920",
+    "title": "feat: add free-form metadata map to DataFragment",
+    "body": "## Summary\n\n- Add `map<string, string> metadata` field to `DataFragment` protobuf for lightweight per-fragment key-value metadata (e.g., creation time, process ID).\n- Extend `UpdateConfig` transaction with `fragment_metadata_updates` to support updating fragment metadata, using existing `UpdateMap` semantics (merge or replace mode).\n- Add conflict detection: two `UpdateConfig` transactions conflict if they modify metadata on the same fragment ID.\n- Update transaction spec doc.\n\n## Voting Discussion\n\nThis is a spec change. A corresponding [VOTE] discussion will be created separately.",
+    "author": "jackye1995",
+    "author_status": "core",
+    "files_changed": [
+      "docs/src/format/table/transaction.md",
+      "docs/src/format/table/versioning.md",
+      "protos/table.proto",
+      "protos/transaction.proto",
+      "rust/lance-table/benches/manifest_intern.rs",
+      "rust/lance-table/src/feature_flags.rs",
+      "rust/lance-table/src/format/fragment.rs",
+      "rust/lance-table/src/format/manifest.rs",
+      "rust/lance/src/dataset.rs",
+      "rust/lance/src/dataset/metadata.rs",
+      "rust/lance/src/dataset/optimize.rs",
+      "rust/lance/src/dataset/schema_evolution.rs",
+      "rust/lance/src/dataset/transaction.rs",
+      "rust/lance/src/dataset/write/commit.rs",
+      "rust/lance/src/io/commit.rs",
+      "rust/lance/src/io/commit/conflict_resolver.rs",
+      "rust/lance/src/utils/test.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 576.2,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 293,
+      "deletions": 14,
+      "files": 17
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "27aab24c0906e974dc7b59a6731dbcf9eebf8a4c",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "27aab24c0906e974dc7b59a6731dbcf9eebf8a4c"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6890,
+    "url": "https://github.com/lance-format/lance/pull/6890",
+    "title": "feat: add early termination for compaction plan with max_compaction_bytes option",
+    "body": "## Summary\n\nAdd budget-based early termination to `DefaultCompactionPlanner` to prevent OOM when planning compaction on datasets with many fragments (e.g., hundreds of thousands).\n\nCloses: #6039\n\n## Problem\n\nWhen a dataset has hundreds of thousands of fragments, `plan_compaction` collects metrics for **all** fragments before producing the plan. This leads to:\n\n1. **OOM risk**: All fragment metadata + metrics are held in memory simultaneously\n2. **Excessive I/O**: Each fragment requires a read of its deletion file\n3. **Large serialized plans**: 10K fragments \u2192 ~2.3MB JSON; 300K fragments \u2192 ~70MB JSON\n\nThe existing `max_source_fragments` option was a **post-hoc truncation** \u2014 it collected all metrics first, then truncated the output. This did not reduce planning time or memory.\n\nBenchmark data (10K fragments, no deletions):\n\n| max_source_fragments | plan_time_ms | plan_json_size |\n|---------------------|-------------|----------------|\n| None (unlimited) | 51 | 2.3MB |\n| 100 | **56** | 408B |\n| 500 | **56** | 408B |\n\nPlan time barely changed because all metrics were still collected.\n\n## Solution\n\nRefactor `max_source_fragments` from post-hoc truncation to **in-loop early termination**, and add a new `max_compaction_bytes` option. The planner now tracks `total_candidate_fragments` and `total_candidate_bytes` during the metrics collection loop and breaks out as soon as either budget is exceeded.\n\nKey changes:\n- **`max_source_fragments`**: Now terminates metrics collection early (was post-hoc truncation)\n- **`max_compaction_bytes`**: New option to limit by cumulative fragment byte size\n- **`exceeds_budget()`**: Helper method checking both limits during the planning loop\n- Preserves existing parallel I/O (`.buffered(io_parallelism())`) \u2014 unlike PR #6095 which used serial I/O\n\n## Design Rationale\n\nThis approach follows [hamersaw's review feedback on PR #6095](https://github.com/lance-format/lance/pull/6095#discussion_r2891191168): extending `CompactionOptions` rather than adding a new `BoundedCompactionPlanner` type. Users configure limits directly without needing to choose a planner implementation.\n\n## Changes\n\n### Rust\n- `CompactionOptions`: Add `max_compaction_bytes: Option<usize>` field\n- `DefaultCompactionPlanner::plan()`: Replace post-hoc truncation with in-loop early termination\n- `DefaultCompactionPlanner::exceeds_budget()`: New helper method\n- `CompactionOptions::apply_dataset_config()`: Support `lance.compaction.max_compaction_bytes`\n- Tests: 3 functional tests + 3 benchmark tests\n\n### Python\n- `CompactionOptions` TypedDict: Add `max_compaction_bytes` field with docs\n- PyO3 binding: Handle `max_compaction_bytes` key\n\n## Usage\n\n```python\n# Limit by fragment count\ndataset.optimize.compact_files(max_source_fragments=1000)\n\n# Limit by total bytes\ndataset.optimize.compact_files(max_compaction_bytes=10 * 1024**3)  # 10GB\n\n# Both limits combined\ndataset.optimize.compact_files(\n    max_source_fragments=1000,\n    max_compaction_bytes=10 * 1024**3,\n)\n```\n\n```rust\nlet options = CompactionOptions {\n    max_source_fragments: Some(1000),\n    max_compaction_bytes: Some(10 * 1024 * 1024 * 1024),\n    ..Default::default()\n};\n```\n\n## Comparison with PR #6095\n\n| Dimension | PR #6095 | This PR |\n|-----------|----------|---------|\n| Architecture | New `BoundedCompactionPlanner` type | Extend existing `DefaultCompactionPlanner` |\n| I/O pattern | Serial (one-at-a-time) | Parallel (preserved) |\n| User API | `planner=\"bounded\"` + limits | Direct `max_*` options |\n| Maintainer feedback | Design not accepted | Follows maintainer preference |",
+    "author": "Jay-ju",
+    "author_status": "core",
+    "files_changed": [
+      "python/python/lance/optimize.py",
+      "python/src/dataset/optimize.rs",
+      "rust/lance/src/dataset/optimize.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 687.9,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 302,
+      "deletions": 45,
+      "files": 3
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "7d3c363d946ece09c95a44d51358c5febf3146bd",
+    "delta": {
+      "commits": [
+        "ea8093f4206ba63d01a73fd14df5dde43612e235"
+      ],
+      "files_touched": [
+        "python/python/lance/optimize.py",
+        "python/src/dataset/optimize.rs",
+        "rust/lance/src/dataset/optimize.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "ea8093f4206ba63d01a73fd14df5dde43612e235"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6836,
+    "url": "https://github.com/lance-format/lance/pull/6836",
+    "title": "feat: switch commit strategy to optimistic by default",
+    "body": "## Switch Commit Strategy to Optimistic by Default\n\n### Summary\n\nThis PR changes the default commit strategy from **Pessimistic** (always rebase before commit) to **Optimistic** (skip rebase on first attempt, only rebase on conflict). Benchmarks show Optimistic outperforms Pessimistic across all operation types and concurrency levels, so there is no need for a user-facing configuration option \u2014 we simply change the behavior.\n\n### Background\n\nPreviously, Lance always performed a \"rebase\" before every commit attempt \u2014 loading new transactions since the last read and running `TransactionRebase::try_new()` to reconcile conflicts. This was safe but added significant I/O overhead on every attempt, even when there was no conflict. Under high concurrency, this rebase cost became a bottleneck.\n\n### Core Change (`rust/lance/src/io/commit.rs`)\n\nThe commit loop now skips rebase on the first attempt and only rebases on conflict (i.e., when `backoff.attempt() > 0`):\n\n```rust\nlet needs_rebase = !strict_overwrite && backoff.attempt() > 0;\n```\n\nThis is safe because:\n- If there is no conflict, the commit succeeds without rebase (fast path).\n- If there is a conflict, `rename_if_not_exists` fails, triggering a retry with rebase (slow path).\n- The rebase logic is unchanged \u2014 it still correctly reconciles conflicts.\n\n### Required Fix: Orphan Version Detection\n\nSwitching to optimistic commit exposed a pre-existing bug in the interaction between `auto_cleanup` and the commit handler:\n\nWhen `auto_cleanup` deletes older manifest files, a commit based on a stale `read_version` can succeed at writing a manifest whose version is lower than the actual latest (because `rename_if_not_exists` sees the slot as empty). This creates an **orphan version** that is unreachable from the latest lineage. Subsequent commits on the correct lineage won't see the orphan's config changes (e.g., disabling auto_cleanup), and cleanup may delete the orphan version, losing those changes.\n\n**Fix in `commit_transaction`**: After a successful optimistic commit, if the original dataset's config contains auto_cleanup keys (indicating cleanup may have freed version slots), check whether the committed version is behind the true latest. If so, roll back and retry with rebase. This check is gated on auto_cleanup to avoid I/O overhead on commits that don't involve cleanup.\n\n**Fix in `auto_cleanup_hook`**:\n1. Use the committed manifest's config rather than the original dataset's config, so that config changes made by the current transaction (e.g., disabling auto_cleanup) are respected.\n2. As defense-in-depth, skip cleanup if the committed version is behind the latest.\n\n### Benchmark Results\n\n#### Mixed Workload (20 appenders, 10 deleters, 10 updaters)\n\n| Metric | Pessimistic | Optimistic | Delta |\n|--------|------------|------------|-------|\n| Total time | 27.1s | 24.6s | **-9.2%** |\n| Throughput | 2.6 ops/s | 2.9 ops/s | **+12.5%** |\n| Delete avg latency | 1.34s | 0.94s | **-29.9%** |\n| Update avg latency | 1.22s | 0.97s | **-20.5%** |\n| Append avg latency | 0.68s | 0.63s | **-7.4%** |\n\n#### High Concurrency (30 appenders, 15 deleters, 15 updaters)\n\n| Metric | Pessimistic | Optimistic | Delta |\n|--------|------------|------------|-------|\n| Total time | 42.3s | 38.1s | **-9.9%** |\n| Throughput | 2.1 ops/s | 2.4 ops/s | **+14.3%** |\n| Delete avg latency | 2.01s | 1.38s | **-31.3%** |\n| Update avg latency | 1.85s | 1.42s | **-23.2%** |\n| Append avg latency | 0.95s | 0.87s | **-8.4%** |\n\n### Files Changed\n\n| File | Change |\n|------|--------|\n| `rust/lance/src/io/commit.rs` | Skip rebase on first attempt; add orphan version detection after successful commit |\n| `rust/lance/src/dataset/cleanup.rs` | Use committed manifest config in `auto_cleanup_hook`; add orphan version defense-in-depth check |\n| `python/python/ci_benchmarks/benchmarks/test_concurrent_write.py` | Concurrent write benchmark |\n\n### Backward Compatibility\n\n- **Fully backward compatible**: The change only affects the internal commit strategy. No changes to public API signatures.\n- The optimistic strategy is safe: conflicts are still detected and reconciled via rebase on retry.",
+    "author": "Jay-ju",
+    "author_status": "core",
+    "files_changed": [
+      "python/python/ci_benchmarks/benchmarks/test_concurrent_write.py",
+      "rust/lance/src/dataset/cleanup.rs",
+      "rust/lance/src/dataset/write/commit.rs",
+      "rust/lance/src/io/commit.rs",
+      "rust/lance/src/io/commit/s3_test.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 699.9,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 467,
+      "deletions": 77,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "c8f94ceaaff26a8ae555994d58b9fdd1b320c7d3",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "c8f94ceaaff26a8ae555994d58b9fdd1b320c7d3"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6811,
+    "url": "https://github.com/lance-format/lance/pull/6811",
+    "title": "fix(encoding): use LargeList internally for Utf8/Binary to prevent offset overflow",
+    "body": "## Summary\nWhen reading large fragments containing variable-length data (like strings or binary), PyArrow's 32-bit (2 GiB) offset limit can be easily exceeded, resulting in a cryptic `Offset overflow error: 2151740513` panic.\n\nThis updates the decoder to always use `LargeList<UInt8>` (i64 offsets) internally. When targeting `Utf8` or `Binary` arrays, `BinaryArrayDecoder` will safely downcast to i32 offsets if the chunk data fits within 2 GiB. If the chunk strictly exceeds 2 GiB, it now panics with a descriptive error suggesting a batch size reduction or switching to LargeUtf8/LargeBinary.\n\nFixes #2775.\n\n\ud83e\udd16 Generated with [MAI Agents](https://github.com/infinity-microsoft/mai-agents)",
+    "author": "beinan",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-encoding/src/decoder.rs",
+      "rust/lance-encoding/src/previous/encodings/logical/binary.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 222.7,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 161,
+      "deletions": 14,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "aacbf22108d666e3081bf6ae313deaf85d8d3d83",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "aacbf22108d666e3081bf6ae313deaf85d8d3d83"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6468,
+    "url": "https://github.com/lance-format/lance/pull/6468",
+    "title": "feat(python): add target_partition_size parameter to train_ivf()",
+    "body": "## Summary\n\nAdd `target_partition_size` as the recommended parameter for `IndicesBuilder.train_ivf()`, replacing the deprecated `num_partitions`.\n\nCloses #6286\n\n## Changes\n\n### `python/python/lance/indices/builder.py`\n- Added `target_partition_size: Optional[int] = None` keyword argument to `train_ivf()`\n- When `num_partitions` is not specified, computes partition count using `target_partition_size` (default 8192)\n- Uses the same algorithm as Rust's `recommended_num_partitions()`: `clamp(num_rows // target_partition_size, 1, 4096)`\n- When both `num_partitions` and `target_partition_size` are specified, `num_partitions` takes precedence with a `DeprecationWarning`\n- Updated docstrings to document the new parameter and deprecation\n\n### `python/python/lance/util.py`\n- **Bugfix**: `_target_partition_size_to_num_partitions()` used `max(1, num_partitions, 4096)` which always returned 4096. Fixed to `max(1, min(num_partitions, 4096))`\n\n### `python/python/tests/test_indices.py`\n- `test_target_partition_size`: verifies explicit `target_partition_size` computes correct partition count\n- `test_target_partition_size_default`: verifies default behavior (no args) uses 8192\n- `test_num_partitions_overrides_target`: verifies `num_partitions` takes precedence with warning\n\n## Notes\n- No Rust binding changes needed \u2014 the Python layer handles the `target_partition_size \u2192 num_partitions` conversion before calling into Rust\n- The Rust core already fully supports `target_partition_size` in `IvfBuildParams`; this PR brings the Python `IndicesBuilder` API in sync",
+    "author": "fightBoxing",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lance/indices/builder.py",
+      "python/python/lance/util.py",
+      "python/python/tests/test_indices.py"
+    ],
+    "blocked_on": "merge",
+    "is_draft": false,
+    "age_in_state_hrs": 1857.1,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 69,
+      "deletions": 11,
+      "files": 3
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "de8977bc5959be13a2a703fd65b2c07b5ab4e21b",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "de8977bc5959be13a2a703fd65b2c07b5ab4e21b"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6255,
+    "url": "https://github.com/lance-format/lance/pull/6255",
+    "title": "feat: add transaction-level table_metadata_updates",
+    "body": "## Summary\n\n- Promote `table_metadata_updates` from an `UpdateConfig`-only field to a `Transaction`-level attribute, allowing any operation (e.g. Append) to atomically carry metadata updates merged into the manifest's `table_metadata`\n- Add `UpdateMap::keys_overlap()` and wire it into the conflict resolver to detect concurrent transactions writing the same metadata keys\n- Fix a pre-existing gap where `modifies_same_metadata()` did not check `table_metadata_updates` overlap for UpdateConfig vs UpdateConfig conflicts (introduced in #4350)\n\n## Motivation\n\n`transaction_properties` are stored in separate `.txn` files, requiring O(N) reads to scan on recovery. `table_metadata` lives in the manifest and is loaded at dataset open time (O(1)). By allowing metadata updates alongside any operation in a single commit, consumers like persistent message queues can embed cursors atomically with data appends \u2014 no separate UpdateConfig round-trip, no scan on recovery.\n\n## Design\n\n```\nTransaction\n\u251c\u2500\u2500 read_version\n\u251c\u2500\u2500 uuid\n\u251c\u2500\u2500 tag\n\u251c\u2500\u2500 transaction_properties  // in .txn file\n\u251c\u2500\u2500 table_metadata_updates  // NEW \u2014 merged into manifest\n\u2514\u2500\u2500 oneof operation { ... }\n```\n\nIn `build_manifest()`, transaction-level `table_metadata_updates` are applied **after** operation-level handling (UpdateConfig), so if both are present on the same key, the transaction-level value wins.\n\nConflict detection: two concurrent transactions with overlapping `table_metadata_updates` keys are rejected as incompatible. Disjoint keys are commutative and always compatible.\n\n## Test plan\n\n- [x] `cargo check -p lance -p pylance` compiles cleanly\n- [x] `test_table_metadata_key_conflict::disjoint_keys` \u2014 two Appends with different metadata keys pass conflict check\n- [x] `test_table_metadata_key_conflict::overlapping_keys` \u2014 two Appends with same metadata key rejected as IncompatibleTransaction",
+    "author": "fecet",
+    "author_status": "infrequent",
+    "files_changed": [
+      "java/lance-jni/src/transaction.rs",
+      "protos/transaction.proto",
+      "python/python/lance/dataset.py",
+      "python/src/transaction.rs",
+      "rust/lance/src/dataset/fragment.rs",
+      "rust/lance/src/dataset/transaction.rs",
+      "rust/lance/src/dataset/write/commit.rs",
+      "rust/lance/src/dataset/write/merge_insert.rs",
+      "rust/lance/src/dataset/write/merge_insert/exec/delete.rs",
+      "rust/lance/src/dataset/write/merge_insert/exec/write.rs",
+      "rust/lance/src/dataset/write/update.rs",
+      "rust/lance/src/io/commit/conflict_resolver.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1524.8,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 226,
+      "deletions": 2,
+      "files": 12
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "6a59ee74d4f71d410a99c07f8d0631fc20653ddb",
+    "delta": {
+      "commits": [
+        "22dddee22a12458e0494deb3366a477128bdd251"
+      ],
+      "files_touched": [
+        "java/lance-jni/src/transaction.rs",
+        "protos/transaction.proto",
+        "python/python/lance/dataset.py",
+        "python/src/transaction.rs",
+        "rust/lance/src/dataset/fragment.rs",
+        "rust/lance/src/dataset/transaction.rs",
+        "rust/lance/src/dataset/write/commit.rs",
+        "rust/lance/src/dataset/write/merge_insert.rs",
+        "rust/lance/src/dataset/write/merge_insert/exec/delete.rs",
+        "rust/lance/src/dataset/write/merge_insert/exec/write.rs",
+        "rust/lance/src/dataset/write/update.rs",
+        "rust/lance/src/io/commit/conflict_resolver.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "22dddee22a12458e0494deb3366a477128bdd251"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6215,
+    "url": "https://github.com/lance-format/lance/pull/6215",
+    "title": "feat: add manifest namespace extended properties",
+    "body": "This is a sub-task of https://github.com/lance-format/lance/issues/5741",
+    "author": "wojiaodoubao",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "java/lance-jni/Cargo.lock",
+      "python/Cargo.lock",
+      "rust/lance-namespace-impls/Cargo.toml",
+      "rust/lance-namespace-impls/src/dir.rs",
+      "rust/lance-namespace-impls/src/dir/manifest.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 2152.1,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 989,
+      "deletions": 104,
+      "files": 6
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "ed73cb73ccb56c1e23606f5c6022abf96c11573e",
+    "delta": {
+      "commits": [
+        "9574665431ac01d019ce7229234842387d97ec1f"
+      ],
+      "files_touched": [
+        "Cargo.lock",
+        "java/lance-jni/Cargo.lock",
+        "python/Cargo.lock",
+        "rust/lance-namespace-impls/Cargo.toml",
+        "rust/lance-namespace-impls/src/dir.rs",
+        "rust/lance-namespace-impls/src/dir/manifest.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "large-blast-radius"
+      ],
+      "reason": "Large blast radius (XL diff)"
+    },
+    "head_oid": "9574665431ac01d019ce7229234842387d97ec1f"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6118,
+    "url": "https://github.com/lance-format/lance/pull/6118",
+    "title": "feat: comprehensive observability instrumentation across Lance subsystems",
+    "body": "## Motivation\n\nLance had fragmented observability: mixed `log::`/`tracing::` usage, no structured in-memory stats for IO latency, cache hit rates, or scheduler behavior, and critical paths (write, commit retry, compaction, index build) were unobservable.\n\n## Solution\n\nThree-layer instrumentation (IO, Encoding, Dataset) using a consistent pattern:\n\n- **Atomic counters** (`Arc<AtomicU64>` + `Ordering::Relaxed`, ~2ns amortized)\n- **Typed stats structs** with `snapshot()` for point-in-time reads\n- **`tracing` events** with `target:` fields for subscriber filtering\n- **`#[non_exhaustive]`** on new public structs for forward compatibility\n\nNo direct OpenTelemetry dependency \u2014 users bring their own `tracing` subscriber.\n\n### Crates modified\n\n| Crate | Changes |\n|-------|---------|\n| `lance-core` | `CacheHitMiss`, `CacheStats`, eviction tracking |\n| `lance-io` | `IoStats` (latency, errors), `ScanStats` (coalesce/split/backpressure), `RetryStats`, connection reset tracing, `list()` error tracking |\n| `lance-encoding` | Decode pipeline timing, buffer operation tracing |\n| `lance-index` | `MetricsCollector` extension, HNSW build progress, `MetricsSnapshot` |\n| `lance` | `CompactionMetrics` (bytes, timing), `FragmentDistributionStats`, commit tracing, write path tracing, MemWAL `log::` -> `tracing::` migration |\n\n### New stats structs\n\n| Struct | Access | Key Fields |\n|--------|--------|------------|\n| `IoStats` | `IOTracker::stats()` | read/write iops, bytes, latency_us, errors |\n| `ScanStats` | `ScanScheduler::stats()` | iops, bytes_read, coalesced/split_iops, backpressure_warnings |\n| `CacheHitMiss` | `LanceCache::cache_hit_miss()` | hits, misses, evictions, `hit_ratio()` |\n| `RetryStats` | `CloudObjectReader::retry_stats()` | total_retries, total_failures |\n| `CompactionMetrics` | `compact_files()` return | bytes_rewritten, bytes_binary_copied, elapsed_ms_sum |\n| `FragmentDistributionStats` | `Dataset::fragment_distribution_stats()` | count, min/max/avg physical_rows |\n| `MetricsSnapshot` | `LocalMetricsCollector::snapshot()` | comparisons, bytes, partitions probed, search duration |\n\n### Backward compatibility\n\n- `#[serde(default)]` on new fields, `#[serde(alias)]` for renames\n- Default no-op impls on `MetricsCollector` trait extensions\n- `#[non_exhaustive]` on all new public structs\n\n## Test plan\n\n- [x] Unit tests for `RetryStats`, `CompactionMetrics` `AddAssign`, `IoTrackingStore` list() error counting\n- [x] Integration test for session cache hit/miss sync\n- [x] Full test suites passing: lance-core, lance-io, lance-encoding, lance-index, lance\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+    "author": "esteban",
+    "author_status": "infrequent",
+    "files_changed": [
+      "Cargo.lock",
+      "docs/src/guide/observability.md",
+      "python/src/dataset.rs",
+      "python/src/dataset/cache_stats.rs",
+      "python/src/lib.rs",
+      "python/src/session.rs",
+      "rust/examples/Cargo.toml",
+      "rust/examples/src/tracing_setup.rs",
+      "rust/lance-core/src/cache.rs",
+      "rust/lance-encoding/src/buffer.rs",
+      "rust/lance-encoding/src/decoder.rs",
+      "rust/lance-index/src/metrics.rs",
+      "rust/lance-index/src/vector/hnsw/builder.rs",
+      "rust/lance-io/src/object_reader.rs",
+      "rust/lance-io/src/object_writer.rs",
+      "rust/lance-io/src/scheduler.rs",
+      "rust/lance-io/src/utils/tracking_store.rs",
+      "rust/lance/src/dataset.rs",
+      "rust/lance/src/dataset/mem_wal/index.rs",
+      "rust/lance/src/dataset/mem_wal/manifest.rs",
+      "rust/lance/src/dataset/mem_wal/memtable/flush.rs",
+      "rust/lance/src/dataset/mem_wal/memtable/scanner/builder.rs",
+      "rust/lance/src/dataset/mem_wal/write.rs",
+      "rust/lance/src/dataset/optimize.rs",
+      "rust/lance/src/dataset/write/insert.rs",
+      "rust/lance/src/dataset/write/merge_insert.rs",
+      "rust/lance/src/dataset/write/retry.rs",
+      "rust/lance/src/io/commit.rs",
+      "rust/lance/src/session.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": true,
+    "age_in_state_hrs": 2671.0,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 1544,
+      "deletions": 119,
+      "files": 29
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "3b58d45cb33755761d9a1c7a6def30cdd9e242c3",
+    "delta": {
+      "commits": [
+        "773cdcc1e84107fd14cfe407860baaf7cad2ffac"
+      ],
+      "files_touched": [
+        "Cargo.lock",
+        "docs/src/guide/observability.md",
+        "python/src/dataset.rs",
+        "python/src/dataset/cache_stats.rs",
+        "python/src/lib.rs",
+        "python/src/session.rs",
+        "rust/examples/Cargo.toml",
+        "rust/examples/src/tracing_setup.rs",
+        "rust/lance-core/src/cache.rs",
+        "rust/lance-encoding/src/buffer.rs",
+        "rust/lance-encoding/src/decoder.rs",
+        "rust/lance-index/src/metrics.rs",
+        "rust/lance-index/src/vector/hnsw/builder.rs",
+        "rust/lance-io/src/object_reader.rs",
+        "rust/lance-io/src/object_writer.rs",
+        "rust/lance-io/src/scheduler.rs",
+        "rust/lance-io/src/utils/tracking_store.rs",
+        "rust/lance/src/dataset.rs",
+        "rust/lance/src/dataset/mem_wal/index.rs",
+        "rust/lance/src/dataset/mem_wal/manifest.rs",
+        "rust/lance/src/dataset/mem_wal/memtable/flush.rs",
+        "rust/lance/src/dataset/mem_wal/memtable/scanner/builder.rs",
+        "rust/lance/src/dataset/mem_wal/write.rs",
+        "rust/lance/src/dataset/optimize.rs",
+        "rust/lance/src/dataset/write/insert.rs",
+        "rust/lance/src/dataset/write/merge_insert.rs",
+        "rust/lance/src/dataset/write/retry.rs",
+        "rust/lance/src/io/commit.rs",
+        "rust/lance/src/session.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "large-blast-radius"
+      ],
+      "reason": "Large blast radius (XL diff)"
+    },
+    "head_oid": "773cdcc1e84107fd14cfe407860baaf7cad2ffac"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 5587,
+    "url": "https://github.com/lance-format/lance/pull/5587",
+    "title": "feat: add classic alp encoding support",
+    "body": "This PR will add classic alp encoding support\r\n\r\n---\r\n\r\n**Parts of this PR were drafted with assistance from Codex (with `gpt-5.2`) and fully reviewed and edited by me. I take full responsibility for all changes.**",
+    "author": "Xuanwo",
+    "author_status": "core",
+    "files_changed": [
+      "protos/encodings_v2_1.proto",
+      "rust/lance-encoding/src/compression.rs",
+      "rust/lance-encoding/src/compression_config.rs",
+      "rust/lance-encoding/src/constants.rs",
+      "rust/lance-encoding/src/encoder.rs",
+      "rust/lance-encoding/src/encodings/physical.rs",
+      "rust/lance-encoding/src/encodings/physical/alp.rs",
+      "rust/lance-encoding/src/encodings/physical/bitpacking.rs",
+      "rust/lance-encoding/src/format.rs",
+      "rust/lance-encoding/src/testing.rs",
+      "rust/lance-file/src/writer.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 4203.2,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 1409,
+      "deletions": 9,
+      "files": 11
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "30f05f58a2a03c4f5ac419496f662bfb36725a55",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "30f05f58a2a03c4f5ac419496f662bfb36725a55"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 5583,
+    "url": "https://github.com/lance-format/lance/pull/5583",
+    "title": "feat: implemented tokenizer plugins in rust",
+    "body": "related to https://github.com/lance-format/lance/issues/3222\r\n\r\nKey changes are as bellows:\r\n\r\n* `include/lance_tokenizer_plugin.h`: add C API for the tokenizer plugin\r\n* `protos/index_old.proto`: add two fields to restore the plugin tokenizer configuration\r\n* `rust/lance-index/src/scalar/inverted/tokenizer.rs` and `rust/lance-index/src/scalar/inverted/plugin/*`: implement tokenizer loading\r\n* `rust/lance-index/examples/`: add an example usage\r\n\r\nDuring the PR creation process, I had two questions and left comments in the PR.\r\n\r\n",
+    "author": "KazuhitoT",
+    "author_status": "infrequent",
+    "files_changed": [
+      "Cargo.lock",
+      "Cargo.toml",
+      "include/lance_tokenizer_plugin.h",
+      "protos/index_old.proto",
+      "rust/lance-index/Cargo.toml",
+      "rust/lance-index/src/scalar/inverted/tokenizer.rs",
+      "rust/lance-index/src/scalar/inverted/tokenizer/plugin/ffi.rs",
+      "rust/lance-index/src/scalar/inverted/tokenizer/plugin/loader.rs",
+      "rust/lance-index/src/scalar/inverted/tokenizer/plugin/mod.rs",
+      "rust/lance-index/src/scalar/inverted/tokenizer/plugin/tokenizer.rs",
+      "rust/lance-index/tests/test_plugin/Cargo.lock",
+      "rust/lance-index/tests/test_plugin/Cargo.toml",
+      "rust/lance-index/tests/test_plugin/README.md",
+      "rust/lance-index/tests/test_plugin/src/lib.rs",
+      "rust/lance-index/tests/tokenizer_plugin_integration.rs",
+      "rust/lance-index/tests/tokenizer_plugin_persistence_test.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1176.6,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 3134,
+      "deletions": 7,
+      "files": 16
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "45ac7c20638fd422dbcb04c6abd6e8fa157319db",
+    "delta": {
+      "commits": [
+        "2ee3adeba8f45bb1515e6bec21a1c6595407f257"
+      ],
+      "files_touched": [
+        "Cargo.lock",
+        "Cargo.toml",
+        "include/lance_tokenizer_plugin.h",
+        "protos/index_old.proto",
+        "rust/lance-index/Cargo.toml",
+        "rust/lance-index/src/scalar/inverted/tokenizer.rs",
+        "rust/lance-index/src/scalar/inverted/tokenizer/plugin/ffi.rs",
+        "rust/lance-index/src/scalar/inverted/tokenizer/plugin/loader.rs",
+        "rust/lance-index/src/scalar/inverted/tokenizer/plugin/mod.rs",
+        "rust/lance-index/src/scalar/inverted/tokenizer/plugin/tokenizer.rs",
+        "rust/lance-index/tests/test_plugin/Cargo.lock",
+        "rust/lance-index/tests/test_plugin/Cargo.toml",
+        "rust/lance-index/tests/test_plugin/README.md",
+        "rust/lance-index/tests/test_plugin/src/lib.rs",
+        "rust/lance-index/tests/tokenizer_plugin_integration.rs",
+        "rust/lance-index/tests/tokenizer_plugin_persistence_test.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "2ee3adeba8f45bb1515e6bec21a1c6595407f257"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 5368,
+    "url": "https://github.com/lance-format/lance/pull/5368",
+    "title": "feat(io): support HDFS by HdfsStoreProvider",
+    "body": "This PR close #2140. \r\n",
+    "author": "fMeow",
+    "author_status": "infrequent",
+    "files_changed": [
+      "Cargo.lock",
+      "Cargo.toml",
+      "python/Cargo.lock",
+      "rust/lance-io/Cargo.toml",
+      "rust/lance-io/src/object_store/providers.rs",
+      "rust/lance-io/src/object_store/providers/hdfs.rs",
+      "rust/lance-io/tests/hdfs_integration.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 4566.7,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 686,
+      "deletions": 61,
+      "files": 7
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "09ba418f8065226c3c7abebfcff2887fef9958c7",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "09ba418f8065226c3c7abebfcff2887fef9958c7"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2829,
+    "url": "https://github.com/lancedb/lancedb/pull/2829",
+    "title": "feat: support embedding at search on remote table",
+    "body": "## Bug Fix\n\n### What is the bug?\nEmbedding-aware query strings worked for local tables but not for remote tables. On LanceDB Cloud, a query like:\n\n```python\nresults = table.search(\"test example\", query_type=\"vector\").limit(5).to_pandas()\n```\n\ncould fail with:\n\n```\nValueError: No embedding function for None\n```\n\nIf `query_type` was omitted, the same string query could instead be treated like full-text search and fail with:\n\n```\n400 Bad Request: Cannot perform full text search unless an INVERTED index has been created on at least one column\n```\n\n### Why did this happen?\n`LanceTable.search` already normalizes string queries by inspecting the table schema and embedding metadata to infer the vector column and decide whether the query should be embedded client-side before sending the request.\n\n`RemoteTable.search` did not go through the same inference path. It forwarded the raw query into `LanceQueryBuilder.create(...)` without first calling `infer_vector_column_name(...)` and without the same `FullTextQuery` normalization. As a result:\n\n- explicit vector queries did not resolve the embedding function / vector column correctly\n- implicit string queries could fall back to the wrong query mode and hit FTS behavior on the server\n\n### What issues or incorrect behavior did this cause?\nUsers could not reliably run text-to-vector search against remote tables that have embedding metadata, even though the same table/query pattern worked locally.\n\nThat meant a valid remote workflow like `table.search(\"puppy\")` or `table.search(\"puppy\", query_type=\"vector\")` could fail unless the user manually worked around the query mode or column selection.\n\n### How does this PR fix the problem?\nThis PR makes `RemoteTable.search` follow the same search setup path as `LanceTable.search`:\n\n- normalize `FullTextQuery` inputs to `query_type=\"fts\"`\n- infer the vector column with `infer_vector_column_name(...)` using the remote table schema and embedding metadata\n- pass the resolved `vector_column_name` into `LanceQueryBuilder.create(...)` so embedding-aware string queries are converted correctly before the request is sent\n\n### Validation\nAdded a regression test in `python/python/tests/test_remote_db.py` that verifies a remote table with embedding metadata:\n\n- accepts a string query\n- computes the query embedding client-side\n- sends the resolved vector and `vector_column` in the remote request body\n- does not incorrectly send the query as full-text search",
+    "author": "BubbleCal",
+    "author_status": "core",
+    "files_changed": [
+      "python/python/lancedb/remote/table.py",
+      "python/python/lancedb/table.py",
+      "python/python/tests/test_remote_db.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1770.1,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 109,
+      "deletions": 32,
+      "files": 3
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": "655a02c33d0157e87d7cab972ab818e7f4f5a145",
+    "delta": {
+      "commits": [
+        "e7d6a85754fa6c7c3f98d2befeaa9c8bb07f0241"
+      ],
+      "files_touched": [
+        "python/python/lancedb/remote/table.py",
+        "python/python/lancedb/table.py",
+        "python/python/tests/test_remote_db.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "e7d6a85754fa6c7c3f98d2befeaa9c8bb07f0241"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3567,
+    "url": "https://github.com/lancedb/lancedb/pull/3567",
+    "title": "fix(python): raise clear ValueError when vector column cannot be infe\u2026",
+    "body": "## Summary\r\n\r\nFixes #1653.\r\n\r\n`infer_vector_column_name` in `util.py` could silently return `None` when `query is None` and `query_type` is not `\"fts\"` or `\"hybrid\"`. This `None` then propagated into downstream code, causing a cryptic `TypeError: expected bytes, NoneType found` rather than a clear error message.\r\n\r\n## Changes\r\n\r\n- **Removes the no-op `try/except Exception as e: raise e`** around `inf_vector_column_query` (it was catching and immediately re-raising without adding any value)\r\n- - **Adds a `None` guard** after the inference block: if `vector_column_name` is still `None` at this point, raise a clear `ValueError` pointing the user to pass `vector_column_name` explicitly\r\n## Before / After\r\n\r\n**Before:** cryptic `TypeError: expected bytes, NoneType found` deep in schema lookup code\r\n\r\n**After:**\r\n```\r\nValueError: No vector column found in the schema. Please specify the vector column name explicitly via the `vector_column_name` parameter.\r\n```",
+    "author": "Vitaliy-Pikalo",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/util.py",
+      "python/python/tests/test_util.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 52.4,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "S",
+      "additions": 30,
+      "deletions": 6,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "777d2dc1f97b3d2532365dc1e5c5605cb25dcb86",
+    "delta": {
+      "commits": [
+        "25f8c6568f7072eebd5fd831164e0e0f877d444d"
+      ],
+      "files_touched": [
+        "python/python/lancedb/util.py",
+        "python/python/tests/test_util.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "25f8c6568f7072eebd5fd831164e0e0f877d444d"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3536,
+    "url": "https://github.com/lancedb/lancedb/pull/3536",
+    "title": "docs(python): add missing parameter documentation for when_matched_update_all",
+    "body": "Fixes #2493\r\n\r\nAdded target. prefix requirement to where parameter docstring.",
+    "author": "Neo-X7",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/merge.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 95.0,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XS",
+      "additions": 9,
+      "deletions": 0,
+      "files": 1
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "f09c3a36f0c2f7282271798f7ce91ca85dc69506",
+    "delta": {
+      "commits": [
+        "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3"
+      ],
+      "files_touched": [
+        "python/python/lancedb/merge.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3514,
+    "url": "https://github.com/lancedb/lancedb/pull/3514",
+    "title": "fix(python): reject repeated where clauses",
+    "body": "## Summary\n- reject a second `where()` call for sync and async Python query builders so filters are not silently replaced\n- add regression coverage confirming the first filter remains in the serialized query object\n\nFixes #2649\n\n## Tests\n- `python3.13 -m py_compile python/python/lancedb/query.py python/python/tests/test_query.py`\n- `/Users/neo/.cursor/extensions/charliermarsh.ruff-2026.48.0-darwin-arm64/bundled/libs/bin/ruff check python/python/lancedb/query.py python/python/tests/test_query.py`\n- `git diff --check`\n\nNot run locally: targeted pytest. `uv sync --python 3.13 --extra tests --extra dev -v` stalled during local dependency/native package setup after resolving packages, and direct pytest cannot import the uninstalled local package metadata.",
+    "author": "liuzemei",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/query.py",
+      "python/python/tests/test_query.py"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 386.0,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "S",
+      "additions": 43,
+      "deletions": 0,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "785622590013b5ccdf54380fca0d15381fcb4373",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "785622590013b5ccdf54380fca0d15381fcb4373"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3443,
+    "url": "https://github.com/lancedb/lancedb/pull/3443",
+    "title": "fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances",
+    "body": "## Summary\n\n`MRRReranker.rerank_multivector` computed the Mean Reciprocal Rank (MRR) score using `np.mean(reciprocal_ranks)` for each document, where `reciprocal_ranks` only contained entries for the systems in which the document appeared.\n\nMRR is defined as the average reciprocal rank across **all** ranking systems, with a reciprocal rank of 0 for systems where a document is absent. `np.mean` divides by the count of appearances rather than the total system count, inflating scores for documents with partial coverage and inverting rankings.\n\n### Concrete counter-example (3 systems)\n\n| Document | Systems appeared | Buggy score | Correct score |\n|----------|-----------------|-------------|---------------|\n| A (rank 1 in system 1 only) | 1 of 3 | `mean([1.0])` = **1.0** | `1.0 / 3` = **0.333** |\n| B (rank 2 in system 1, rank 1 in systems 2 & 3) | 3 of 3 | `mean([0.5, 1.0, 1.0])` = **0.833** | `2.5 / 3` = **0.833** |\n\nWith the bug: A=1.0 > B=0.833 \u2192 A wins (wrong).  \nWith the fix: B=0.833 > A=0.333 \u2192 B wins (correct).\n\nNote that `rerank_hybrid` already handles this correctly \u2014 it initialises `vector_rr = 0.0` and `fts_rr = 0.0` before the loop, so missing results contribute zero.\n\n## Fix\n\nReplace:\n```python\nmean_rr = np.mean(reciprocal_ranks)\n```\nwith:\n```python\nmean_rr = sum(reciprocal_ranks) / n_systems\n```\nwhere `n_systems = len(vector_results)` is captured once before the loop.\n\n## Test\n\n`test_mrr_reranker_multivector_partial_coverage` in `tests/test_rerankers.py` encodes the counter-example above using pure PyArrow tables (no database required) and asserts both the ordering and the absolute score values.",
+    "author": "devteamaegis",
+    "author_status": "regular",
+    "files_changed": [
+      "python/python/lancedb/rerankers/mrr.py",
+      "python/python/tests/test_rerankers.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 341.3,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 69,
+      "deletions": 1,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "06b700a709c0d33a363b46156eb859e9970292a9",
+    "delta": {
+      "commits": [
+        "5808dd68b9409f7d138659acb3a8c363567660e9"
+      ],
+      "files_touched": [
+        "python/python/lancedb/rerankers/mrr.py",
+        "python/python/tests/test_rerankers.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "5808dd68b9409f7d138659acb3a8c363567660e9"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3303,
+    "url": "https://github.com/lancedb/lancedb/pull/3303",
+    "title": "feat: index analyze support",
+    "body": "Add support for analyze_index for IVF indexes. This will sample N vectors from the dataset, compute exact KNN, and then do a parameter sweep over nprobes and refine_factor to calculate recall + latencies on a range of parameter tunings.\r\n\r\nThis will allow users to cheaply understand how search parameters affect search quality on their particular dataset.\r\n\r\nCloses #3359\r\n",
+    "author": "wkalt",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "Cargo.toml",
+      "docs/src/js/classes/Table.md",
+      "docs/src/js/globals.md",
+      "nodejs/lancedb/index.ts",
+      "nodejs/lancedb/table.ts",
+      "nodejs/src/table.rs",
+      "python/python/lancedb/_lancedb.pyi",
+      "python/python/lancedb/remote/table.py",
+      "python/python/lancedb/table.py",
+      "python/src/table.rs",
+      "rust/lancedb/Cargo.toml",
+      "rust/lancedb/src/index.rs",
+      "rust/lancedb/src/index/analyze.rs",
+      "rust/lancedb/src/remote/table.rs",
+      "rust/lancedb/src/table.rs",
+      "rust/lancedb/src/table/datafusion.rs",
+      "rust/lancedb/src/table/datafusion/knn.rs",
+      "rust/lancedb/src/table/datafusion/knn_ext.rs",
+      "rust/lancedb/src/table/datafusion/knn_optimizer.rs",
+      "rust/lancedb/src/table/knn.rs",
+      "rust/lancedb/tests/knn_test.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1576.9,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 2737,
+      "deletions": 2,
+      "files": 22
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "b73b7310079ee25760db08841d5f7cd18cf6d29c",
+    "delta": {
+      "commits": [
+        "badb3679cd572d9144c9d93cdac4728639444d07"
+      ],
+      "files_touched": [
+        "Cargo.lock",
+        "Cargo.toml",
+        "docs/src/js/classes/Table.md",
+        "docs/src/js/globals.md",
+        "nodejs/lancedb/index.ts",
+        "nodejs/lancedb/table.ts",
+        "nodejs/src/table.rs",
+        "python/python/lancedb/_lancedb.pyi",
+        "python/python/lancedb/remote/table.py",
+        "python/python/lancedb/table.py",
+        "python/src/table.rs",
+        "rust/lancedb/Cargo.toml",
+        "rust/lancedb/src/index.rs",
+        "rust/lancedb/src/index/analyze.rs",
+        "rust/lancedb/src/remote/table.rs",
+        "rust/lancedb/src/table.rs",
+        "rust/lancedb/src/table/datafusion.rs",
+        "rust/lancedb/src/table/datafusion/knn.rs",
+        "rust/lancedb/src/table/datafusion/knn_ext.rs",
+        "rust/lancedb/src/table/datafusion/knn_optimizer.rs",
+        "rust/lancedb/src/table/knn.rs",
+        "rust/lancedb/tests/knn_test.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "badb3679cd572d9144c9d93cdac4728639444d07"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3253,
+    "url": "https://github.com/lancedb/lancedb/pull/3253",
+    "title": "feat(ci): add custom PyPI support for manual wheel uploads",
+    "body": "## Summary\r\n\r\n- Add `workflow_dispatch` trigger to `pypi-publish.yml` enabling manual workflow runs\r\n- Add inputs for specifying git ref, debug mode, and custom PyPI repository credentials\r\n- Update `upload_wheel` action to support custom PyPI uploads via twine\r\n- Upload wheel artifacts when triggered via workflow_dispatch for easier debugging\r\n\r\nThis enables manually triggering wheel builds and uploading them to a custom PyPI repository (e.g., Azure Artifacts) instead of the default PyPI/Fury.\r\n\r\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+    "author": "jackye1995",
+    "author_status": "core",
+    "files_changed": [
+      ".github/workflows/pypi-publish.yml",
+      ".github/workflows/upload_wheel/action.yml"
+    ],
+    "blocked_on": "merge",
+    "is_draft": false,
+    "age_in_state_hrs": 1894.4,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "low",
+      "urgency": "high",
+      "rationale": "docs/tests/config/deps only"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 91,
+      "deletions": 7,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "8f4d62d6306fed8de8a706038382c2cf80fdc3f9",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "8f4d62d6306fed8de8a706038382c2cf80fdc3f9"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3235,
+    "url": "https://github.com/lancedb/lancedb/pull/3235",
+    "title": "feat: support date, datetime, bytes, and Decimal literals in expr builder",
+    "body": "### **Summary**\r\nCloses #3212\r\n\r\nExtends the Python `lit()` helper to natively support three additional types (`date`, `datetime`, and `Decimal`) and implements reflexive operators for the `Expr` class.\r\n\r\nThis implementation specifically addresses the blocking feedback regarding precision loss, CI discovery, and query engine limitations:\r\n\r\n*   **Logic Refactoring**: Simplified `lit()` by combining `date` and `datetime` normalization into ISO-8601 strings, ensuring stable SQL parsing across different engine locales.\r\n*   **Precision Preservation**: `decimal.Decimal` objects are now passed as high-precision strings to the Rust bridge, bypassing intermediate float conversions and preserving full 128-bit decimal precision for DataFusion.\r\n*   **Averted CI Failures**: Temporarily deferred `bytes` literal support to a future PR to resolve a known DataFusion `expr_to_sql` limitation that was crashing the `Doctest` runner. \r\n*   **Reflexive Operators**: Added support for \"literal-first\" arithmetic and logical operations (e.g., `10 + col('a')` or `True & col('active')`). Redundant reflexive comparisons (e.g., `__rlt__`) were pruned as Python's data model handles them automatically.\r\n*   **Integration Verification**: Added dedicated integration tests in the official test directory to ensure the query engine correctly handles the new types and preserves bit-perfect fidelity.\r\n\r\n### **Changes**  \r\n#### [python/python/lancedb/expr.py](file:///c:/Users/Laksh/Documents/lancedb/python/python/lancedb/expr.py)\r\n*   Updated `lit()` to handle `date`, `datetime`, and `Decimal` natively.\r\n*   Implemented reflexive operators (`__radd__`, `__rand__`, `__rmul__`, etc.) to support literals on the left-hand side.\r\n*   Removed the problematic `bytes` doctest example and `lit()` type support to unblock CI.\r\n\r\n#### [python/src/expr.rs](file:///c:/Users/Laksh/Documents/lancedb/python/src/expr.rs)\r\n*   Modified the Rust FFI bridge to extract `Decimal` objects as strings.\r\n*   Ensured the `expr_lit` handler is ready to receive normalized temporal strings.\r\n*   Consolidated imports and added missing operator documentation.\r\n\r\n#### [python/python/lancedb/_lancedb.pyi](file:///c:/Users/Laksh/Documents/lancedb/python/python/lancedb/_lancedb.pyi)\r\n*   Updated type stubs for `expr_lit` to include `Any` (allowing for `Decimal`).\r\n\r\n### **Testing**  \r\nAdded several new advanced test cases in [python/python/tests/test_expr.py](file:///c:/Users/Laksh/Documents/lancedb/python/python/tests/test_expr.py) covering:\r\n*   **High-precision Decimal preservation**: Verified against 128-bit boundaries with a \"one point off\" test case (`1.234567890123456789 < 1.234567890123456790`).\r\n*   **Reflexive operator positioning**: Verified successful query construction with literals on the left.\r\n*   **Timezone-aware normalization**: Confirmed stable behavior for `datetime` objects.\r\n*   **Integration Testing**: Confirmed Date32 and Decimal columns return the correct Python types and values from the engine during `.to_arrow()` calls.",
+    "author": "lakshjain7",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/Cargo.toml",
+      "python/python/lancedb/_lancedb.pyi",
+      "python/python/lancedb/expr.py",
+      "python/python/tests/test_expr.py",
+      "python/src/expr.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1741.8,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 226,
+      "deletions": 16,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "397043fd1fafc1ffa34af4910f32d743f5534d35",
+    "delta": {
+      "commits": [
+        "9ec04acf973135d0bc068ef860f79cf39b027dda"
+      ],
+      "files_touched": [
+        "python/Cargo.toml",
+        "python/python/lancedb/_lancedb.pyi",
+        "python/python/lancedb/expr.py",
+        "python/python/tests/test_expr.py",
+        "python/src/expr.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "9ec04acf973135d0bc068ef860f79cf39b027dda"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3192,
+    "url": "https://github.com/lancedb/lancedb/pull/3192",
+    "title": "fix: handle empty/wrong-length vectors returned by embedding functions",
+    "body": "## Summary\n\n- When an embedding function returns an empty list (e.g. `[]`) for an input row \u2014 as can happen when a model produces no output for a blank string \u2014 `_append_vector_columns` crashed with `ArrowInvalid: Length of item not correct: expected N but got array of size 0` because PyArrow cannot fit a zero-length value into a fixed-size list element.\n- The fix adds a validation step in `gen()`, inside `_append_vector_columns`, that replaces any vector whose length does not match the expected `ndims` (including empty lists and `None`) with `None` before `pa.array()` is called.\n- `None` is a valid null in a PyArrow fixed-size list array, so the bad entry flows into `_handle_bad_vectors` and is handled according to the caller-supplied `on_bad_vectors` policy (`error` / `drop` / `fill` / `null`) instead of causing an unconditional crash.\n\n## Test plan\n\n- [ ] Added `test_embedding_with_empty_output_vectors` in `python/python/tests/test_embeddings.py` that uses an embedding function returning `[]` for empty-string inputs, calls `table.add(..., on_bad_vectors=\"drop\")`, and asserts no crash and that bad rows are correctly dropped.\n- [ ] Existing `test_embedding_with_bad_results` continues to pass (NaN vectors still handled correctly).\n- [ ] Verified manually that `pa.array([[1.,2.,3.,4.], []], type=pa.list_(pa.float32(), 4))` raises `ArrowInvalid` without the fix, and succeeds with `None` in place of `[]`.\n\nFixes #1672",
+    "author": "Spectual",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/table.py",
+      "python/python/tests/test_embeddings.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 1699.0,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 62,
+      "deletions": 1,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "a9b1595d78eba73d0471f437f8c2dad7b3f50c62",
+    "delta": {
+      "commits": [
+        "45963fab0c4f91d46f9001f408fd9889f7d91033"
+      ],
+      "files_touched": [
+        "python/python/lancedb/table.py",
+        "python/python/tests/test_embeddings.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "45963fab0c4f91d46f9001f408fd9889f7d91033"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3175,
+    "url": "https://github.com/lancedb/lancedb/pull/3175",
+    "title": "feat(nodejs): expr.ts added to enable Expression API. Basic support for Expr in fil\u2026",
+    "body": "\u2026ter and add function support. expr.test.ts for tests. Addresses Issues #3041 and #3040 ",
+    "author": "ChinmayGowda71",
+    "author_status": "infrequent",
+    "files_changed": [
+      "nodejs/__test__/expr.test.ts",
+      "nodejs/lancedb/expr.ts",
+      "nodejs/lancedb/index.ts",
+      "nodejs/lancedb/query.ts"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 1902.7,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 630,
+      "deletions": 4,
+      "files": 4
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "bd8866d6ae52d0df4347b1adfba8eea130bc5bc2",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "bd8866d6ae52d0df4347b1adfba8eea130bc5bc2"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3028,
+    "url": "https://github.com/lancedb/lancedb/pull/3028",
+    "title": "fix: handle null type in _align_field_types for nullable struct fields",
+    "body": "When you have a nullable struct column and insert a row where that column is `None`, pyarrow infers the column type as `null` instead of `struct`. The `_align_field_types` function then tries to access `.fields` on the null type, which blows up with `AttributeError: 'pyarrow.lib.DataType' object has no attribute 'fields'`.\n\nThe fix checks for null type before trying to recurse into the type's structure. If the source field is null, we just use the target type directly \u2014 there's nothing to align when all values are None anyway.\n\nAdded a test that reproduces the original crash from #2654.\n\nFixes #2654",
+    "author": "Mr-Neutr0n",
+    "author_status": "infrequent",
+    "files_changed": [
+      "python/python/lancedb/table.py",
+      "python/python/tests/test_table.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 581.3,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "S",
+      "additions": 37,
+      "deletions": 1,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "dfef90f7428f5fc000cf4302849fd253d7d90c9d",
+    "delta": {
+      "commits": [
+        "ad2d1d93b253087fa3979f1a0d43f86b990bebeb"
+      ],
+      "files_touched": [
+        "python/python/lancedb/table.py",
+        "python/python/tests/test_table.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "ad2d1d93b253087fa3979f1a0d43f86b990bebeb"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2960,
+    "url": "https://github.com/lancedb/lancedb/pull/2960",
+    "title": "chore!: drop pydantic 1 support",
+    "body": "drop pydantic version 1 support ",
+    "author": "eddyxu",
+    "author_status": "core",
+    "files_changed": [
+      ".github/workflows/python.yml",
+      "python/pyproject.toml",
+      "python/python/lancedb/pydantic.py"
+    ],
+    "blocked_on": "author",
+    "is_draft": true,
+    "age_in_state_hrs": 3528.7,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 21,
+      "deletions": 65,
+      "files": 3
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "4800f31479b6e69e72a4c1ff5a4a32066e2cd439",
+    "delta": {
+      "commits": [
+        "b57faf98352ac1ab2ea1c1e11da73c559bb2d35a"
+      ],
+      "files_touched": [
+        ".github/workflows/python.yml",
+        "python/pyproject.toml",
+        "python/python/lancedb/pydantic.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "breaking-change"
+      ],
+      "reason": "Labeled breaking change"
+    },
+    "head_oid": "b57faf98352ac1ab2ea1c1e11da73c559bb2d35a"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2915,
+    "url": "https://github.com/lancedb/lancedb/pull/2915",
+    "title": "chore: migrate Gemini embeddings to use `google-genai` SDK",
+    "body": "As the `google-generativeai` SDK is deprecated, it will emit warnings and will not have support for all models going forward, so moving to our new SDK will ensure some forward-compatibility for your users.\r\n\r\nI used this [test script here](https://gist.github.com/markmcd/d83ce548561ca043fe274dd98a0cde7a) to validate everything works.\r\n\r\nThis also adds support for batching embeddings over a single API request.",
+    "author": "markmcd",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/pyproject.toml",
+      "python/python/lancedb/embeddings/gemini_text.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 3505.3,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "S",
+      "additions": 19,
+      "deletions": 11,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "46337281b413923d095a3c597e8f33679bac14bb",
+    "delta": {
+      "commits": [
+        "b5971ddb4479a0a03c782060548598be50c99198"
+      ],
+      "files_touched": [
+        "python/pyproject.toml",
+        "python/python/lancedb/embeddings/gemini_text.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "b5971ddb4479a0a03c782060548598be50c99198"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2395,
+    "url": "https://github.com/lancedb/lancedb/pull/2395",
+    "title": "feat(python): handle strenum in pydantic",
+    "body": "This PR aims at handling strenum in pydantic conversion in python.\r\n\r\n(happy to squash and/or edit commit message), opening this as a proof of concept to get some feedback.\r\n\r\ncloses https://github.com/lancedb/lancedb/issues/2392\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n- **New Features**\n  - Enhanced support for StrEnum fields in Pydantic models with optimized dictionary-encoded string handling.\n- **Tests**\n  - Added tests validating schema conversion and data querying for models using StrEnum fields (Python 3.11+).\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+    "author": "happysalada",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/pydantic.py",
+      "python/python/tests/docs/test_pydantic_integration.py",
+      "python/python/tests/test_pydantic.py"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 9178.0,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 77,
+      "deletions": 2,
+      "files": 3
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "7218282c0fa3d8257b0fda6c9225ed983cdfbb7c",
+    "delta": {
+      "commits": [
+        "cad75301c663380cc022915c6b978a8fc929d89b"
+      ],
+      "files_touched": [
+        "python/python/lancedb/pydantic.py",
+        "python/python/tests/docs/test_pydantic_integration.py",
+        "python/python/tests/test_pydantic.py"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "cad75301c663380cc022915c6b978a8fc929d89b"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2348,
+    "url": "https://github.com/lancedb/lancedb/pull/2348",
+    "title": "feat(node): added Rate Limiting and Retry Support to Embeddings API in Node.js SDK",
+    "body": "This PR introduces robust rate limiting and retry mechanisms to the Embeddings API in the Node.js SDK, closely following the pattern established in [PR #614] for Python.\r\nKey Enhancements:\r\nCore Utilities in utils.ts:\r\n--> retryWithExponentialBackoff: A reusable, configurable function to handle transient failures gracefully.\r\n-->RateLimiter class: Enforces a maximum number of API requests per minute to respect API usage quotas.\r\n-->Enhancements to EmbeddingFunction Class:\r\n-->rateLimit() and retry() methods allow easy configuration of limits and retry strategies.\r\n-->computeSourceEmbeddingsWithRetry() and computeQueryEmbeddingsWithRetry() support fault-tolerant embedding generation.\r\n\r\n OpenAI Embeddings Integration:\r\n-->Added maxRetries and maxRequestsPerMinute options.\r\n-->Applies default rate limiting and retry configuration seamlessly.\r\n\r\nExamples and Documentation:\r\n-->Created rate_limiting.ts as a detailed usage example.\r\n-->Added comprehensive documentation in rate_limiting.md.\r\n\r\nThese additions allow developers to handle rate-limited APIs more gracefully, without reinventing retry or throttling logic. The retry mechanism with exponential backoff and configurable jitter improves robustness in production environments where API limits and network instability are common.\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n- **New Features**\n  - Added built-in support for automatic rate limiting and exponential backoff retry mechanisms when using embedding functions.\n  - Embedding functions can now be configured to handle API rate limits and retry failed requests automatically.\n  - New options allow customization of maximum requests per minute and maximum retry attempts for embedding computations.\n\n- **Documentation**\n  - Added comprehensive documentation and usage examples for configuring and using rate limiting and retry features in embedding functions.\n  - Provided a new example script demonstrating practical usage with OpenAI embeddings and LanceDB.\n\n- **Improvements**\n  - Enhanced embedding function classes to support chainable configuration of rate limiting and retry logic.\n  - Utility functions for retry logic and rate limiting are now available for advanced use cases.\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+    "author": "Keerthi421",
+    "author_status": "first_time",
+    "files_changed": [
+      "nodejs/docs/rate_limiting.md",
+      "nodejs/examples/rate_limiting.ts",
+      "nodejs/lancedb/embedding/embedding_function.ts",
+      "nodejs/lancedb/embedding/index.ts",
+      "nodejs/lancedb/embedding/openai.ts",
+      "nodejs/lancedb/embedding/utils.ts"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 10227.5,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 374,
+      "deletions": 3,
+      "files": 6
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "edf0c82c0ba58064a327dd829e131954640ca39a",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "pending",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "edf0c82c0ba58064a327dd829e131954640ca39a"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2345,
+    "url": "https://github.com/lancedb/lancedb/pull/2345",
+    "title": "chore: bump Python 3.12 to 3.13 in actions",
+    "body": "### Updates\r\n- Bump Python 3.12 to 3.13 in GitHub Actions\r\n\r\n### Cosmetics\r\n- Bump Python 3.8 to 3.9 in comments\r\n\r\n### Future updates\r\nMany things are outdated, can they be updated too?\r\n- protobuf compilers\r\n- NodeJS 18\r\n- Java dependencies\r\n- No tests with Java 8 and 21 (publish uses 8)\r\n- Ubuntu 22.04 runners\r\n- Docker and docker-compose\r\n\r\n\r\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n- **Chores**\n  - Updated CI workflows and project metadata to support Python 3.13.\n  - Removed the `python-minor-version` input parameter from several GitHub Actions workflows.\n  - Adjusted Python versions used in CI jobs for Linux, macOS, and Windows.\n  - Improved package installation command in doctest job for better binary preference.\n  - Added a reference comment for the Docker container used in Linux builds.\n  - Enhanced package installation step with pip upgrade and environment variable for compatibility in test workflows.\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+    "author": "reneleonhardt",
+    "author_status": "first_time",
+    "files_changed": [
+      ".github/workflows/build_linux_wheel/action.yml",
+      ".github/workflows/build_mac_wheel/action.yml",
+      ".github/workflows/build_windows_wheel/action.yml",
+      ".github/workflows/pypi-publish.yml",
+      ".github/workflows/python.yml",
+      ".github/workflows/run_tests/action.yml",
+      "python/pyproject.toml"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 10165.5,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "low",
+      "urgency": "high",
+      "rationale": "docs/tests/config/deps only"
+    },
+    "effort": {
+      "size_bucket": "S",
+      "additions": 18,
+      "deletions": 27,
+      "files": 7
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "7ea333f8b4a9e7068b31318f577c86142c71a215",
+    "delta": {
+      "commits": [
+        "aac34e665e13f40e30286c9ddbbb264fce6f1108"
+      ],
+      "files_touched": [
+        ".github/workflows/build_linux_wheel/action.yml",
+        ".github/workflows/build_mac_wheel/action.yml",
+        ".github/workflows/build_windows_wheel/action.yml",
+        ".github/workflows/pypi-publish.yml",
+        ".github/workflows/python.yml",
+        ".github/workflows/run_tests/action.yml",
+        "python/pyproject.toml"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "pending",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "aac34e665e13f40e30286c9ddbbb264fce6f1108"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 1969,
+    "url": "https://github.com/lancedb/lancedb/pull/1969",
+    "title": "chore: python v0.9.0b4 patch",
+    "body": "***Don't merge***\r\nTemporary patch for v0.9.0b4 python client.\r\n\r\nBackport query builder and fast_search features onto 0.9.0b3 remote client",
+    "author": "rpgreen",
+    "author_status": "core",
+    "files_changed": [
+      ".bumpversion.toml",
+      ".github/workflows/build_windows_wheel/action.yml",
+      "Cargo.toml",
+      "node/package.json",
+      "nodejs/npm/darwin-arm64/package.json",
+      "nodejs/npm/darwin-x64/package.json",
+      "nodejs/npm/linux-arm64-gnu/package.json",
+      "nodejs/npm/linux-x64-gnu/package.json",
+      "nodejs/npm/win32-x64-msvc/package.json",
+      "nodejs/package.json",
+      "python/.bumpversion.toml",
+      "python/Cargo.toml",
+      "python/pyproject.toml",
+      "python/python/lancedb/__init__.py",
+      "python/python/lancedb/query.py",
+      "python/python/lancedb/remote/client.py",
+      "python/python/lancedb/remote/db.py",
+      "python/python/lancedb/remote/table.py",
+      "python/python/tests/test_remote_db.py",
+      "python/python/tests/test_table.py",
+      "rust/ffi/node/Cargo.toml",
+      "rust/lancedb/Cargo.toml"
+    ],
+    "blocked_on": "author",
+    "is_draft": true,
+    "age_in_state_hrs": 13256.3,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 294,
+      "deletions": 63,
+      "files": 22
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "7a3ef683065f2b57437288b442ef49a69f768746",
+    "delta": {
+      "commits": [
+        "1884fe8a3e3ec459f4ddd3d4e1d0ee05c32efad7"
+      ],
+      "files_touched": [
+        ".bumpversion.toml",
+        ".github/workflows/build_windows_wheel/action.yml",
+        "Cargo.toml",
+        "node/package.json",
+        "nodejs/npm/darwin-arm64/package.json",
+        "nodejs/npm/darwin-x64/package.json",
+        "nodejs/npm/linux-arm64-gnu/package.json",
+        "nodejs/npm/linux-x64-gnu/package.json",
+        "nodejs/npm/win32-x64-msvc/package.json",
+        "nodejs/package.json",
+        "python/.bumpversion.toml",
+        "python/Cargo.toml",
+        "python/pyproject.toml",
+        "python/python/lancedb/__init__.py",
+        "python/python/lancedb/query.py",
+        "python/python/lancedb/remote/client.py",
+        "python/python/lancedb/remote/db.py",
+        "python/python/lancedb/remote/table.py",
+        "python/python/tests/test_remote_db.py",
+        "python/python/tests/test_table.py",
+        "rust/ffi/node/Cargo.toml",
+        "rust/lancedb/Cargo.toml"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "pending",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "1884fe8a3e3ec459f4ddd3d4e1d0ee05c32efad7"
+  }
+]

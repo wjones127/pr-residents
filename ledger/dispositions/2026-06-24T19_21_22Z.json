@@ -1,0 +1,33 @@
+{
+  "cycle": "2026-06-24T19:21:22Z",
+  "viewer": "wjones127",
+  "dispositions": [
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3571,
+      "lane": "fresh",
+      "domain": "python/python",
+      "recommendation": "comment",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-06-24T19:21:22Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3567,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "block",
+      "drafted_blocking_count": 2,
+      "drafted_at": "2026-06-24T19:21:22Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3443,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-06-24T19:21:22Z"
+    }
+  ]
+}

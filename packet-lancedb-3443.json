@@ -1,0 +1,37 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3443,
+    "title": "fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances",
+    "url": "https://github.com/lancedb/lancedb/pull/3443",
+    "head": "5808dd68b9409f7d138659acb3a8c363567660e9",
+    "last_reviewed_sha": "06b700a709c0d33a363b46156eb859e9970292a9",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "06b700a709c0d33a363b46156eb859e9970292a9",
+    "head": "5808dd68b9409f7d138659acb3a8c363567660e9",
+    "files": [
+      {
+        "path": "python/python/lancedb/rerankers/mrr.py",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 1,
+        "patch": "@@ -145,6 +145,7 @@ def rerank_multivector(\n                     `search().with_row_id(True)`\"\n             )\n \n+        n_systems = len(vector_results)\n         mrr_score_map = defaultdict(list)\n \n         for result_table in vector_results:\n@@ -155,7 +156,14 @@ def rerank_multivector(\n \n         final_mrr_scores = {}\n         for result_id, reciprocal_ranks in mrr_score_map.items():\n-            mean_rr = np.mean(reciprocal_ranks)\n+            # Divide by the *total* number of systems, treating documents that\n+            # do not appear in a system as having reciprocal rank 0.  Using\n+            # np.mean() here would silently divide only by the number of\n+            # systems in which the document appeared, inflating scores for\n+            # documents with partial coverage and inverting the ranking relative\n+            # to documents that appear (with a lower reciprocal rank) in all\n+            # systems.\n+            mean_rr = sum(reciprocal_ranks) / n_systems\n             final_mrr_scores[result_id] = mean_rr\n \n         combined = pa.concat_tables(vector_results, **self._concat_tables_args)",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_rerankers.py",
+        "status": "modified",
+        "additions": 60,
+        "deletions": 0,
+        "patch": "@@ -344,6 +344,66 @@ def test_mrr_reranker(tmp_path):\n     assert len(result_deduped) == len(result)\n \n \n+def test_mrr_reranker_multivector_partial_coverage():\n+    \"\"\"MRR scores must divide by the *total* number of systems, not the number\n+    of systems in which a document appeared.\n+\n+    If a document appears in only 1 of N systems its denominator must still be\n+    N; using np.mean() instead of sum()/N inflates the score and can invert the\n+    ranking relative to documents that appear (at a lower reciprocal rank) in\n+    all systems.\n+\n+    Concrete counter-example (3 systems):\n+      - doc A: rank 1 in system 1 only \u2192 correct MRR = 1/3 \u2248 0.333\n+      - doc B: rank 2 in all 3 systems \u2192 correct MRR = 3*(1/2)/3 = 0.5\n+\n+    Before the fix, doc A received np.mean([1.0]) = 1.0 and doc B received\n+    np.mean([0.5, 0.5, 0.5]) = 0.5, so A was (incorrectly) ranked above B.\n+    \"\"\"\n+    reranker = MRRReranker()\n+\n+    def _make_table(row_ids):\n+        return pa.table(\n+            {\n+                \"_rowid\": pa.array(row_ids, type=pa.uint64()),\n+                \"text\": pa.array([f\"doc {i}\" for i in row_ids], type=pa.string()),\n+            }\n+        )\n+\n+    # doc B (id=1) appears at rank 2 in all three systems \u2192 sum of rr = 3*0.5, mean = 0.5\n+    # doc A (id=0) appears at rank 1 in only the first system \u2192 sum of rr = 1.0, mean/3 = 0.333\n+    system1 = _make_table([0, 1])   # A@rank1, B@rank2\n+    system2 = _make_table([1])      # B@rank1 (A absent)\n+    system3 = _make_table([1])      # B@rank1 (A absent)\n+\n+    result = reranker.rerank_multivector([system1, system2, system3])\n+\n+    scores = {\n+        row[\"_rowid\"]: row[\"_relevance_score\"]\n+        for row in result.to_pylist()\n+    }\n+\n+    score_a = scores[0]  # doc A: 1/3 of 1.0 \u2248 0.333\n+    score_b = scores[1]  # doc B: sum(0.5+0.5+0.5)/3 = 0.5\n+\n+    # doc B must outscore doc A\n+    assert score_b > score_a, (\n+        f\"Expected doc B (score={score_b:.4f}) to outscore doc A (score={score_a:.4f}). \"\n+        \"MRR must divide by the total number of systems, not just the number in which \"\n+        \"the document appeared.\"\n+    )\n+\n+    # Verify the absolute scores are correct\n+    assert abs(score_a - 1.0 / 3) < 1e-5, f\"doc A MRR should be 1/3, got {score_a}\"\n+    assert abs(score_b - 0.5) < 1e-5, f\"doc B MRR should be 0.5, got {score_b}\"\n+\n+    # Result must be sorted descending\n+    relevance = result.column(\"_relevance_score\").to_pylist()\n+    assert relevance == sorted(relevance, reverse=True), (\n+        \"Results must be sorted by _relevance_score descending\"\n+    )\n+\n+\n def test_rrf_reranker_distance():\n     data = pa.table(\n         {",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}

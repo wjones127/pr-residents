@@ -1,0 +1,322 @@
+<title>PR Rounds — 2026-06-26</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel-2:#1d2129;--border:#2a2f3a;--text:#e6e9ef;--muted:#99a1b3;--faint:#6b7280;--link:#6db3f2;--green:#3fb950;--red:#f85149;--amber:#d29922;--fresh:#f78166;--rereview:#6db3f2;--house:#8b949e;--escalate:#db61a2;--approve:#3fb950;--block:#f85149;--comment:#d29922}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:28px 18px 80px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 22px;font-size:13px}.sub b{color:var(--text)}
+.banner{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--faint);border-radius:8px;padding:12px 16px;margin-bottom:22px;color:var(--muted);font-size:13px}
+.banner code{background:var(--panel-2);padding:1px 5px;border-radius:4px;color:#e6c07b}
+section{margin-bottom:30px}
+.lane-head{display:flex;align-items:baseline;gap:10px;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.lane-head h2{font-size:16px;margin:0;letter-spacing:.02em}
+.lane-head .count{font-size:12px;color:var(--bg);font-weight:700;padding:1px 8px;border-radius:10px}
+.lane-head .desc{color:var(--faint);font-size:12px;margin-left:auto}
+#triage .count{background:#a371f7}#triage h2{color:#a371f7}
+#fresh .count{background:var(--fresh)}#rereview .count{background:var(--rereview)}#house .count{background:var(--house)}
+#fresh h2{color:var(--fresh)}#rereview h2{color:var(--rereview)}#house h2{color:var(--house)}
+.row{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.row:hover{border-color:#3a4150}.row.escalated{border-left:3px solid var(--escalate)}
+.badges{display:inline-flex;gap:6px;flex:0 0 auto}
+.b{font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.acuity-HIGH{background:#3a1518;color:var(--red)}.acuity-MED{background:#3a2f12;color:var(--amber)}.acuity-LOW{background:#22272e;color:var(--muted)}
+.size{background:var(--panel-2);color:var(--muted);border:1px solid var(--border)}
+.title{flex:1 1 320px;min-width:240px}
+.title a{color:var(--link);text-decoration:none;font-weight:600}.title a:hover{text-decoration:underline}
+.title .num{color:var(--faint);font-weight:600}
+.meta{display:inline-flex;gap:10px;align-items:center;flex:0 0 auto;color:var(--faint);font-size:12px}
+.ci{display:inline-flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.ci-green .dot{background:var(--green)}.ci-red .dot{background:var(--red)}.ci-pending .dot{background:var(--amber)}
+.ci-green{color:var(--green)}.ci-red{color:var(--red)}.ci-pending{color:var(--amber)}
+.esc{font-size:10px;font-weight:700;color:var(--escalate);border:1px solid var(--escalate);padding:1px 6px;border-radius:5px}
+.note{flex-basis:100%;color:var(--faint);font-size:12px;padding-left:2px}
+details{flex-basis:100%;margin-top:6px}
+details>summary{cursor:pointer;list-style:none;font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--panel-2);border:1px solid var(--border);display:inline-flex;align-items:center;gap:8px;width:fit-content}
+details>summary::-webkit-details-marker{display:none}
+details.soap>summary::before{content:"▸ SOAP";color:var(--muted)}
+details.soap[open]>summary::before{content:"▾ SOAP"}
+details.howto{flex-basis:auto;margin:0 0 22px}
+details.howto>summary{background:var(--panel);border-color:var(--border);color:var(--text);width:100%;font-size:13px}
+details.howto>summary::before{content:"▸";color:#a371f7;font-weight:700}
+details.howto[open]>summary::before{content:"▾";color:#a371f7;font-weight:700}
+.howto-body{margin-top:8px;padding:14px 16px;background:var(--panel);border:1px solid var(--border);border-left:3px solid #a371f7;border-radius:8px;font-size:13px;color:var(--muted);line-height:1.6}
+.howto-body b{color:var(--text)}
+.howto-body code{background:var(--panel-2);padding:1px 6px;border-radius:4px;color:#e6c07b}
+.howto-body ol{margin:8px 0 0;padding-left:20px}
+.howto-body li{margin-bottom:6px}
+.rec{font-weight:700;padding:1px 7px;border-radius:4px;font-size:11px}
+.rec-approve{background:#122a18;color:var(--approve)}.rec-block{background:#2d1416;color:var(--block)}.rec-comment{background:#2d2611;color:var(--comment)}
+.soap-body{margin-top:8px;padding:12px 14px;background:#0c0e12;border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text);white-space:pre-wrap}
+.soap-body .kv{color:var(--muted)}.soap-body code{background:var(--panel-2);padding:1px 5px;border-radius:4px;color:#e6c07b}
+.trow{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:9px 14px;margin-bottom:7px;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.trow:hover{border-color:#3a4150}
+.score{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;color:#c9a3f7;background:#241a33;border:1px solid #3a2a52;padding:2px 9px;border-radius:6px;min-width:52px;text-align:center}
+.by{color:var(--faint);font-weight:400;font-size:12px}
+.affinity{color:var(--faint);font-size:11.5px;flex:0 0 auto}
+footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid var(--border);padding-top:14px}
+</style>
+<div class="wrap">
+  <h1>PR Review Rounds</h1>
+  <p class="sub"><b>2026-06-26</b> · lance-format/lance + lancedb/lancedb · <b>31 PRs</b> — 0 fresh · 17 re-review · 14 housekeeping</p>
+  <details class="howto">
+    <summary>How to draft &amp; co-sign these reviews</summary>
+    <div class="howto-body">
+      This page is the <b>read-only morning queue</b> — it never writes to GitHub.
+      The SOAP reviews (with their <code>issue()</code> / <code>suggestion()</code>
+      comments) are drafted and posted in a <b>separate interactive session</b>,
+      under your own GitHub identity. The collapsed SOAP blocks below show only a
+      cached recommendation + blocking count; the full drafted comments appear in
+      that session.
+      <ol>
+        <li>Open an <b>interactive</b> Claude Code session in the repo
+          (<code>~/Documents/pr-residents</code>) — not the scheduled routine,
+          which is read-only by design.</li>
+        <li>Invoke the <b>assemble-rounds</b> skill. It fans out a per-PR SOAP
+          workup for each fresh / re-review PR (cached workups are reused), then
+          presents each drafted disposition for your review.</li>
+        <li><b>Co-sign each write individually.</b> Nothing posts to GitHub until
+          you approve it — that co-sign, under your identity, is the whole point.
+          Residents are queryable: push back ("did you check the null case?") and
+          the draft is rewritten, not just answered.</li>
+      </ol>
+    </div>
+  </details>
+  <div class="banner"><b>Reconciliation</b> — no prior cycle yet (learning log starts this run).</div>
+  <section id="triage"><div class="lane-head"><h2>Triage</h2><span class="count">10</span><span class="desc">self-requested candidates — confirm / strike (pr-relevance)</span></div>
+    <div class="trow">
+      <span class="score">157.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3489">feat(query): add use_lsm_read to query data via the MemWAL LSM scanner</a> <span class="num">lancedb/lancedb#3489</span> <span class="by">touch-of-grey</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">142.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3122">fix(rust): change `optimize` steps ordering</a> <span class="num">lancedb/lancedb#3122</span> <span class="by">sprytnyk</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">99.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3509">feat: add an elastic dataloader as an iterable dataset</a> <span class="num">lancedb/lancedb#3509</span> <span class="by">westonpace</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), Cargo.lock (reviewed 17×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">98.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2921">feat: support add_columns with embedding function</a> <span class="num">lancedb/lancedb#2921</span> <span class="by">zhangyue19921010</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">82.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3024">feat: support vector-only and FTS-only reranking</a> <span class="num">lancedb/lancedb#3024</span> <span class="by">KeeProMise</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">82.0</span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3287">feat: expose auto cleanup configuration for listing databases</a> <span class="num">lancedb/lancedb#3287</span> <span class="by">westonpace</span></span>
+      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">81.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7440">feat(index): expose vector index handle readers</a> <span class="num">lance-format/lance#7440</span> <span class="by">summaryzb</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), python/python (reviewed 21×), python/src (reviewed 8×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">76.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7390">perf(index): use NGram posting cardinalities for regex conjunction search</a> <span class="num">lance-format/lance#7390</span> <span class="by">everySympathy</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">76.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7463">feat(index): read a column&#x27;s min/max from ZoneMap without a scan</a> <span class="num">lance-format/lance#7463</span> <span class="by">Ali2Arslan</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">76.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7477">perf: merge half-open range queries on the same BTree index</a> <span class="num">lance-format/lance#7477</span> <span class="by">xloya</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
+    </div>
+  </section>
+  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">0</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
+    <div class="note">(none)</div>
+  </section>
+  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">17</span><span class="desc">ordered by proximity to merge</span></div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2395">feat(python): handle strenum in pydantic</a> <span class="num">lancedb/lancedb#2395</span></span>
+      <span class="meta"><span>382d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6215">feat: add manifest namespace extended properties</a> <span class="num">lance-format/lance#6215</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>90d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-namespace-impls</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2829">feat: support embedding at search on remote table</a> <span class="num">lancedb/lancedb#2829</span></span>
+      <span class="meta"><span>74d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb/remote</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3235">feat: support date, datetime, bytes, and Decimal literals in expr builder</a> <span class="num">lancedb/lancedb#3235</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>73d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 4 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python</code> · Drafted blocking conditions: 4</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6255">feat: add transaction-level table_metadata_updates</a> <span class="num">lance-format/lance#6255</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>64d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 3 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>protos</code> · Drafted blocking conditions: 3</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/5583">feat: implemented tokenizer plugins in rust</a> <span class="num">lance-format/lance#5583</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>49d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-index</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3028">fix: handle null type in _align_field_types for nullable struct fields</a> <span class="num">lancedb/lancedb#3028</span></span>
+      <span class="meta"><span>24d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3443">fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances</a> <span class="num">lancedb/lancedb#3443</span></span>
+      <span class="meta"><span>14d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">SOAP workup for lancedb/lancedb#3443 — RECOMMENDATION: approve (full SOAP produced this cycle; see rounds).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb/rerankers</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7265">ci(python): typecheck arrow.py and test_arrow.py</a> <span class="num">lance-format/lance#7265</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>9d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lance</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XS</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3536">docs(python): add missing parameter documentation for when_matched_update_all</a> <span class="num">lancedb/lancedb#3536</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3567">fix(python): raise clear ValueError when vector column cannot be infe…</a> <span class="num">lancedb/lancedb#3567</span></span>
+      <span class="meta"><span>2d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">SOAP workup for lancedb/lancedb#3567 — RECOMMENDATION: block (full SOAP produced this cycle; see rounds).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-LOW">LOW</span><span class="b size">S</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2345">chore: bump Python 3.12 to 3.13 in actions</a> <span class="num">lancedb/lancedb#2345</span></span>
+      <span class="meta"><span>424d in state</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
+      <div class="note">docs/tests/config/deps only</div>
+      
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2915">chore: migrate Gemini embeddings to use `google-genai` SDK</a> <span class="num">lancedb/lancedb#2915</span></span>
+      <span class="meta"><span>146d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3192">fix: handle empty/wrong-length vectors returned by embedding functions</a> <span class="num">lancedb/lancedb#3192</span></span>
+      <span class="meta"><span>71d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3303">feat: index analyze support</a> <span class="num">lancedb/lancedb#3303</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>66d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6890">feat: add early termination for compaction plan with max_compaction_bytes option</a> <span class="num">lance-format/lance#6890</span></span>
+      <span class="meta"><span>29d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7245">fix(python): use mimalloc as global allocator to fix RSS leak</a> <span class="num">lance-format/lance#7245</span></span>
+      <span class="meta"><span>2h in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      
+    </div>
+  </section>
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">14</span><span class="desc">discharge planning, batched</span></div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7203">feat(index): support xabi scalar index plugins</a> <span class="num">lance-format/lance#7203</span></span>
+      <span class="meta"><span>stale, waiting on Xuanwo · 9d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6920">feat: add free-form metadata map to DataFragment</a> <span class="num">lance-format/lance#6920</span></span>
+      <span class="meta"><span>stale, waiting on jackye1995 · 24d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6836">feat: switch commit strategy to optimistic by default</a> <span class="num">lance-format/lance#6836</span></span>
+      <span class="meta"><span>stale, waiting on Jay-ju · 29d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6811">fix(encoding): use LargeList internally for Utf8/Binary to prevent offset overflow</a> <span class="num">lance-format/lance#6811</span></span>
+      <span class="meta"><span>stale, waiting on beinan · 9d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6468">feat(python): add target_partition_size parameter to train_ivf()</a> <span class="num">lance-format/lance#6468</span></span>
+      <span class="meta"><span>approved, not merged · 77d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6118">feat: comprehensive observability instrumentation across Lance subsystems</a> <span class="num">lance-format/lance#6118</span></span>
+      <span class="meta"><span>draft, waiting on esteban · 111d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/5587">feat: add classic alp encoding support</a> <span class="num">lance-format/lance#5587</span></span>
+      <span class="meta"><span>stale, waiting on Xuanwo · 175d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/5368">feat(io): support HDFS by HdfsStoreProvider</a> <span class="num">lance-format/lance#5368</span></span>
+      <span class="meta"><span>stale, waiting on fMeow · 190d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3514">fix(python): reject repeated where clauses</a> <span class="num">lancedb/lancedb#3514</span></span>
+      <span class="meta"><span>stale, waiting on liuzemei · 16d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3253">feat(ci): add custom PyPI support for manual wheel uploads</a> <span class="num">lancedb/lancedb#3253</span></span>
+      <span class="meta"><span>approved, not merged · 79d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3175">feat(nodejs): expr.ts added to enable Expression API. Basic support for Expr in fil…</a> <span class="num">lancedb/lancedb#3175</span></span>
+      <span class="meta"><span>stale, waiting on ChinmayGowda71 · 79d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2960">chore!: drop pydantic 1 support</a> <span class="num">lancedb/lancedb#2960</span></span>
+      <span class="meta"><span>draft, waiting on eddyxu · 147d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2348">feat(node): added Rate Limiting and Retry Support to Embeddings API in Node.js SDK</a> <span class="num">lancedb/lancedb#2348</span></span>
+      <span class="meta"><span>stale, waiting on Keerthi421 · 426d</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
+    </div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/1969">chore: python v0.9.0b4 patch</a> <span class="num">lancedb/lancedb#1969</span></span>
+      <span class="meta"><span>draft, waiting on rpgreen · 552d</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
+    </div>
+  </section>
+  <footer>Generated by render_html.py from the deterministic pre-assembly (pr-sync → pr-relevance → reconcile). SOAP blocks shown where a workup is cached for the current head SHA. Full SOAP reviews are drafted and co-signed in the interactive session.</footer>
+</div>

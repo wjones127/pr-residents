@@ -1,0 +1,45 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 2395,
+    "title": "feat(python): handle strenum in pydantic",
+    "url": "https://github.com/lancedb/lancedb/pull/2395",
+    "head": "cad75301c663380cc022915c6b978a8fc929d89b",
+    "last_reviewed_sha": "7218282c0fa3d8257b0fda6c9225ed983cdfbb7c",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "7218282c0fa3d8257b0fda6c9225ed983cdfbb7c",
+    "head": "cad75301c663380cc022915c6b978a8fc929d89b",
+    "files": [
+      {
+        "path": "python/python/lancedb/pydantic.py",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 2,
+        "patch": "@@ -28,6 +28,12 @@\n import pydantic\n from packaging.version import Version\n \n+# StrEnum was introduced in 3.11\n+if sys.version_info >= (3, 11):\n+    from enum import StrEnum\n+else:\n+    StrEnum = None  # type: ignore\n+\n PYDANTIC_VERSION = Version(pydantic.__version__)\n try:\n     from pydantic_core import CoreSchema, core_schema\n@@ -262,8 +268,8 @@ def _py_type_to_arrow_type(py_type: Type[Any], field: FieldInfo) -> pa.DataType:\n         return pa.int64()\n     elif py_type is float:\n         return pa.float64()\n-    elif py_type is str:\n-        return pa.utf8()\n+    elif py_type is str or (StrEnum is not None and issubclass(py_type, StrEnum)):\n+        return pa.dictionary(pa.int16(), pa.string())\n     elif py_type is bool:\n         return pa.bool_()\n     elif py_type is bytes:",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/docs/test_pydantic_integration.py",
+        "status": "modified",
+        "additions": 44,
+        "deletions": 0,
+        "patch": "@@ -2,7 +2,10 @@\n # SPDX-FileCopyrightText: Copyright The LanceDB Authors\n \n # --8<-- [start:imports]\n+import sys\n+\n import lancedb\n+import pytest\n from lancedb.pydantic import Vector, LanceModel\n # --8<-- [end:imports]\n \n@@ -34,3 +37,44 @@ class PersonModel(LanceModel):\n     person = table.search([0.0, 0.0]).limit(1).to_pydantic(PersonModel)\n     assert person[0].name == \"bob\"\n     # --8<-- [end:base_example]\n+\n+\n+@pytest.mark.skipif(\n+    sys.version_info < (3, 11),\n+    reason=\"StrEnum where only introduced in python 3.11\",\n+)\n+def test_pydantic_str_enum(tmp_path):\n+    from enum import StrEnum\n+\n+    # --8<-- [start:base_model]\n+    class Status(StrEnum):\n+        Pending = \"pending\"\n+        Running = \"running\"\n+        Finished = \"finished\"\n+\n+    class JobModel(LanceModel):\n+        name: str\n+        status: Status\n+\n+    # --8<-- [end:base_model]\n+\n+    # --8<-- [start:set_url]\n+    url = \"./example\"\n+    # --8<-- [end:set_url]\n+    url = tmp_path\n+\n+    # --8<-- [start:base_example]\n+    db = lancedb.connect(url)\n+    table = db.create_table(\"person\", schema=JobModel)\n+    table.add(\n+        [\n+            JobModel(name=\"insert_articles\", status=Status.Running),\n+            JobModel(name=\"insert_podcasts\", status=Status.Finished),\n+        ]\n+    )\n+    assert table.count_rows() == 2\n+    job = (\n+        table.search().where(\"name = 'insert_articles'\").limit(1).to_pydantic(JobModel)\n+    )\n+    assert job[0].status == Status.Running\n+    # --8<-- [end:base_example]",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_pydantic.py",
+        "status": "modified",
+        "additions": 25,
+        "deletions": 0,
+        "patch": "@@ -412,3 +412,28 @@ class TestModel(LanceModel):\n \n     t = TestModel(id=1)\n     assert t.vectors == [[0.0] * 16]\n+\n+\n+@pytest.mark.skipif(\n+    sys.version_info < (3, 11),\n+    reason=\"StrEnum where only introduced in python 3.11\",\n+)\n+def test_str_enum():\n+    from enum import StrEnum\n+\n+    class Status(StrEnum):\n+        Pending = \"pending\"\n+        Running = \"running\"\n+        Finished = \"finished\"\n+\n+    class TestModel(pydantic.BaseModel):\n+        status: Status\n+\n+    schema = pydantic_to_schema(TestModel)\n+\n+    expect_schema = pa.schema(\n+        [\n+            pa.field(\"status\", pa.dictionary(pa.int16(), pa.string()), False),\n+        ]\n+    )\n+    assert schema == expect_schema",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 48,
+    "files_off_branch_excluded": 63,
+    "note": "scoped to author's changes: excluded 63 files that changed on the branch via merges from the base branch, not the PR's own work"
+  }
+}

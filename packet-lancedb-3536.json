@@ -1,0 +1,29 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3536,
+    "title": "docs(python): add missing parameter documentation for when_matched_update_all",
+    "url": "https://github.com/lancedb/lancedb/pull/3536",
+    "head": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3",
+    "last_reviewed_sha": "f09c3a36f0c2f7282271798f7ce91ca85dc69506",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "f09c3a36f0c2f7282271798f7ce91ca85dc69506",
+    "head": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3",
+    "files": [
+      {
+        "path": "python/python/lancedb/merge.py",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 1,
+        "patch": "@@ -62,7 +62,6 @@ def when_matched_update_all(\n         self._when_matched_update_all_condition = where\n         return self\n \n-    \n     def when_not_matched_insert_all(self) -> LanceMergeInsertBuilder:\n         \"\"\"\n         Rows that exist only in the source table (new data) should",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}

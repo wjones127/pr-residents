@@ -1,0 +1,17 @@
+{
+  "cycle": "2026-06-26T15:28:01Z",
+  "viewer": "wjones127",
+  "dispositions": [
+    {"repo": "lance-format/lance", "number": 7265, "lane": "re_review", "domain": "python/python/lance", "recommendation": "approve", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lance-format/lance", "number": 6255, "lane": "re_review", "domain": "protos", "recommendation": "block", "drafted_blocking_count": 3, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lance-format/lance", "number": 6215, "lane": "re_review", "domain": "rust/lance-namespace-impls", "recommendation": "comment", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lance-format/lance", "number": 5583, "lane": "re_review", "domain": "rust/lance-index", "recommendation": "comment", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 2829, "lane": "re_review", "domain": "python/python/lancedb/remote", "recommendation": "approve", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 3567, "lane": "re_review", "domain": "python/python/lancedb", "recommendation": "comment", "drafted_blocking_count": 2, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 3536, "lane": "re_review", "domain": "python/lancedb", "recommendation": "approve", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 3443, "lane": "re_review", "domain": "python/lancedb/rerankers", "recommendation": "approve", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 3235, "lane": "re_review", "domain": "python", "recommendation": "block", "drafted_blocking_count": 4, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 3028, "lane": "re_review", "domain": "python/python", "recommendation": "comment", "drafted_blocking_count": 0, "drafted_at": "2026-06-26T15:28:01Z"},
+    {"repo": "lancedb/lancedb", "number": 2395, "lane": "re_review", "domain": "python/lancedb", "recommendation": "block", "drafted_blocking_count": 2, "drafted_at": "2026-06-26T15:28:01Z"}
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7265,
+    "title": "ci(python): typecheck arrow.py and test_arrow.py",
+    "url": "https://github.com/lance-format/lance/pull/7265",
+    "head": "fdb65ccce92457695231f6eb177d148b9d2b99e1",
+    "last_reviewed_sha": "0d8d5c132b0ce5f74bf771d87b582c8e759dc94d",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "0d8d5c132b0ce5f74bf771d87b582c8e759dc94d",
+    "head": "fdb65ccce92457695231f6eb177d148b9d2b99e1",
+    "files": [
+      {
+        "path": "python/python/lance/arrow.py",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 5,
+        "patch": "@@ -283,7 +283,9 @@ def download(url):\n             if parsed_uri.scheme in (\"http\", \"https\"):\n                 images.append(download(uri))\n             else:\n-                filesystem, path = fs.FileSystem.from_uri(uri.as_py())\n+                filesystem, path = fs.FileSystem.from_uri(  # pyright: ignore[reportPrivateImportUsage]\n+                    uri.as_py()\n+                )\n                 with filesystem.open_input_stream(path) as f:\n                     images.append(f.read())\n \n@@ -303,7 +305,7 @@ def __repr__(self):\n         def pillow_metadata_decoder(images):\n             import io\n \n-            from PIL import Image\n+            from PIL import Image  # pyright: ignore[reportMissingImports]\n \n             img = Image.open(io.BytesIO(images[0].as_py()))\n             return img\n@@ -374,7 +376,7 @@ def to_tensor(\n             def pillow_decoder(images) -> \"np.ndarray\":\n                 import io\n \n-                from PIL import Image\n+                from PIL import Image  # pyright: ignore[reportMissingImports]\n \n                 return np.stack(\n                     [\n@@ -389,7 +391,6 @@ def tensorflow_decoder(images) -> \"np.ndarray\":\n                 decoded_to_tensor = tuple(\n                     tf.io.decode_image(img) for img in images.to_pylist()\n                 )\n-                # tf.stack is typed as ``None`` by tensorflow's incomplete stubs.\n                 return tf.stack(  # pyright: ignore[reportOptionalCall]\n                     decoded_to_tensor, axis=0\n                 ).numpy()\n@@ -489,7 +490,7 @@ def to_encoded(self, encoder=None, storage_type=pa.binary()) -> \"EncodedImageArr\n         def pillow_encoder(x):\n             import io\n \n-            from PIL import Image\n+            from PIL import Image  # pyright: ignore[reportMissingImports]\n \n             encoded_images = []\n             for y in x:",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_arrow.py",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "patch": "@@ -11,7 +11,7 @@\n import numpy as np\n import pandas as pd\n import pyarrow as pa\n-import pytest\n+import pytest  # pyright: ignore[reportMissingImports]\n from lance.arrow import (\n     BFloat16,\n     BFloat16Array,",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}

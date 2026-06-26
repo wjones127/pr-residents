@@ -1,0 +1,29 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3567,
+    "title": "fix(python): raise clear ValueError when vector column cannot be infe\u2026",
+    "url": "https://github.com/lancedb/lancedb/pull/3567",
+    "head": "25f8c6568f7072eebd5fd831164e0e0f877d444d",
+    "last_reviewed_sha": "777d2dc1f97b3d2532365dc1e5c5605cb25dcb86",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "777d2dc1f97b3d2532365dc1e5c5605cb25dcb86",
+    "head": "25f8c6568f7072eebd5fd831164e0e0f877d444d",
+    "files": [
+      {
+        "path": "python/python/tests/test_util.py",
+        "status": "modified",
+        "additions": 20,
+        "deletions": 0,
+        "patch": "@@ -850,3 +850,23 @@ def stream():\n \n     with pytest.raises(ValueError):\n         next(output)\n+\n+\n+def test_infer_vector_column_raises_clear_error(tmp_path):\n+    \"\"\"Regression: querying a table with no inferable vector column should raise\n+    a clear ValueError, not a cryptic TypeError (issue #1653).\n+\n+    Previously, inf_vector_column_query silently returned None which then caused\n+    a confusing TypeError deep in schema lookup. The fix adds a ValueError guard\n+    so the user gets a direct, actionable error message.\n+    \"\"\"\n+    db = lancedb.connect(tmp_path)\n+    table = db.create_table(\n+        \"no_vec\",\n+        data=[{\"id\": 1, \"text\": \"hello\"}, {\"id\": 2, \"text\": \"world\"}],\n+    )\n+\n+    with pytest.raises(ValueError, match=\"vector\"):\n+        # Plain vector search on a table with no vector column should raise\n+        # a clear ValueError, not a cryptic TypeError.\n+        table.search([1.0, 2.0]).to_list()",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}
