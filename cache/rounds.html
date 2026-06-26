@@ -379,7 +379,20 @@ RECOMMENDATION: comment (no blocking conditions; delta is clean test-only change
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3443">fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances</a> <span class="num">lancedb/lancedb#3443</span></span>
       <span class="meta"><span>14d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">SOAP workup for lancedb/lancedb#3443 — RECOMMENDATION: approve (full SOAP produced this cycle; see rounds).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb/rerankers</code> · Drafted blocking conditions: 0</div></div></details>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3443 — fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances
+reviewed 06b700a7 → 5808dd68  (1 commit, 2 files)
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior blocking conditions reconstructed — no posted issue(blocking) comments on record for this PR; nothing to carry forward)
+
+FRESH-EYES DELTA
+  no new concerns.
+  - Core fix verified against the patch: n_systems = len(vector_results) (mrr.py:148) + mean_rr = sum(reciprocal_ranks) / n_systems (mrr.py:166) correctly divides by the total system count, treating non-appearing documents as reciprocal-rank 0. This is the documented bug fix and the math is correct.
+  - No new division-by-zero risk: empty vector_results already raises (IndexError on vector_results[0], mrr.py:128) before reaching n_systems, so this PR introduces no new failure mode.
+  - Test test_mrr_reranker_multivector_partial_coverage (test_rerankers.py:347) is a valid, sharp counter-example: doc A (rank 1 in 1/3 systems → 0.333) vs doc B (rank 2 in 3/3 systems → 0.5); asserts B &gt; A, exact scores (1e-5 tol), and descending sort. Arithmetic checks out.
+
+RECOMMENDATION: approve
+  confidence: high · what would make this wrong: if downstream callers depended on the old (inflated) partial-coverage scores as intended behavior — but the docstring and MRR semantics confirm the old behavior was a bug.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb/rerankers</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
@@ -430,7 +443,26 @@ RECOMMENDATION: approve
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3567">fix(python): raise clear ValueError when vector column cannot be infe…</a> <span class="num">lancedb/lancedb#3567</span></span>
       <span class="meta"><span>2d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">SOAP workup for lancedb/lancedb#3567 — RECOMMENDATION: block (full SOAP produced this cycle; see rounds).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 2 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3567 — fix(python): raise clear ValueError when vector column cannot be infe…
+reviewed 777d2dc1 → 25f8c656  (1 commit, 1 file in delta)
+
+CONDITIONS LEDGER (1/1 met)
+
+  ✓ met      [blocking] Add a unit test for the fix (wjones127, CHANGES_REQUESTED @ 777d2dc1)
+             → python/python/tests/test_util.py:853 — new test_infer_vector_column_raises_clear_error added in the delta; asserts pytest.raises(ValueError, match=&quot;vector&quot;) on table.search([1.0, 2.0]).to_list(). Condition satisfied as literally stated (a test now exists). See caveat in fresh-eyes — the test passes, but not for the reason its docstring claims.
+
+FRESH-EYES DELTA
+
+  issue(blocking): The new regression test is green but does not exercise the new guard, and its docstring documents a mechanism that is false.
+  → The test&#x27;s premise (&quot;inf_vector_column_query silently returned None which then caused a confusing TypeError&quot;) is incorrect. In the head tree, util.py inf_vector_column_query is typed -&gt; str and already raises ValueError(&quot;There is no vector column in the data...&quot;) when zero vector columns are found. It never returns None. So table.search([1.0, 2.0]) (query is not None) takes the inf_vector_column_query branch at util.py:308–310 and raises there — the test&#x27;s match=&quot;vector&quot; matches that pre-existing message, NOT the new guard&#x27;s &quot;No vector column found in the schema...&quot; message at util.py:312–317. The test would have passed before this PR&#x27;s util.py change.
+
+  issue(blocking): The new `if vector_column_name is None:` guard (util.py:312–317) is effectively dead for the no-vector-column path it claims to fix. Because inf_vector_column_query raises first, the guard can only fire when query is None and query_type not in (&quot;fts&quot;,&quot;hybrid&quot;) — a different path the new test does not cover. This directly substantiates wjones127&#x27;s still-open inline question(blocking) at util.py:310. The removal of the try/except (which only re-raised) is harmless, but the added guard does not deliver the behavior the PR title/test advertise.
+
+  Note: the only file in the delta since last review is the test. The util.py change landed in the base commit (777d2dc1) that was reviewed; it is re-surfaced here because the head-anchored blocking question targets it.
+
+RECOMMENDATION: comment (do not block on the test-existence condition; do hold on the unresolved correctness question)
+  The lone stated condition (add a test) is met. But the fresh-eyes pass shows the test is a tautology that doesn&#x27;t cover the new code path, and the new guard doesn&#x27;t fix the advertised case — wjones127&#x27;s blocking question remains unanswered and is correct. Ask the author to (a) fix the test docstring, (b) add a case that actually reaches the new guard (query=None path), or confirm the guard is removed in favor of the existing inf_vector_column_query raise.
+  confidence: high (verified against head-tree source of both functions) · what would make this wrong: if a caller of infer_vector_column_name passes query=None for plain vector search such that the new guard is the real hot path — worth a 2-line check of the search() → infer_vector_column_name call site.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb</code> · Drafted blocking conditions: 2</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-LOW">LOW</span><span class="b size">S</span></span>

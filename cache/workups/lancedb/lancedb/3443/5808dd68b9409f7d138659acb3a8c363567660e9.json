@@ -2,6 +2,6 @@
   "repo": "lancedb/lancedb",
   "number": 3443,
   "sha": "5808dd68b9409f7d138659acb3a8c363567660e9",
-  "soap": "SOAP workup for lancedb/lancedb#3443 \u2014 RECOMMENDATION: approve (full SOAP produced this cycle; see rounds).\n",
-  "cached_at": "2026-06-24T19:21:22Z"
+  "soap": "RE-REVIEW \u00b7 lancedb/lancedb#3443 \u2014 fix(rerankers): make MRRReranker.rerank_multivector divide by total system count, not appearances\nreviewed 06b700a7 \u2192 5808dd68  (1 commit, 2 files)\n\nCONDITIONS LEDGER (0/0 met)\n  (no prior blocking conditions reconstructed \u2014 no posted issue(blocking) comments on record for this PR; nothing to carry forward)\n\nFRESH-EYES DELTA\n  no new concerns.\n  - Core fix verified against the patch: n_systems = len(vector_results) (mrr.py:148) + mean_rr = sum(reciprocal_ranks) / n_systems (mrr.py:166) correctly divides by the total system count, treating non-appearing documents as reciprocal-rank 0. This is the documented bug fix and the math is correct.\n  - No new division-by-zero risk: empty vector_results already raises (IndexError on vector_results[0], mrr.py:128) before reaching n_systems, so this PR introduces no new failure mode.\n  - Test test_mrr_reranker_multivector_partial_coverage (test_rerankers.py:347) is a valid, sharp counter-example: doc A (rank 1 in 1/3 systems \u2192 0.333) vs doc B (rank 2 in 3/3 systems \u2192 0.5); asserts B > A, exact scores (1e-5 tol), and descending sort. Arithmetic checks out.\n\nRECOMMENDATION: approve\n  confidence: high \u00b7 what would make this wrong: if downstream callers depended on the old (inflated) partial-coverage scores as intended behavior \u2014 but the docstring and MRR semantics confirm the old behavior was a bug.\n",
+  "cached_at": "2026-06-26T15:28:01Z"
 }
