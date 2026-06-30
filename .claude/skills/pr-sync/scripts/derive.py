@@ -9,7 +9,8 @@ from __future__ import annotations
 import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
-DERIVE_VERSION = "5"
+# 6: drafts route to the author path (housekeeping-if-stale, never fresh/re_review).
+DERIVE_VERSION = "6"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -165,6 +166,13 @@ def derive_blocked_on(detail: dict, viewer: str, requested: bool) -> tuple[str, 
     reviews = (detail.get("reviews") or {}).get("nodes") or []
     latest = _my_latest_review(reviews, viewer)
 
+    if detail.get("isDraft"):
+        # A draft is the author saying "not ready," whatever the review history
+        # says — the ball is in their court. Route to the author path so it lands
+        # in housekeeping-if-stale, never fresh/re_review: spending a SOAP on a
+        # PR the author hasn't opened for review is wasted on a moving target.
+        return ("author", latest)
+
     if latest is None:
         return ("me" if requested else "other_reviewer", None)
 
@@ -293,6 +301,7 @@ def build_record(detail: dict, viewer: str, requested: bool,
         "author_status": derive_author_status(author_merged_count),
         "files_changed": files,
         "blocked_on": blocked_on,
+        "is_draft": bool(detail.get("isDraft")),
         "age_in_state_hrs": age_hrs,
         "lane": lane,
         "acuity": acuity,

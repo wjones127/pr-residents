@@ -21,4 +21,6 @@ Hard rules:
   caches reset every run.
 
 Output the unified rounds view (reconciliation banner, triage panel, three
-lanes) with each PR's SOAP workup.
+lanes) with each PR's SOAP workup. Also publish the skill's HTML render
+(`state/cache/rounds.html`, Step 6) as an Artifact and share the link — the
+color-coded, browsable copy of the same rounds.

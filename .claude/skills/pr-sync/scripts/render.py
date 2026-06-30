@@ -69,7 +69,12 @@ def render(records: list[dict]) -> str:
     out.append(f"\n▌HOUSEKEEPING ({len(house)}) — discharge planning, batched")
     for r in house:
         blocked = r["blocked_on"]
-        tag = "approved, not merged" if blocked == "merge" else f"stale, waiting on {r['author']}"
+        if r.get("is_draft"):
+            tag = f"draft, waiting on {r['author']}"
+        elif blocked == "merge":
+            tag = "approved, not merged"
+        else:
+            tag = f"stale, waiting on {r['author']}"
         out.append(f"  {r['repo']}#{r['number']}  {r['title'][:60]}  "
                    f"[{tag} · {_age(r['age_in_state_hrs'])} · CI {r['merge_state']['ci']}]")
     if not house:

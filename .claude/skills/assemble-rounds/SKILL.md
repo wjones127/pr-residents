@@ -132,6 +132,20 @@ merge; housekeeping batched). Residents are **queryable, not one-shot** (§3): i
 the attending probes ("did you check the null case?"), rewrite the disposition
 and its draft, don't just answer.
 
+For a rich, color-coded view — clickable PR links, CI/acuity color coding, and
+each cached SOAP workup tucked into a `<details>` block under its entry — render
+the HTML sibling. Same data, same lane ordering (it imports `render.py`'s sort
+keys, so the two never drift):
+
+```sh
+python3 .claude/skills/assemble-rounds/scripts/render_html.py --out state/cache/rounds.html
+```
+
+It pulls SOAP bodies from the workup cache (Step 4) and recommendations from
+this cycle's dispositions ledger (Step 5), so run it *after* those. Present the
+page — e.g. publish it as an Artifact and share the link. It is a view, never a
+write: same zero-GitHub invariant.
+
 ## Step 7 — persist state (durability keystone)
 
 ```sh

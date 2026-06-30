@@ -120,6 +120,18 @@ class TestBlockedOn(unittest.TestCase):
         bo, _ = derive.derive_blocked_on(d, "wjones127", requested=False)
         self.assertEqual(bo, "me")
 
+    def test_draft_is_author_even_when_requested(self):
+        # A draft is the author's court regardless of a pending review request.
+        bo, _ = derive.derive_blocked_on(detail(isDraft=True), "wjones127", requested=True)
+        self.assertEqual(bo, "author")
+
+    def test_draft_is_author_even_after_my_review(self):
+        # I reviewed, then the author reverted to draft -> back to their court,
+        # not re_review.
+        d = detail(isDraft=True, reviews={"nodes": [review("COMMENTED", OLD, 10)]})
+        bo, _ = derive.derive_blocked_on(d, "wjones127", requested=True)
+        self.assertEqual(bo, "author")
+
 
 class TestBuildRecord(unittest.TestCase):
     def test_fresh_lane(self):
@@ -140,6 +152,24 @@ class TestBuildRecord(unittest.TestCase):
         rec = derive.build_record(d, "wjones127", False, ESCALATION, now=NOW)
         self.assertEqual(rec["lane"], "housekeeping")
         self.assertEqual(rec["blocked_on"], "merge")
+
+    def test_stale_draft_lands_in_housekeeping_not_rereview(self):
+        # Requested + previously reviewed would be re_review — but it's a draft,
+        # and it's been one for >48h, so it's stale-waiting-on-author housekeeping.
+        d = detail(isDraft=True, reviews={"nodes": [review("COMMENTED", OLD, 72)]},
+                   commits={"nodes": [{"commit": {"oid": HEAD, "committedDate": hours_ago(72),
+                                                  "statusCheckRollup": {"state": "SUCCESS"}}}]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
+        self.assertEqual(rec["lane"], "housekeeping")
+        self.assertTrue(rec["is_draft"])
+
+    def test_fresh_draft_is_not_surfaced(self):
+        # A brand-new draft I'm requested on isn't ready — drop it entirely.
+        d = detail(isDraft=True,
+                   commits={"nodes": [{"commit": {"oid": HEAD, "committedDate": hours_ago(2),
+                                                  "statusCheckRollup": {"state": "SUCCESS"}}}]})
+        rec = derive.build_record(d, "wjones127", True, ESCALATION, now=NOW)
+        self.assertIsNone(rec)
 
     def test_own_pr_never_surfaced(self):
         # A PR I authored is never a review candidate, regardless of state.

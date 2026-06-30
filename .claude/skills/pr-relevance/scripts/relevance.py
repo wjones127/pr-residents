@@ -92,6 +92,16 @@ def is_claimed(reviews, viewer: str) -> bool:
     return False
 
 
+def _candidate_query(repo: str) -> str:
+    """Open PRs no one routed to me, that I haven't touched, and that are *ready
+    for review*. `draft:false` excludes drafts — a draft is the author saying
+    "not yet," so it has no business in the self-requested panel. (Drafts need no
+    code-side guard the way claimed PRs do: the qualifier expresses it fully,
+    whereas `reviewed-by` can't tell a bot/dismissed review from a real one.)"""
+    return (f"repo:{repo} is:open is:pr draft:false -author:@me "
+            f"-review-requested:@me -reviewed-by:@me sort:updated-desc")
+
+
 def _search_prs_with_files(client: GitHubClient, query: str, limit: int) -> list[dict]:
     """Return [{number, title, url, author, repo, paths}] up to `limit`."""
     out: list[dict] = []
@@ -284,9 +294,8 @@ def run(config_dir: str, state_dir: str, rebuild: bool, history_limit: int,
     for repo in repos:
         client = clients[repo.split("/", 1)[0]]
         repo_profile = profiles.get(repo) or {"reviews": 0, "weights": {}}
-        # Candidates: open PRs no one routed to me and I haven't touched.
-        q = (f"repo:{repo} is:open is:pr -author:@me "
-             f"-review-requested:@me -reviewed-by:@me sort:updated-desc")
+        # Candidates: open, review-ready PRs no one routed to me / I haven't touched.
+        q = _candidate_query(repo)
         try:
             candidates = _search_prs_with_files(client, q, candidate_limit)
         except GitHubError as exc:
