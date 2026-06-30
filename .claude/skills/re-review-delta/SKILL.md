@@ -15,11 +15,20 @@ Read-only. The output is a draft re-review for the attending to co-sign.
 
 ```sh
 set -a; source .env; set +a
-python3 .claude/skills/re-review-delta/scripts/rereview.py OWNER/REPO NUMBER --out state/packet.json
+# PR-scoped --out: slug with slashes as dashes, e.g. packet-lancedb-lancedb-3303.json.
+python3 .claude/skills/re-review-delta/scripts/rereview.py OWNER/REPO NUMBER \
+    --out state/cache/packet-OWNER-REPO-NUMBER.json
 ```
 
-The packet has: `pr` (with `last_reviewed_sha` → `head`), `conditions` (your
-reconstructed ledger, each `status: open`), and `delta` (the commit-anchored
+**Never write a shared `state/packet.json`.** Under `assemble-rounds` many
+residents build packets in parallel; a fixed path races — one PR's packet
+clobbers another's. The per-PR `--out` above is collision-free (`state/cache/`
+already exists post-sync, so no `mkdir`).
+
+The packet has: `pr` (with `last_reviewed_sha` → `head`), `merge_state`
+(CI/mergeability fetched **live at build time** — trust it over the synced
+record, don't re-fetch CI by hand), `conditions` (your reconstructed ledger,
+each `status: open`), and `delta` (the commit-anchored
 diff `last_reviewed_sha...head` — trap #2, NOT GitHub "changes since"). The
 delta is **scoped to the PR's own changed files**: a long-lived branch that
 merged its base in would otherwise swamp the diff with the base branch's churn.

@@ -17,12 +17,20 @@ post.
 
 ```sh
 set -a; source .env; set +a
-python3 .claude/skills/fresh-review/scripts/freshreview.py OWNER/REPO NUMBER --out state/packet.json
+# PR-scoped --out: slug with slashes as dashes, e.g. packet-lance-format-lance-7416.json.
+python3 .claude/skills/fresh-review/scripts/freshreview.py OWNER/REPO NUMBER \
+    --out state/cache/packet-OWNER-REPO-NUMBER.json
 ```
+
+**Never write a shared `state/packet.json`.** Under `assemble-rounds` many
+residents build packets in parallel; a fixed path races — one PR's packet
+clobbers another's, and you review the wrong diff. The per-PR `--out` above is
+collision-free (`state/cache/` already exists post-sync, so no `mkdir`).
 
 The packet has `pr` (title / url / head / author / `author_status` / body /
 lane), the deterministic baseline (`acuity`, `effort`, `escalation`,
-`merge_state` — straight from the same derivations `pr-sync` uses), and `diff`:
+`merge_state` — fetched **live at build time**, so trust it over the synced
+record and don't re-fetch CI by hand), and `diff`:
 the PR's **net** changes vs its merge base (a long-lived branch that merged main
 in is NOT swamped by main's churn), each patch truncated at 500 lines.
 

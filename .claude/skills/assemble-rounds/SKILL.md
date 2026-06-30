@@ -68,9 +68,10 @@ the expensive part (~15–35K tokens), and it is still valid if the head SHA has
 not moved (a force-push is exactly what invalidates it, §3):
 
 ```sh
-# The head SHA is the PRRecord's `head_oid` field (state/cache/records.json).
+# --sha is optional: omit it and the head oid is resolved from records.json for
+# this repo#number (avoids a hand-copied/truncated SHA silently missing).
 python3 .claude/skills/assemble-rounds/scripts/workup.py get \
-    --repo owner/name --number 7416 --sha <head_oid>
+    --repo owner/name --number 7416
 ```
 
 - **exit 0** → it prints the cached SOAP. Reuse it; **spawn no subagent.**
@@ -78,8 +79,8 @@ python3 .claude/skills/assemble-rounds/scripts/workup.py get \
   cache its SOAP for next time:
 
 ```sh
-echo "<SOAP text>" | python3 .claude/skills/assemble-rounds/scripts/workup.py put \
-    --repo owner/name --number 7416 --sha <head_oid> --at <cycle-iso>
+cat <soapfile> | python3 .claude/skills/assemble-rounds/scripts/workup.py put \
+    --repo owner/name --number 7416 --at <cycle-iso>
 ```
 
 Route by lane (wrap per repo in try/continue — **a failed repo or PR is
@@ -92,6 +93,21 @@ reported, never aborts the round**):
 - **housekeeping** → no deep workup. It's discharge planning: surface
   *approved-not-merged* and *stale-waiting-on-author* with the two columns
   render already shows. Drafting a nudge is fine; posting it is not.
+
+**Spawning residents — two rules that keep the fan-out reliable and cheap:**
+
+- **A resident must return its own SOAP.** It may delegate the mechanical parts
+  (fetching files, reading a long diff, a dangling-reference sweep) to its own
+  child subagents on a cheaper model — that is a *win*: heavy Opus judgment on
+  the synthesis, cheap tokens on the legwork. But if it spawns a child it must
+  **block on the result and fold it in**; never end its turn parked in a wait.
+  An orphaned wait is how a workup silently stalls (it looks done, nothing was
+  cached). Do the work inline or await the child — not neither.
+- **Match the resident's model to the lane/size.** Reserve the strongest model
+  for L/XL core-library PRs. An XS / docs-only / config-bump workup (a trailing
+  comma, a version bump) does not need it — route those to a cheaper model. Most
+  of the fan-out's cost is a handful of XL PRs; don't pay top-tier rates on the
+  long tail.
 
 ## Step 5 — persist this cycle's DRAFT dispositions
 
@@ -113,11 +129,21 @@ entry per PR you formed a disposition on:
 }
 ```
 
-`domain` is the PR's primary area (its top changed crate / dir — the same bucket
-`pr-relevance` uses); it is the axis §5 tracks agreement along. `recommendation`
-is the SOAP RECOMMENDATION call. Use UTC timestamps; pass them in, don't invent
-precision you don't have. This is **ledger** — written once per cycle, never
-pruned.
+`domain` is the PR's primary area and the axis §5 tracks agreement along, so it
+must be **canonical, not free-typed** — a resident writing `lance-arrow` where
+another writes `rust/lance-arrow` fragments the agreement log so it never
+converges. Derive it deterministically from the PR's changed files (in
+`records.json`) with the same bucketing `pr-relevance` uses:
+
+```python
+import sys; sys.path.insert(0, ".claude/skills/pr-relevance/scripts")
+import affinity
+domain = affinity.primary_domain(record["files_changed"])
+```
+
+`recommendation` is the SOAP RECOMMENDATION call. Use UTC timestamps; pass them
+in, don't invent precision you don't have. This is **ledger** — written once per
+cycle, never pruned.
 
 ## Step 6 — render the unified round
 
