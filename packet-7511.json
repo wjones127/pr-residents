@@ -1,0 +1,29 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7511,
+    "title": "docs(arrow): add SAFETY comments to lance-arrow unsafe blocks",
+    "url": "https://github.com/lance-format/lance/pull/7511",
+    "head": "f2596e9b87e5b03223dd33878a4767237c78ec61",
+    "last_reviewed_sha": "cdc25d7f4a7ab21bb14af330361820b8db53abde",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "cdc25d7f4a7ab21bb14af330361820b8db53abde",
+    "head": "f2596e9b87e5b03223dd33878a4767237c78ec61",
+    "files": [
+      {
+        "path": "rust/lance-arrow/src/lib.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "patch": "@@ -5,6 +5,8 @@\n //!\n //! To improve Arrow-RS ergonomic\n \n+#![warn(clippy::undocumented_unsafe_blocks)]\n+\n // lance-arrow reinterprets value bytes as native numeric types in\n // `FloatArray::as_slice` for `bf16` (rust/lance-arrow/src/bfloat16.rs), which\n // requires the host byte order to match the on-disk byte order Lance writes.",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 0,
+    "note": null
+  }
+}

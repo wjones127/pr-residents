@@ -1,22 +1,115 @@
 [
   {
     "repo": "lance-format/lance",
-    "number": 7265,
-    "url": "https://github.com/lance-format/lance/pull/7265",
-    "title": "ci(python): typecheck arrow.py and test_arrow.py",
-    "body": "## Summary\r\n\r\nAdd `lance/arrow.py` and `tests/test_arrow.py` to the pyright include list and fix the resulting type errors. Closes #3292.\r\n\r\n- **arrow.py**: narrow union types via typed locals / `typing.cast`, annotate the internal decoder return types, switch the fallback to `pyarrow.compute as pc`, and add a single `# pyright: ignore[reportOptionalCall]` for `tf.stack` (typed as `None` by tensorflow's incomplete stubs).\r\n- **lance/lance/__init__.pyi**: fix the `bfloat16_array` stub signature from `List[str | None]` to `Sequence[float | None]` \u2014 the Rust function takes `Vec<Option<f32>>`, and `Sequence` (covariant) lets `list[float]` callers type-check.\r\n- **test_arrow.py**: add `import lance.arrow` so the `lance.arrow.*` attribute accesses resolve.\r\n\r\n\r\n## Test plan\r\n\r\n`tensorflow` is linux-only in `pyproject.toml`, so it was installed locally to mirror the CI (Linux) lint environment before checking.\r\n\r\n- `pyright` \u2192 **0 errors** (15 warnings, all pre-existing missing-stub warnings for pyarrow/pandas/etc.)\r\n- `ruff format --check` + `ruff check` \u2192 pass\r\n- `pytest python/tests/test_arrow.py` \u2192 **20 passed**",
-    "author": "YuangGao",
+    "number": 7523,
+    "url": "https://github.com/lance-format/lance/pull/7523",
+    "title": "feat(cache): support batch get-or-insert single-flight",
+    "body": "## Feature\r\n\r\n### What is the new feature?\r\n\r\nThis adds backend-level batch get-or-insert support to Lance cache primitives.\r\n\r\nThe new API allows callers to provide one batch loader for multiple missing keys while preserving backend-owned per-key single-flight semantics. This is intended as cache-layer groundwork for callers such as coalesced BTree page reads, where we need both:\r\n\r\n- coalesced loading: one loader can load multiple missing pages together\r\n- single-flight: concurrent cold overlapping requests do not duplicate loading for the same key\r\n\r\nRelated to #6759.\r\n\r\n### Why do we need this feature?\r\n\r\n`CacheBackend::get_or_insert` currently supports one key at a time. That works for single-key cache misses because the backend can deduplicate concurrent loaders for the same key.\r\n\r\nFor batch-oriented callers, neither existing pattern provides both desired properties:\r\n\r\n- calling single-key `get_or_insert` in a loop preserves single-flight, but loses batch/coalesced loading\r\n- doing manual `get` + batch load + `insert` preserves batch loading, but bypasses backend single-flight\r\n\r\nUnder concurrent cold overlapping range reads, the manual batch pattern can duplicate page IO and materialization for the same logical cache keys.\r\n\r\n### How does it work?\r\n\r\n- Adds low-level batch cache types and API:\r\n  - `CacheLoadedEntry`\r\n  - `CacheBatchEntry`\r\n  - `CacheBatchLoader`\r\n  - `CacheBackend::get_or_insert_many`\r\n- Adds typed cache APIs:\r\n  - `LanceCache::get_or_insert_with_key_batch`\r\n  - `WeakLanceCache::get_or_insert_with_key_batch`\r\n  - `CacheBatchValue<T>`\r\n- Implements true batch single-flight in `MokaCacheBackend`.\r\n- Uses one shared in-flight registry for both single-key and batch get-or-insert paths, so mixed callers still coalesce on the same key.\r\n- Ensures the batch loader only receives missing keys currently owned by this caller.\r\n- Preserves input key order in returned values.\r\n- Rejects duplicate input keys with `InvalidInput`.\r\n- Validates loader output exactly:\r\n  - missing returned key => `InvalidInput`\r\n  - extra returned key => `InvalidInput`\r\n  - duplicate returned key => `InvalidInput`\r\n- Clarifies `was_cached` semantics:\r\n  - `true` means this call did not run the loader for that key\r\n  - this includes ordinary cache hits and values produced by another in-flight owner\r\n- Keeps the default trait implementation as a compatibility fallback that calls single-key `get_or_insert` one key at a time.\r\n\r\n### Compatibility\r\n\r\nThis is an additive cache API change.\r\n\r\nExisting single-key `get_or_insert` behavior remains compatible. The default `get_or_insert_many` implementation preserves existing backend single-key semantics for custom backends, but does not preserve coalesced batch loading unless a backend overrides it.\r\n\r\nThis PR does not change BTree query logic directly. It only adds the cache primitive needed by future multi-page miss paths.\r\n\r\n## Testing\r\n\r\nLocal verification run on commit `50dd286d2`:\r\n\r\n- `cargo fmt --all -- --check`\r\n- `cargo test -p lance-core cache`\r\n  - 38 passed\r\n- `cargo test -p lance-core --doc cache`\r\n  - 3 passed, 2 ignored\r\n- `cargo test -p lance-core --bench cache_batch -- --test`\r\n  - all benchmark scenarios reported `Success`\r\n- `cargo clippy -p lance-core --all-targets -- -D warnings`\r\n- `cargo bench -p lance-core --bench cache_batch -- --noplot`\r\n\r\n## Benchmarks\r\n\r\nThese are cache primitive microbenchmarks, not end-to-end BTree or object-store benchmarks. They intentionally use small `usize` values and cheap / yielding loaders so the cache coordination overhead and duplicate-load behavior are visible.\r\n\r\nBenchmark environment:\r\n\r\n- MacBook Pro, Apple M1 Pro, 16 GiB memory\r\n- macOS 15.6, arm64\r\n- Rust 1.94.0\r\n- Command: `cargo bench -p lance-core --bench cache_batch -- --noplot`\r\n- Criterion config: sample size 10, 100 ms warmup, 250 ms measurement time\r\n\r\nEach row runs multiple concurrent tasks against the same cache. `Batch size`\r\nis the number of keys requested by each task. `Concurrent tasks` is the number\r\nof simultaneous cache callers. `Key overlap` controls how many keys are shared\r\nacross those concurrent callers.\r\n\r\n`Actual loads` counts how many entries were actually produced by loaders across\r\nall concurrent tasks. Lower load counts indicate less duplicate cold-miss work.\r\n\r\n| Batch size | Concurrent tasks | Key overlap | Loader | Actual loads: single / manual / new batch | Single-key loop | Manual get + batch load + insert | Batch get_or_insert_many | New vs manual |\r\n|---:|---:|---:|---|---:|---:|---:|---:|---:|\r\n| 64 | 8 | 50% | cheap | 288 / 512 / 288 | 0.961 ms | 0.843 ms | 1.258 ms | 1.49x |\r\n| 64 | 8 | 100% | cheap | 64 / 512 / 64 | 0.395 ms | 0.851 ms | 0.702 ms | 0.82x |\r\n| 64 | 8 | 50% | yield_once | 288 / 512 / 288 | 1.269 ms | 0.827 ms | 1.335 ms | 1.61x |\r\n| 64 | 8 | 100% | yield_once | 64 / 512 / 64 | 0.660 ms | 0.936 ms | 0.718 ms | 0.77x |\r\n| 8 | 32 | 50% | cheap | 132 / 256 / 132 | 0.523 ms | 0.532 ms | 0.625 ms | 1.18x |\r\n| 64 | 8 | 0% | cheap | n/a / 512 / 512 | n/a | 0.671 ms | 1.815 ms | 2.71x |\r\n| 64 | 8 | 0% | yield_once | n/a / 512 / 512 | n/a | 0.700 ms | 1.894 ms | 2.71x |\r\n| 512 | 32 | 0% | cheap | n/a / 16384 / 16384 | n/a | 20.414 ms | 61.045 ms | 2.99x |\r\n\r\nInterpretation:\r\n\r\n- The new batch API is not intended to be a universal faster path for cheap disjoint misses.\r\n- In no-overlap scenarios, it has expected overhead from per-key flight coordination, validation, and result ordering.\r\n- The value is semantic: overlapping cold batch requests preserve batch/coalesced loading while avoiding duplicate loads for shared keys.\r\n- In full-overlap scenarios, the new batch API avoids the duplicate work in the manual `get` + load + `insert` pattern and is faster in this microbenchmark.\r\n- The single-key loop still has strong single-flight behavior, but it cannot give a multi-key loader the full missing-key set for coalesced IO.",
+    "author": "zouhuajian",
     "author_status": "first_time",
     "files_changed": [
-      "python/pyproject.toml",
-      "python/python/lance/arrow.py",
-      "python/python/lance/lance/__init__.pyi",
-      "python/python/tests/test_arrow.py"
+      "Cargo.lock",
+      "rust/lance-core/Cargo.toml",
+      "rust/lance-core/benches/cache_batch.rs",
+      "rust/lance-core/src/cache/backend.rs",
+      "rust/lance-core/src/cache/mod.rs",
+      "rust/lance-core/src/cache/moka.rs"
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 213.1,
-    "lane": "re_review",
+    "age_in_state_hrs": 6.4,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 2744,
+      "deletions": 116,
+      "files": 6
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "large-blast-radius"
+      ],
+      "reason": "Large blast radius (XL diff)"
+    },
+    "head_oid": "50dd286d26ea4b39a35f829a1951fd6fbff33a12"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7510,
+    "url": "https://github.com/lance-format/lance/pull/7510",
+    "title": "fix: avoid stack overflow on deep logical filters",
+    "body": "This fixes OSS-1232 by preventing deeply chained `AND` / `OR` SQL filters from overflowing the Rust stack during Lance's SQL filter planning.\n\nThe immediate root cause is in Lance's side of the SQL planning path. We first cloned deeply nested sqlparser AST expressions, and then recursively converted left-deep `AND` / `OR` trees into DataFusion expressions. A user-supplied flat logical filter could therefore abort the process before Lance returned an error.\n\nThis PR is intentionally a Lance-side workaround: it moves parsed SQL expressions out of the AST instead of recursively cloning them, then flattens same-operator logical chains and rebuilds a balanced DataFusion expression tree. That protects the known vulnerable path without waiting for upstream DataFusion/sqlparser behavior to change.\n\nA more systematic follow-up should add shared expression complexity/depth limits across SQL, Substrait, DataFusion-expression inputs, merge-insert predicates, and any later optimization / planning passes, so Lance rejects pathological expressions consistently instead of fixing individual recursive call sites one by one.\n",
+    "author": "Xuanwo",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-datafusion/src/planner.rs",
+      "rust/lance-datafusion/src/sql.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 30.7,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 107,
+      "deletions": 27,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "5cb1cf7b66fa4f77420ccdc329c14091532ae22d"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7498,
+    "url": "https://github.com/lance-format/lance/pull/7498",
+    "title": "fix(arrow): preserve inner nulls in convert_to_floating_point",
+    "body": "## What\n\n`FixedSizeListArrayExt::convert_to_floating_point` (used throughout the vector-indexing path \u2014 ivf, kmeans, residual, l2/dot/cosine distance) built each integer arm's float values with `from_iter_values(... .filter_map(|x| x.map(...)))`. `filter_map` **drops null inner elements**, so the values array gets shorter while the outer `FixedSizeList` null buffer is kept at full length (`self.nulls().cloned()`). For a nullable integer vector this either panics in `FixedSizeListArray::new` (when the surviving element count is not a multiple of the list size) or silently shifts every later element into the wrong list.\n\n## Fix\n\nSwitch each arm from `from_iter_values(... filter_map(|x| x.map(...)))` to `from_iter(... map(|x| x.map(...)))`, which keeps nulls in place (same length, null positions preserved). For all-non-null data this is identical to the previous behavior, so existing callers are unaffected.\n\n## Test\n\n`test_convert_to_floating_point_preserves_inner_nulls` builds a `FixedSizeList<Int8>` with a null inner element and asserts the conversion keeps 2 lists / 4 values with the null still at position 1. It panics on `main` (3 surviving values, `3 % 2 != 0`) and passes with the fix.\n\n`cargo test -p lance-arrow`, `cargo clippy -p lance-arrow --tests -- -D warnings`, and `cargo fmt -- --check` are green.\n\n## Note\n\nThe per-type structure (Int8/16/32 \u2192 Float32, Int64/UInt8/UInt32 \u2192 Float64) is left as-is. A follow-up could collapse the whole match to `arrow_cast::cast`, but that would add an `arrow-cast` dependency to this crate, so it's intentionally kept out of this focused correctness fix.\n",
+    "author": "LuciferYang",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-arrow/src/lib.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 101.7,
+    "lane": "fresh",
     "acuity": {
       "risk": "med",
       "urgency": "high",
@@ -24,39 +117,379 @@
     },
     "effort": {
       "size_bucket": "M",
-      "additions": 41,
-      "deletions": 22,
+      "additions": 69,
+      "deletions": 12,
+      "files": 1
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "acbf7462c81588d1ad62124fb26df2518ec1293e"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7497,
+    "url": "https://github.com/lance-format/lance/pull/7497",
+    "title": "refactor(arrow): simplify normalize_slicing to a no-op",
+    "body": "## What\n\n`StructArrayExt::normalize_slicing` folds a struct array's slice offset into its children. But in arrow-rs a `StructArray` cannot carry a slice offset in the first place \u2014 both `Array::slice` and `StructArray::from(ArrayData)` push any offset into the children (slicing them) at construction. So every `StructArray` that reaches `normalize_slicing` already satisfies the early-return condition (`offset() == 0 && all columns.len() == len()`), and the `normalized_struct_array_data` branch is dead code.\n\nVerified by probe: `make_array(struct_data.into_builder().offset(1).len(2).build())` comes back as `offset 0, child len 2, validity preserved`. The crate's own `test_arrow_cpp_slicing` constructs exactly this shape and also hits the early-return.\n\n## Change\n\n- Remove the dead `normalized_struct_array_data` (~30 lines) and its `arrow_data` import.\n- Collapse `normalize_slicing` to `Ok(self.clone())`, with a `debug_assert!` that trips in tests if a future arrow-rs change ever produces a non-normalized `StructArray`.\n- Keep the public `normalize_slicing` method (no API break) and update its docs to describe the invariant honestly.\n\nBehavior is unchanged: the existing `test_normalize_slicing_no_offset`, `test_arrow_rs_slicing`, and `test_arrow_cpp_slicing` pass without modification. `cargo test -p lance-arrow`, `cargo clippy -p lance-arrow --tests -- -D warnings`, and `cargo fmt -- --check` are green.\n\n## Note for reviewers\n\nThe \"dead code\" claim rests on arrow-rs's `StructArray` representation (no struct-level offset). If you know of a path that produces a non-normalized `StructArray` (e.g. a specific FFI / C Data Interface import), the `debug_assert` will catch it in tests \u2014 and I'm happy to keep the original normalization logic instead if you'd prefer it as a defensive net.\n",
+    "author": "LuciferYang",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-arrow/src/struct.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 103.3,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 18,
+      "deletions": 47,
+      "files": 1
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "6484746a3aa76400fc9f52a3aa3d119ad8004383"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7465,
+    "url": "https://github.com/lance-format/lance/pull/7465",
+    "title": "perf(encoding): initialize only the page metadata a read will touch",
+    "body": "## Summary\n\nThe structural decoder's `StructuralFieldScheduler::initialize` eagerly initializes **every** page in a column before scheduling, even when the read only touches one page. For a column with thousands of large, non-coalescing pages (e.g. a BTree leaf scan that reads one leaf), this means paying metadata IO proportional to the page count regardless of how few rows are actually requested.\n\nThis PR makes page-metadata initialization **range-scoped and per-page**:\n\n- `DecodeBatchScheduler::try_new` and `StructuralFieldScheduler::initialize` now take an optional `requested_ranges: Option<Arc<[Range<u64>]>>` \u2014 the top-level row ranges that will later be scheduled. The structural path initializes only the pages those ranges overlap (`pages_overlapping_ranges`). `None` preserves the prior eager behavior.\n- The page-scheduler `initialize` is split into `init_ranges()` (declare the byte ranges the page needs) and `init_from_buffers(buffers, io)` (finish initialization from those bytes). The field scheduler concatenates the misses' ranges into a **single** `submit_request` so adjacent ranges coalesce into shared GETs instead of one request per page.\n- Page metadata is cached per page via `PageDataCacheKey { column_index, page_index, view_tag }` (replacing the per-column `FieldDataCacheKey`). `view_tag` is retained so a column decoded under two shapes (blob descriptor `Struct<pos,size>` vs raw `LargeBinary`) can't collide on cached state.\n- Nested schedulers forward ranges consistently with their existing `schedule_ranges`: lists/maps/structs pass the top-level ranges through unchanged; fixed-size-list scales by `dimension`. The requested ranges are always a **superset** of what `schedule_ranges`/`schedule_take` later touch, so any page a read schedules was initialized here.\n\nNet effect: a cold point/range read's metadata IO is invariant to the column's total page count.\n\n## Test plan\n\n- [x] `cargo test -p lance-encoding --lib` (393 passed) \u2014 the round-trip encoding harness now exercises **both** the eager path (full scan, `None`) and the lazy path (range reads and scattered takes pass their `requested_ranges`).\n- [x] New unit test `test_initialize_coalesces_missed_page_metadata`: an N-page cache miss issues exactly **one** `submit_request` carrying every page's metadata range (not one request per page).\n- [x] Updated FullZip page-scheduler tests to the `init_ranges` / `init_from_buffers` split.\n- [x] `cargo test -p lance-file --lib` (76 passed).\n- [x] `cargo test -p lance --lib dataset::blob::tests::test_blob_cache_key_distinguishes_views` \u2014 confirms the per-page key still distinguishes blob decoder views.\n- [x] `cargo fmt --all` and `cargo clippy -p lance-encoding -p lance-file --tests --benches -- -D warnings` clean.\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "first_time",
+    "files_changed": [
+      "rust/lance-encoding/benches/decoder.rs",
+      "rust/lance-encoding/src/decoder.rs",
+      "rust/lance-encoding/src/encodings/logical/fixed_size_list.rs",
+      "rust/lance-encoding/src/encodings/logical/list.rs",
+      "rust/lance-encoding/src/encodings/logical/map.rs",
+      "rust/lance-encoding/src/encodings/logical/primitive.rs",
+      "rust/lance-encoding/src/encodings/logical/primitive/blob.rs",
+      "rust/lance-encoding/src/encodings/logical/primitive/constant.rs",
+      "rust/lance-encoding/src/encodings/logical/struct.rs",
+      "rust/lance-encoding/src/testing.rs",
+      "rust/lance-file/src/reader.rs",
+      "rust/lance/src/dataset/blob.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 90.7,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 521,
+      "deletions": 212,
+      "files": 12
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "dd100bbb02333ca126fd037ba61be7bd749071c9"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7464,
+    "url": "https://github.com/lance-format/lance/pull/7464",
+    "title": "perf(index): coalesce concurrent scalar-index opens (single-flight)",
+    "body": "## Summary\n\n`open_scalar_index` checks the cache, and on a miss **every** caller independently re-reads `page_lookup.lance` and rebuilds the lookup. Under concurrent cold opens of the same index (common when many queries hit a freshly opened dataset) this is an N\u00d7 I/O and transient-memory spike \u2014 each open loads the full index in parallel.\n\nThis PR routes the open through a new single-flight cache primitive so concurrent cold opens share one load:\n\n- **`LanceCache::get_or_insert_unsized_with_key`** (lance-core) \u2014 the `UnsizedCacheKey` / `Arc<dyn Trait>` analogue of the existing `get_or_insert_with_key`. The cache backend dedups concurrent loads (moka `optionally_get_with`), so the loader runs at most once per key and all racing callers share the resulting `Arc`.\n- **`open_scalar_index`** (lance) now wraps its L2 cache lookup \u2192 compatibility check \u2192 load \u2192 `put_in_cache` inside that loader. A warm open returns the live index with no I/O.\n\nBehavior is otherwise unchanged; this is purely a coalescing/caching improvement on the open path.\n\n## Test plan\n\n- [x] `test_get_or_insert_unsized_dedup` (lance-core): 5 racing callers for one key \u2192 loader runs exactly once.\n- [x] `test_open_scalar_index_coalesces_concurrent_cold_opens` (lance): 8 concurrent cold opens of a reopened dataset's BTree index \u2192 exactly one `record_index_load`, all opens return a usable index.\n- [x] Full `index::scalar::tests` module passes (open-path regression).\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-core -p lance --tests` clean\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "first_time",
+    "files_changed": [
+      "rust/lance-core/src/cache/mod.rs",
+      "rust/lance/src/index/scalar.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 91.0,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 184,
+      "deletions": 21,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "7fef56a13b804187cbd2e6f1603392d4ac9287db"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7463,
+    "url": "https://github.com/lance-format/lance/pull/7463",
+    "title": "feat(index): read a column's min/max from ZoneMap without a scan",
+    "body": "## Summary\n\nA ZoneMap scalar index already stores per-zone `min`/`max` summaries. This PR folds those summaries into a single global `(min, max)` for a column **without scanning any data**, and exposes it on the dataset:\n\n- `ZoneMapIndex::value_range()` / `ZoneMapIndex::value_range_over(segments)` (lance-index) \u2014 fold one or more ZoneMap segments.\n- `DatasetIndexExt::zonemap_value_range(column)` (lance) \u2014 the dataset-level accessor.\n\nThis is useful for cheap min/max stats and as a planning input (e.g. range pruning) without paying for a scan.\n\n## Soundness\n\nThe folded range is designed to be **safe to prune with** \u2014 it never drops a matching row:\n\n- **NaN bail.** `ScalarValue`'s total order ranks NaN above every finite value, so a NaN-bearing zone records `max = NaN`, hiding its true finite max. Folding only the finite maxes would yield a *subset* that could prune live rows, so any NaN zone makes the result `None`.\n- **Joint fragment coverage.** The dataset accessor returns `None` unless the column's ZoneMap segments *jointly* cover every live fragment. Fragments appended after the index was built (or a segment set that doesn't span the table) leave a live fragment uncovered \u2192 `None`. Extra dead fragments in the union are fine.\n- The disjoint segments of a multi-segment index are folded together.\n- The result is a **superset** of live values, conservative under deletion vectors (a deleted extreme still bounds its zone): not guaranteed tight.\n\nReuses the existing `scalar_is_nan` helper rather than duplicating NaN logic.\n\n## Test plan\n\nlance-index (`value_range` / `value_range_over`):\n- [x] spans multiple fragments/zones\n- [x] all-null \u2192 `None`\n- [x] NaN max \u2192 `None`\n- [x] folds across segments; NaN in any segment \u2192 `None`; skips all-null segment\n\nlance (`zonemap_value_range`):\n- [x] basic range; column without a ZoneMap \u2192 `None`\n- [x] `None` when an appended fragment isn't covered by the index\n- [x] folds multiple committed segments of one logical index\n\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-index -p lance --tests` clean\n\n## Follow-up\n\nPython bindings (`Dataset`-level accessor) can follow in a separate PR to keep this one focused on the Rust core + dataset API.\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "first_time",
+    "files_changed": [
+      "rust/lance-index/src/scalar.rs",
+      "rust/lance-index/src/scalar/zonemap.rs",
+      "rust/lance/src/index.rs",
+      "rust/lance/src/index/api.rs",
+      "rust/lance/src/index/scalar.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 91.1,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 357,
+      "deletions": 2,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 6265,
+    "url": "https://github.com/lance-format/lance/pull/6265",
+    "title": "feat: support hamming clustering",
+    "body": "Add support for SIMD accelerated pairwise hamming distance computation, and the ability to compute a cluster of binary vectors that are within a given hamming distance threshold, these are considered similar or potentially duplicated vectors of the original representation. \r\n\r\nAlso expose the feature in python for easy consumption.",
+    "author": "jackye1995",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "python/Cargo.lock",
+      "python/python/lance/lance/__init__.pyi",
+      "python/python/lance/vector.py",
+      "python/src/dataset.rs",
+      "rust/lance-linalg/Cargo.toml",
+      "rust/lance-linalg/benches/hamming.rs",
+      "rust/lance-linalg/src/distance.rs",
+      "rust/lance-linalg/src/distance/hamming.rs",
+      "rust/lance/Cargo.toml",
+      "rust/lance/benches/hamming.rs",
+      "rust/lance/src/index/vector.rs",
+      "rust/lance/src/index/vector/hamming.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 2229.8,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 2848,
+      "deletions": 58,
+      "files": 13
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "dca341033e85eb1c95d378cf53473e0fd6a00368"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7511,
+    "url": "https://github.com/lance-format/lance/pull/7511",
+    "title": "docs(arrow): add SAFETY comments to lance-arrow unsafe blocks",
+    "body": "## Why\r\n\r\nProject rule requires every `unsafe` block to carry a `// SAFETY:` comment. `lance-arrow` had five blocks without one.\r\n\r\n## What\r\n\r\nAnnotate 5 `unsafe` blocks with the invariant chain that makes each sound:\r\n\r\n| File:line | Operation |\r\n|---|---|\r\n| `deepcopy.rs:23` | `NullBuffer::new_unchecked` |\r\n| `deepcopy.rs:50` | `ArrayDataBuilder::build_unchecked` |\r\n| `bfloat16.rs:152` | `build_unchecked` (FromIterator) |\r\n| `bfloat16.rs:182` | `build_unchecked` (From<Vec<bf16>>) |\r\n| `bfloat16.rs:337` | `slice::from_raw_parts` in `as_slice` |\r\n\r\nPlus minor hardening so the soundness arguments are self-contained:\r\n\r\n- `lib.rs`: crate-root `compile_error!` gating little-endian (required by `as_slice`'s byte reinterpretation).\r\n- `bfloat16.rs`: `debug_assert` on the 2-byte alignment precondition of `as_slice` \u2014 arrow-rs only guarantees 1-byte alignment for `FixedSizeBinary(n)`, so externally-built arrays (FFI/IPC) could violate it.\r\n- `floats.rs` + `bfloat16.rs`: `# Panics` and `# Preconditions` rustdoc on the trait + impl so the contract is visible at call sites.\r\n- `lib.rs`: enable `#![warn(clippy::undocumented_unsafe_blocks)]` so future unsafe blocks must come with a SAFETY comment, making the project's Rust security rule mechanically enforced (per @wjones127's review).\r\n\r\n## Test plan\r\n\r\n- [x] `cargo fmt --all -- --check`\r\n- [x] `cargo clippy -p lance-arrow --tests --benches --all-targets -- -D warnings`\r\n- [x] `RUSTDOCFLAGS=\"-D warnings\" cargo doc -p lance-arrow --no-deps`\r\n- [x] `cargo test -p lance-arrow` \u2014 91 unit + 6 doc tests",
+    "author": "LuciferYang",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-arrow/src/bfloat16.rs",
+      "rust/lance-arrow/src/deepcopy.rs",
+      "rust/lance-arrow/src/floats.rs",
+      "rust/lance-arrow/src/lib.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 7.3,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 108,
+      "deletions": 0,
       "files": 4
     },
     "relevance": {
       "score": null,
       "requested": false
     },
-    "last_reviewed_sha": "0d8d5c132b0ce5f74bf771d87b582c8e759dc94d",
+    "last_reviewed_sha": "cdc25d7f4a7ab21bb14af330361820b8db53abde",
     "delta": {
       "commits": [
-        "fdb65ccce92457695231f6eb177d148b9d2b99e1"
+        "f2596e9b87e5b03223dd33878a4767237c78ec61"
       ],
       "files_touched": [
-        "python/pyproject.toml",
-        "python/python/lance/arrow.py",
-        "python/python/lance/lance/__init__.pyi",
-        "python/python/tests/test_arrow.py"
+        "rust/lance-arrow/src/bfloat16.rs",
+        "rust/lance-arrow/src/deepcopy.rs",
+        "rust/lance-arrow/src/floats.rs",
+        "rust/lance-arrow/src/lib.rs"
       ]
     },
     "conditions": [],
     "merge_state": {
-      "ci": "green",
-      "mergeable": null
+      "ci": "red",
+      "mergeable": true
     },
     "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "public-api"
-      ],
-      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
     },
-    "head_oid": "fdb65ccce92457695231f6eb177d148b9d2b99e1"
+    "head_oid": "f2596e9b87e5b03223dd33878a4767237c78ec61"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7500,
+    "url": "https://github.com/lance-format/lance/pull/7500",
+    "title": "perf(arrow): avoid per-element allocation in BFloat16Array::from",
+    "body": "## What\n\n`impl From<Vec<bf16>> for BFloat16Array` built its byte buffer with:\n\n```rust\nlet bytes = data.iter().flat_map(|val| {\n    let bytes = val.to_bits().to_le_bytes();  // [u8; 2] on the stack\n    bytes.to_vec()                            // heap allocation per element\n});\nbuffer.extend(bytes);\n```\n\n`to_vec()` heap-allocates a 2-byte `Vec` for **every** element. On the vector-ingestion path (`coerce_float_vector` \u2192 `BFloat16Array::from`) that is ~2M tiny allocations for a 4096\u00d7512 bf16 batch.\n\n## Fix\n\nWrite each value's little-endian bytes straight into the pre-sized `MutableBuffer`:\n\n```rust\nfor val in &data {\n    buffer.extend_from_slice(&val.to_bits().to_le_bytes());\n}\n```\n\nNo per-element allocation; the bytes produced are identical.\n\n## Test\n\nBehavior-preserving \u2014 the existing `test_basics` already asserts `BFloat16Array::from(values) == BFloat16Array::from_iter_values(values)` and checks the decoded values, and `test_nulls` / `test_coerce_float_vector_bfloat16` cover the surrounding paths. All pass. `cargo clippy -p lance-arrow --tests -- -D warnings` and `cargo fmt -- --check` are green.\n",
+    "author": "LuciferYang",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lance-arrow/src/bfloat16.rs"
+    ],
+    "blocked_on": "merge",
+    "is_draft": false,
+    "age_in_state_hrs": 23.7,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XS",
+      "additions": 5,
+      "deletions": 5,
+      "files": 1
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "da915f31cc076ba2cd53f7fae191390f1258000c",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "da915f31cc076ba2cd53f7fae191390f1258000c"
   },
   {
     "repo": "lance-format/lance",
@@ -377,7 +810,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 222.7,
+    "age_in_state_hrs": 332.9,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -547,7 +980,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 2152.1,
+    "age_in_state_hrs": 2262.4,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -861,7 +1294,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 4566.7,
+    "age_in_state_hrs": 4677.0,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -891,6 +1324,118 @@
       "reason": ""
     },
     "head_oid": "09ba418f8065226c3c7abebfcff2887fef9958c7"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3489,
+    "url": "https://github.com/lancedb/lancedb/pull/3489",
+    "title": "feat(query): add use_lsm_read to query data via the MemWAL LSM scanner",
+    "body": "## What\n\nWhen a table has an LSM write spec installed (`set_lsm_write_spec`), `merge_insert` upserts are routed through Lance's MemWAL `ShardWriter` and live in the active/frozen in-memory memtables and flushed (L0) generations until an external compaction merges them into the base table. Until then a normal scan returns **stale** data \u2014 it never sees the newly written rows.\n\nThis adds an opt-in `use_lsm_read` query flag that routes reads through Lance's `LsmScanner` / LSM planners so they also return this in-flight data, deduplicated by primary key (newest generation wins).\n\n## How\n\n- New `QueryRequest.use_lsm_read` (default `false`) + `QueryBase::use_lsm_read()` builder.\n- New `table/query/lsm.rs`: assembles per-shard snapshots from on-disk shard manifests (via the dataset's own object store, so `memory://` and custom-registered stores work), overriding the active shard with the cached `ShardWriter`'s authoritative in-memory manifest and active+frozen memtables.\n- Dispatches by query shape: plain scan (filter/projection/limit), full-text search, and vector (ANN) search. Shapes the LSM path cannot honor (hybrid, multi-vector, `with_row_id`, rerank, `order_by`, dynamic projection, Substrait) and remote tables return a clear `NotSupported` error; `use_lsm_read` without a spec returns `InvalidInput`.\n- Off by default, so behavior is unchanged unless opted in.\n\nExposed across the Rust core and the Python (`use_lsm_read()`) and TypeScript (`useLsmRead()`) bindings.\n\nA follow-up could auto-resolve the FTS column from a single FTS index, support binary-vector LSM search, and add per-query snapshot caching.",
+    "author": "touch-of-grey",
+    "author_status": "regular",
+    "files_changed": [
+      "docs/src/js/classes/Query.md",
+      "docs/src/js/classes/VectorQuery.md",
+      "nodejs/__test__/table.test.ts",
+      "nodejs/lancedb/query.ts",
+      "nodejs/src/query.rs",
+      "python/python/lancedb/_lancedb.pyi",
+      "python/python/lancedb/query.py",
+      "python/python/lancedb/table.py",
+      "python/python/tests/test_merge_insert_lsm.py",
+      "python/src/query.rs",
+      "rust/lancedb/src/query.rs",
+      "rust/lancedb/src/remote/table.rs",
+      "rust/lancedb/src/table/merge.rs",
+      "rust/lancedb/src/table/merge/lsm.rs",
+      "rust/lancedb/src/table/query.rs",
+      "rust/lancedb/src/table/query/lsm.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 657.0,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 1135,
+      "deletions": 0,
+      "files": 16
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "22b753db364ef0e8b81aa250a1de31781afa7e73"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 2921,
+    "url": "https://github.com/lancedb/lancedb/pull/2921",
+    "title": "feat: support add_columns with embedding function",
+    "body": "Closes: https://github.com/lancedb/lancedb/issues/2920\r\n\r\nWrap python embedding function as BatchUDF",
+    "author": "zhangyue19921010",
+    "author_status": "first_time",
+    "files_changed": [
+      "python/python/lancedb/_lancedb.pyi",
+      "python/python/lancedb/table.py",
+      "python/python/tests/test_table.py",
+      "python/src/table.rs",
+      "rust/lancedb/src/table.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 3825.2,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 259,
+      "deletions": 5,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "head_oid": "791e00315113c513c622e2fe0d0abbad51c0e283"
   },
   {
     "repo": "lancedb/lancedb",
@@ -946,6 +1491,169 @@
       "reason": ""
     },
     "head_oid": "e7d6a85754fa6c7c3f98d2befeaa9c8bb07f0241"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3597,
+    "url": "https://github.com/lancedb/lancedb/pull/3597",
+    "title": "feat(remote): monotonic reads via x-lancedb-min-read-version watermark",
+    "body": "## Summary\n\nAdds per-session monotonic reads for remote (LanceDB Cloud/Enterprise) tables, preventing successive reads on a handle from moving *backward* in dataset version when a load balancer routes them to query nodes with differently-cached views.\n\nEach `RemoteTable` handle tracks the highest dataset version it has observed in a read response \u2014 surfaced by the server via a new `x-lancedb-version` response header \u2014 and sends it back as `x-lancedb-min-read-version` on subsequent reads (`count_rows`, `query`). A query node whose cache is behind that version refreshes before serving; a node already at/beyond it serves from cache at no extra cost.\n\nThe watermark is sourced only from reads (always committed dataset versions), so unlike the retired `x-lancedb-min-version` it is unaffected by WAL writes returning WAL entry ids. It is reset on `checkout_latest()`. Both headers are optional and ignored by older peers.\n\nServer-side enforcement lives in LanceDB Enterprise. Targets the `codex/update-lance-9-0-0-beta-8` integration branch to match the Enterprise submodule pin.",
+    "author": "jackye1995",
+    "author_status": "core",
+    "files_changed": [
+      "rust/lancedb/src/remote/table.rs"
+    ],
+    "blocked_on": "merge",
+    "is_draft": false,
+    "age_in_state_hrs": 14.2,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 149,
+      "deletions": 3,
+      "files": 1
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "ed6b166fc484f981fdfaa8953e64e40fcd8b1e3a",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "ed6b166fc484f981fdfaa8953e64e40fcd8b1e3a"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3584,
+    "url": "https://github.com/lancedb/lancedb/pull/3584",
+    "title": "feat: add polars dataframe integration",
+    "body": "This PR is part cleanup, part feature, part example.\r\n\r\nIt removes `IntoArrow` and `IntoArrowStream`.  There was only one redundant call site between the two.  Once we moved everything to `Scannable` these traits no longer serve any purpose.\r\n\r\nIt adds a `Scannable` impl for a polars DataFrame.  We used to have this at one point for `IntoArrow` so this is more like a regression fix than anything.\r\n\r\nIt adds an example (and unit test) which ensures we can ingest from a Polars DataFrame and export to one.  LazyFrame support would be a follow-up (though a pretty straightforward one) but we've never had proper LazyFrame support before.",
+    "author": "westonpace",
+    "author_status": "core",
+    "files_changed": [
+      "nodejs/src/merge.rs",
+      "rust/lancedb/Cargo.toml",
+      "rust/lancedb/examples/polars.rs",
+      "rust/lancedb/src/arrow.rs",
+      "rust/lancedb/src/data/scannable.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 0.3,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 150,
+      "deletions": 53,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "06259a3e47233288edd8358f6b5de64c12a1ec04",
+    "delta": {
+      "commits": [
+        "64e1d8e6dee153d5187d8ec99501ed0daa4a2b7d"
+      ],
+      "files_touched": [
+        "nodejs/src/merge.rs",
+        "rust/lancedb/Cargo.toml",
+        "rust/lancedb/examples/polars.rs",
+        "rust/lancedb/src/arrow.rs",
+        "rust/lancedb/src/data/scannable.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "pending",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "64e1d8e6dee153d5187d8ec99501ed0daa4a2b7d"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3578,
+    "url": "https://github.com/lancedb/lancedb/pull/3578",
+    "title": "feat(python): blob v2 fetch API",
+    "body": "Python fetch for blob v2 on local tables. Rust side is already in main. This wires up `fetch_blobs`, `fetch_blob_files`, query behavior, and v2 `to_pandas(bytes)`.\r\n\r\nCloud fetch is stubbed will be addressed after, and v1 blob behavior is unchanged.\r\n\r\n### UX\r\n\r\n```python\r\ntable = db.create_table(\"docs\", schema=pa.schema([\r\n    pa.field(\"id\", pa.int64()),\r\n    lancedb.blob(\"pdf\"),\r\n]))\r\ntable.add([{\"id\": 1, \"pdf\": b\"%PDF...\"}])\r\n\r\n# id, pdf. descriptors. no _rowid. ( still need to think bout this)\r\nhits = table.search().select([\"id\", \"pdf\"]).to_arrow()\r\n\r\n# works on hits as-is\r\nblobs = table.fetch_blobs(\"pdf\", hits)\r\n```\r\n\r\n**Want _rowid visible? `.with_row_id(True)`**\r\n\r\n```python\r\n# bytes in the blob column, no _rowid\r\ndf = table.to_pandas(blob_mode=\"bytes\")\r\n```\r\nv1 legacy blobs (`lance-encoding:blob`) work the same as before. fetch on v1 gives you the migration error.\r\n\r\n### The row id logic\r\n\r\nFetch needs row ids. We turn them on for v2 blob queries, then drop `_rowid` from the result unless you asked for it.\r\n\r\nThe ids sit in arrow schema metadata on the in-memory table so `fetch_blobs(hits) `still works. You won't see them in the column list.\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+    "author": "geruh",
+    "author_status": "regular",
+    "files_changed": [
+      "python/python/lancedb/__init__.py",
+      "python/python/lancedb/_blob.py",
+      "python/python/lancedb/_lancedb.pyi",
+      "python/python/lancedb/query.py",
+      "python/python/lancedb/remote/table.py",
+      "python/python/lancedb/schema.py",
+      "python/python/lancedb/table.py",
+      "python/python/lancedb/types.py",
+      "python/python/tests/test_blob.py",
+      "python/python/tests/test_query.py",
+      "python/python/tests/test_table.py",
+      "python/src/lib.rs",
+      "python/src/runtime.rs",
+      "python/src/table.rs"
+    ],
+    "blocked_on": "author",
+    "is_draft": false,
+    "age_in_state_hrs": 135.6,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "med",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 1353,
+      "deletions": 114,
+      "files": 14
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "a846e44e8e80bf8e12b667ca98eadc0f8a92a17e",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "public-api",
+        "large-blast-radius"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "head_oid": "a846e44e8e80bf8e12b667ca98eadc0f8a92a17e"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1050,51 +1758,6 @@
       "reason": ""
     },
     "head_oid": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3514,
-    "url": "https://github.com/lancedb/lancedb/pull/3514",
-    "title": "fix(python): reject repeated where clauses",
-    "body": "## Summary\n- reject a second `where()` call for sync and async Python query builders so filters are not silently replaced\n- add regression coverage confirming the first filter remains in the serialized query object\n\nFixes #2649\n\n## Tests\n- `python3.13 -m py_compile python/python/lancedb/query.py python/python/tests/test_query.py`\n- `/Users/neo/.cursor/extensions/charliermarsh.ruff-2026.48.0-darwin-arm64/bundled/libs/bin/ruff check python/python/lancedb/query.py python/python/tests/test_query.py`\n- `git diff --check`\n\nNot run locally: targeted pytest. `uv sync --python 3.13 --extra tests --extra dev -v` stalled during local dependency/native package setup after resolving packages, and direct pytest cannot import the uninstalled local package metadata.",
-    "author": "liuzemei",
-    "author_status": "first_time",
-    "files_changed": [
-      "python/python/lancedb/query.py",
-      "python/python/tests/test_query.py"
-    ],
-    "blocked_on": "author",
-    "is_draft": false,
-    "age_in_state_hrs": 386.0,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "med",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "S",
-      "additions": 43,
-      "deletions": 0,
-      "files": 2
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "785622590013b5ccdf54380fca0d15381fcb4373",
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "785622590013b5ccdf54380fca0d15381fcb4373"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1244,51 +1907,6 @@
       "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
     },
     "head_oid": "badb3679cd572d9144c9d93cdac4728639444d07"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3253,
-    "url": "https://github.com/lancedb/lancedb/pull/3253",
-    "title": "feat(ci): add custom PyPI support for manual wheel uploads",
-    "body": "## Summary\r\n\r\n- Add `workflow_dispatch` trigger to `pypi-publish.yml` enabling manual workflow runs\r\n- Add inputs for specifying git ref, debug mode, and custom PyPI repository credentials\r\n- Update `upload_wheel` action to support custom PyPI uploads via twine\r\n- Upload wheel artifacts when triggered via workflow_dispatch for easier debugging\r\n\r\nThis enables manually triggering wheel builds and uploading them to a custom PyPI repository (e.g., Azure Artifacts) instead of the default PyPI/Fury.\r\n\r\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
-    "author": "jackye1995",
-    "author_status": "core",
-    "files_changed": [
-      ".github/workflows/pypi-publish.yml",
-      ".github/workflows/upload_wheel/action.yml"
-    ],
-    "blocked_on": "merge",
-    "is_draft": false,
-    "age_in_state_hrs": 1894.4,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "low",
-      "urgency": "high",
-      "rationale": "docs/tests/config/deps only"
-    },
-    "effort": {
-      "size_bucket": "M",
-      "additions": 91,
-      "deletions": 7,
-      "files": 2
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "8f4d62d6306fed8de8a706038382c2cf80fdc3f9",
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "red",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "8f4d62d6306fed8de8a706038382c2cf80fdc3f9"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1506,63 +2124,6 @@
   },
   {
     "repo": "lancedb/lancedb",
-    "number": 2960,
-    "url": "https://github.com/lancedb/lancedb/pull/2960",
-    "title": "chore!: drop pydantic 1 support",
-    "body": "drop pydantic version 1 support ",
-    "author": "eddyxu",
-    "author_status": "core",
-    "files_changed": [
-      ".github/workflows/python.yml",
-      "python/pyproject.toml",
-      "python/python/lancedb/pydantic.py"
-    ],
-    "blocked_on": "author",
-    "is_draft": true,
-    "age_in_state_hrs": 3528.7,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "med",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "M",
-      "additions": 21,
-      "deletions": 65,
-      "files": 3
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "4800f31479b6e69e72a4c1ff5a4a32066e2cd439",
-    "delta": {
-      "commits": [
-        "b57faf98352ac1ab2ea1c1e11da73c559bb2d35a"
-      ],
-      "files_touched": [
-        ".github/workflows/python.yml",
-        "python/pyproject.toml",
-        "python/python/lancedb/pydantic.py"
-      ]
-    },
-    "conditions": [],
-    "merge_state": {
-      "ci": "red",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "breaking-change"
-      ],
-      "reason": "Labeled breaking change"
-    },
-    "head_oid": "b57faf98352ac1ab2ea1c1e11da73c559bb2d35a"
-  },
-  {
-    "repo": "lancedb/lancedb",
     "number": 2915,
     "url": "https://github.com/lancedb/lancedb/pull/2915",
     "title": "chore: migrate Gemini embeddings to use `google-genai` SDK",
@@ -1671,55 +2232,6 @@
   },
   {
     "repo": "lancedb/lancedb",
-    "number": 2348,
-    "url": "https://github.com/lancedb/lancedb/pull/2348",
-    "title": "feat(node): added Rate Limiting and Retry Support to Embeddings API in Node.js SDK",
-    "body": "This PR introduces robust rate limiting and retry mechanisms to the Embeddings API in the Node.js SDK, closely following the pattern established in [PR #614] for Python.\r\nKey Enhancements:\r\nCore Utilities in utils.ts:\r\n--> retryWithExponentialBackoff: A reusable, configurable function to handle transient failures gracefully.\r\n-->RateLimiter class: Enforces a maximum number of API requests per minute to respect API usage quotas.\r\n-->Enhancements to EmbeddingFunction Class:\r\n-->rateLimit() and retry() methods allow easy configuration of limits and retry strategies.\r\n-->computeSourceEmbeddingsWithRetry() and computeQueryEmbeddingsWithRetry() support fault-tolerant embedding generation.\r\n\r\n OpenAI Embeddings Integration:\r\n-->Added maxRetries and maxRequestsPerMinute options.\r\n-->Applies default rate limiting and retry configuration seamlessly.\r\n\r\nExamples and Documentation:\r\n-->Created rate_limiting.ts as a detailed usage example.\r\n-->Added comprehensive documentation in rate_limiting.md.\r\n\r\nThese additions allow developers to handle rate-limited APIs more gracefully, without reinventing retry or throttling logic. The retry mechanism with exponential backoff and configurable jitter improves robustness in production environments where API limits and network instability are common.\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n- **New Features**\n  - Added built-in support for automatic rate limiting and exponential backoff retry mechanisms when using embedding functions.\n  - Embedding functions can now be configured to handle API rate limits and retry failed requests automatically.\n  - New options allow customization of maximum requests per minute and maximum retry attempts for embedding computations.\n\n- **Documentation**\n  - Added comprehensive documentation and usage examples for configuring and using rate limiting and retry features in embedding functions.\n  - Provided a new example script demonstrating practical usage with OpenAI embeddings and LanceDB.\n\n- **Improvements**\n  - Enhanced embedding function classes to support chainable configuration of rate limiting and retry logic.\n  - Utility functions for retry logic and rate limiting are now available for advanced use cases.\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
-    "author": "Keerthi421",
-    "author_status": "first_time",
-    "files_changed": [
-      "nodejs/docs/rate_limiting.md",
-      "nodejs/examples/rate_limiting.ts",
-      "nodejs/lancedb/embedding/embedding_function.ts",
-      "nodejs/lancedb/embedding/index.ts",
-      "nodejs/lancedb/embedding/openai.ts",
-      "nodejs/lancedb/embedding/utils.ts"
-    ],
-    "blocked_on": "author",
-    "is_draft": false,
-    "age_in_state_hrs": 10227.5,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "med",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "L",
-      "additions": 374,
-      "deletions": 3,
-      "files": 6
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "edf0c82c0ba58064a327dd829e131954640ca39a",
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "pending",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "edf0c82c0ba58064a327dd829e131954640ca39a"
-  },
-  {
-    "repo": "lancedb/lancedb",
     "number": 2345,
     "url": "https://github.com/lancedb/lancedb/pull/2345",
     "title": "chore: bump Python 3.12 to 3.13 in actions",
@@ -1780,100 +2292,5 @@
       "reason": ""
     },
     "head_oid": "aac34e665e13f40e30286c9ddbbb264fce6f1108"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 1969,
-    "url": "https://github.com/lancedb/lancedb/pull/1969",
-    "title": "chore: python v0.9.0b4 patch",
-    "body": "***Don't merge***\r\nTemporary patch for v0.9.0b4 python client.\r\n\r\nBackport query builder and fast_search features onto 0.9.0b3 remote client",
-    "author": "rpgreen",
-    "author_status": "core",
-    "files_changed": [
-      ".bumpversion.toml",
-      ".github/workflows/build_windows_wheel/action.yml",
-      "Cargo.toml",
-      "node/package.json",
-      "nodejs/npm/darwin-arm64/package.json",
-      "nodejs/npm/darwin-x64/package.json",
-      "nodejs/npm/linux-arm64-gnu/package.json",
-      "nodejs/npm/linux-x64-gnu/package.json",
-      "nodejs/npm/win32-x64-msvc/package.json",
-      "nodejs/package.json",
-      "python/.bumpversion.toml",
-      "python/Cargo.toml",
-      "python/pyproject.toml",
-      "python/python/lancedb/__init__.py",
-      "python/python/lancedb/query.py",
-      "python/python/lancedb/remote/client.py",
-      "python/python/lancedb/remote/db.py",
-      "python/python/lancedb/remote/table.py",
-      "python/python/tests/test_remote_db.py",
-      "python/python/tests/test_table.py",
-      "rust/ffi/node/Cargo.toml",
-      "rust/lancedb/Cargo.toml"
-    ],
-    "blocked_on": "author",
-    "is_draft": true,
-    "age_in_state_hrs": 13256.3,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "med",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "L",
-      "additions": 294,
-      "deletions": 63,
-      "files": 22
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "7a3ef683065f2b57437288b442ef49a69f768746",
-    "delta": {
-      "commits": [
-        "1884fe8a3e3ec459f4ddd3d4e1d0ee05c32efad7"
-      ],
-      "files_touched": [
-        ".bumpversion.toml",
-        ".github/workflows/build_windows_wheel/action.yml",
-        "Cargo.toml",
-        "node/package.json",
-        "nodejs/npm/darwin-arm64/package.json",
-        "nodejs/npm/darwin-x64/package.json",
-        "nodejs/npm/linux-arm64-gnu/package.json",
-        "nodejs/npm/linux-x64-gnu/package.json",
-        "nodejs/npm/win32-x64-msvc/package.json",
-        "nodejs/package.json",
-        "python/.bumpversion.toml",
-        "python/Cargo.toml",
-        "python/pyproject.toml",
-        "python/python/lancedb/__init__.py",
-        "python/python/lancedb/query.py",
-        "python/python/lancedb/remote/client.py",
-        "python/python/lancedb/remote/db.py",
-        "python/python/lancedb/remote/table.py",
-        "python/python/tests/test_remote_db.py",
-        "python/python/tests/test_table.py",
-        "rust/ffi/node/Cargo.toml",
-        "rust/lancedb/Cargo.toml"
-      ]
-    },
-    "conditions": [],
-    "merge_state": {
-      "ci": "pending",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "public-api"
-      ],
-      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
-    },
-    "head_oid": "1884fe8a3e3ec459f4ddd3d4e1d0ee05c32efad7"
   }
 ]

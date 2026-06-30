@@ -1,0 +1,77 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 2345,
+    "title": "chore: bump Python 3.12 to 3.13 in actions",
+    "url": "https://github.com/lancedb/lancedb/pull/2345",
+    "head": "aac34e665e13f40e30286c9ddbbb264fce6f1108",
+    "last_reviewed_sha": "7ea333f8b4a9e7068b31318f577c86142c71a215",
+    "viewer": "wjones127"
+  },
+  "conditions": [],
+  "delta": {
+    "base": "7ea333f8b4a9e7068b31318f577c86142c71a215",
+    "head": "aac34e665e13f40e30286c9ddbbb264fce6f1108",
+    "files": [
+      {
+        "path": ".github/workflows/build_linux_wheel/action.yml",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 3,
+        "patch": "@@ -2,9 +2,6 @@\n name: build-linux-wheel\n description: \"Build a manylinux wheel for lance\"\n inputs:\n-  python-minor-version:\n-    description: \"8, 9, 10, 11, 12\"\n-    required: true\n   args:\n     description: \"--release\"\n     required: false",
+        "patch_truncated": false
+      },
+      {
+        "path": ".github/workflows/build_mac_wheel/action.yml",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 3,
+        "patch": "@@ -2,9 +2,6 @@\n name: build_wheel\n description: \"Build a lance wheel\"\n inputs:\n-  python-minor-version:\n-    description: \"8, 9, 10, 11\"\n-    required: true\n   args:\n     description: \"--release\"\n     required: false",
+        "patch_truncated": false
+      },
+      {
+        "path": ".github/workflows/build_windows_wheel/action.yml",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 3,
+        "patch": "@@ -2,9 +2,6 @@\n name: build_wheel\n description: \"Build a lance wheel\"\n inputs:\n-  python-minor-version:\n-    description: \"8, 9, 10, 11\"\n-    required: true\n   args:\n     description: \"--release\"\n     required: false",
+        "patch_truncated": false
+      },
+      {
+        "path": ".github/workflows/pypi-publish.yml",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 5,
+        "patch": "@@ -16,7 +16,7 @@ jobs:\n     timeout-minutes: 60\n     strategy:\n       matrix:\n-        config:\n+        config: # https://github.com/PyO3/maturin-action#manylinux-docker-container\n           - platform: x86_64\n             manylinux: \"2_17\"\n             extra_args: \"\"\n@@ -43,10 +43,9 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v4\n         with:\n-          python-version: 3.8\n+          python-version: 3.9\n       - uses: ./.github/workflows/build_linux_wheel\n         with:\n-          python-minor-version: 8\n           args: \"--release --strip ${{ matrix.config.extra_args }}\"\n           arm-build: ${{ matrix.config.platform == 'aarch64' }}\n           manylinux: ${{ matrix.config.manylinux }}\n@@ -75,7 +74,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v4\n         with:\n-          python-version: 3.12\n+          python-version: 3.13\n       - uses: ./.github/workflows/build_mac_wheel\n         with:\n           python-minor-version: 8\n@@ -96,7 +95,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v4\n         with:\n-          python-version: 3.12\n+          python-version: 3.13\n       - uses: ./.github/workflows/build_windows_wheel\n         with:\n           python-minor-version: 8",
+        "patch_truncated": false
+      },
+      {
+        "path": ".github/workflows/python.yml",
+        "status": "modified",
+        "additions": 12,
+        "deletions": 10,
+        "patch": "@@ -35,7 +35,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v5\n         with:\n-          python-version: \"3.12\"\n+          python-version: \"3.13\"\n       - name: Install ruff\n         run: |\n           pip install ruff==0.9.9\n@@ -60,7 +60,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v5\n         with:\n-          python-version: \"3.12\"\n+          python-version: \"3.13\"\n       - name: Install protobuf compiler\n         run: |\n           sudo apt update\n@@ -69,7 +69,8 @@ jobs:\n       - name: Install dependencies\n         run: |\n           python ../ci/parse_requirements.py pyproject.toml --extras dev,tests,embeddings > requirements.txt\n-          pip install -r requirements.txt\n+          python -m pip install --upgrade pip\n+          pip install --prefer-binary --only-binary \"pandas\" -r requirements.txt\n       - name: Run pyright\n         run: pyright\n \n@@ -89,7 +90,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v5\n         with:\n-          python-version: \"3.12\"\n+          python-version: \"3.13\"\n           cache: \"pip\"\n       - name: Install protobuf\n         run: |\n@@ -100,7 +101,8 @@ jobs:\n           workspaces: python\n       - name: Install\n         run: |\n-          pip install --extra-index-url https://pypi.fury.io/lancedb/ -e .[tests,dev,embeddings]\n+          python -m pip install --upgrade pip\n+          pip install --prefer-binary --only-binary \"pandas\" --extra-index-url https://pypi.fury.io/lancedb/ -e .[tests,dev,embeddings]\n           pip install tantivy\n           pip install mlx\n       - name: Doctest\n@@ -110,7 +112,7 @@ jobs:\n     timeout-minutes: 30\n     strategy:\n       matrix:\n-        python-minor-version: [\"9\", \"12\"]\n+        python-minor-version: [\"9\", \"13\"]\n     runs-on: \"ubuntu-24.04\"\n     defaults:\n       run:\n@@ -136,9 +138,9 @@ jobs:\n       - uses: ./.github/workflows/run_tests\n         with:\n           integration: true\n-      - name: Test without pylance\n+      - name: Test without pylance or pandas\n         run: |\n-          pip uninstall -y pylance\n+          pip uninstall -y pylance pandas\n           pytest -vv python/tests/test_table.py\n       # Make sure wheels are not included in the Rust cache\n       - name: Delete wheels\n@@ -166,7 +168,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v5\n         with:\n-          python-version: \"3.12\"\n+          python-version: \"3.13\"\n       - uses: Swatinem/rust-cache@v2\n         with:\n           workspaces: python\n@@ -196,7 +198,7 @@ jobs:\n       - name: Set up Python\n         uses: actions/setup-python@v5\n         with:\n-          python-version: \"3.12\"\n+          python-version: \"3.13\"\n       - uses: Swatinem/rust-cache@v2\n         with:\n           workspaces: python",
+        "patch_truncated": false
+      },
+      {
+        "path": ".github/workflows/run_tests/action.yml",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 4,
+        "patch": "@@ -2,9 +2,6 @@ name: run-tests\n \n description: \"Install lance wheel and run unit tests\"\n inputs:\n-  python-minor-version:\n-    required: true\n-    description: \"8 9 10 11 12\"\n   integration:\n     required: false\n     description: \"Run integration tests\"\n@@ -15,7 +12,8 @@ runs:\n     - name: Install lancedb\n       shell: bash\n       run: |\n-        pip3 install --extra-index-url https://pypi.fury.io/lancedb/ $(ls target/wheels/lancedb-*.whl)[tests,dev]\n+        python -m pip install --upgrade pip\n+        PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 pip3 install --extra-index-url https://pypi.fury.io/lancedb/ $(ls target/wheels/lancedb-*.whl)[tests,dev]\n     - name: Setup localstack for integration tests\n       if: ${{ inputs.integration == 'true' }}\n       shell: bash",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/pyproject.toml",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 1,
+        "patch": "@@ -36,6 +36,7 @@ classifiers = [\n     \"Programming Language :: Python :: 3.10\",\n     \"Programming Language :: Python :: 3.11\",\n     \"Programming Language :: Python :: 3.12\",\n+    \"Programming Language :: Python :: 3.13\",\n     \"Topic :: Scientific/Engineering\",\n ]\n \n@@ -77,6 +78,7 @@ embeddings = [\n     \"pillow\",\n     \"open-clip-torch\",\n     \"cohere\",\n+    \"colpali-engine>=0.3.10\",\n     \"huggingface_hub\",\n     \"InstructorEmbedding\",\n     \"google.generativeai\",\n@@ -132,4 +134,4 @@ include = [\n     \"python/lancedb/_lancedb.pyi\",\n ]\n exclude = [\"python/tests/\"]\n-pythonVersion = \"3.12\"\n+pythonVersion = \"3.13\"",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 42,
+    "files_off_branch_excluded": 57,
+    "note": "scoped to author's changes: excluded 57 files that changed on the branch via merges from the base branch, not the PR's own work"
+  }
+}

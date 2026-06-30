@@ -1,4 +1,4 @@
-<title>PR Rounds — 2026-06-26</title>
+<title>PR Rounds — 2026-06-30</title>
 <style>
 :root{--bg:#0f1115;--panel:#171a21;--panel-2:#1d2129;--border:#2a2f3a;--text:#e6e9ef;--muted:#99a1b3;--faint:#6b7280;--link:#6db3f2;--green:#3fb950;--red:#f85149;--amber:#d29922;--fresh:#f78166;--rereview:#6db3f2;--house:#8b949e;--escalate:#db61a2;--approve:#3fb950;--block:#f85149;--comment:#d29922}
 *{box-sizing:border-box}
@@ -59,7 +59,7 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
 </style>
 <div class="wrap">
   <h1>PR Review Rounds</h1>
-  <p class="sub"><b>2026-06-26</b> · lance-format/lance + lancedb/lancedb · <b>31 PRs</b> — 0 fresh · 17 re-review · 14 housekeeping</p>
+  <p class="sub"><b>2026-06-30</b> · lance-format/lance + lancedb/lancedb · <b>40 PRs</b> — 10 fresh · 18 re-review · 12 housekeeping</p>
   <details class="howto">
     <summary>How to draft &amp; co-sign these reviews</summary>
     <div class="howto-body">
@@ -86,11 +86,6 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
   <div class="banner"><b>Reconciliation</b> — no prior cycle yet (learning log starts this run).</div>
   <section id="triage"><div class="lane-head"><h2>Triage</h2><span class="count">10</span><span class="desc">self-requested candidates — confirm / strike (pr-relevance)</span></div>
     <div class="trow">
-      <span class="score">157.0</span>
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3489">feat(query): add use_lsm_read to query data via the MemWAL LSM scanner</a> <span class="num">lancedb/lancedb#3489</span> <span class="by">touch-of-grey</span></span>
-      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
-    </div>
-    <div class="trow">
       <span class="score">142.0</span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3122">fix(rust): change `optimize` steps ordering</a> <span class="num">lancedb/lancedb#3122</span> <span class="by">sprytnyk</span></span>
       <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
@@ -101,9 +96,9 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
       <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), Cargo.lock (reviewed 17×)</span>
     </div>
     <div class="trow">
-      <span class="score">98.0</span>
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2921">feat: support add_columns with embedding function</a> <span class="num">lancedb/lancedb#2921</span> <span class="by">zhangyue19921010</span></span>
-      <span class="affinity">overlaps your review history: python/python (reviewed 49×), rust/lancedb (reviewed 33×), python/src (reviewed 16×)</span>
+      <span class="score">83.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7237">feat(compaction): introduce RowAddrRemap structure to avoid remap OOM caused by HashMap</a> <span class="num">lance-format/lance#7237</span> <span class="by">zhangyue19921010</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×), rust/lance-core (reviewed 7×)</span>
     </div>
     <div class="trow">
       <span class="score">82.0</span>
@@ -117,29 +112,1149 @@ footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid va
     </div>
     <div class="trow">
       <span class="score">81.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7138">feat(mem_wal): support prefiltered LSM vector and FTS search</a> <span class="num">lance-format/lance#7138</span> <span class="by">touch-of-grey</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), python/python (reviewed 21×), python/src (reviewed 8×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">81.0</span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/7440">feat(index): expose vector index handle readers</a> <span class="num">lance-format/lance#7440</span> <span class="by">summaryzb</span></span>
       <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), python/python (reviewed 21×), python/src (reviewed 8×)</span>
     </div>
     <div class="trow">
-      <span class="score">76.0</span>
-      <span class="title"><a href="https://github.com/lance-format/lance/pull/7390">perf(index): use NGram posting cardinalities for regex conjunction search</a> <span class="num">lance-format/lance#7390</span> <span class="by">everySympathy</span></span>
-      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
+      <span class="score">80.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7442">feat: add blob v2 source id sharing</a> <span class="num">lance-format/lance#7442</span> <span class="by">Xuanwo</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), python/python (reviewed 21×), rust/lance-core (reviewed 7×)</span>
+    </div>
+    <div class="trow">
+      <span class="score">78.0</span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7461">fix(index): record IVF_HNSW index file sizes after writing footer</a> <span class="num">lance-format/lance#7461</span> <span class="by">Ali2Arslan</span></span>
+      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×), rust/lance-file (reviewed 2×)</span>
     </div>
     <div class="trow">
       <span class="score">76.0</span>
-      <span class="title"><a href="https://github.com/lance-format/lance/pull/7463">feat(index): read a column&#x27;s min/max from ZoneMap without a scan</a> <span class="num">lance-format/lance#7463</span> <span class="by">Ali2Arslan</span></span>
-      <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
-    </div>
-    <div class="trow">
-      <span class="score">76.0</span>
-      <span class="title"><a href="https://github.com/lance-format/lance/pull/7477">perf: merge half-open range queries on the same BTree index</a> <span class="num">lance-format/lance#7477</span> <span class="by">xloya</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7413">perf(index): add sparse ngram tokenization</a> <span class="num">lance-format/lance#7413</span> <span class="by">everySympathy</span></span>
       <span class="affinity">overlaps your review history: rust/lance (reviewed 52×), rust/lance-index (reviewed 24×)</span>
     </div>
   </section>
-  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">0</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
-    <div class="note">(none)</div>
+  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">10</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2921">feat: support add_columns with embedding function</a> <span class="num">lancedb/lancedb#2921</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>159d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 2 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lancedb/lancedb#2921 — feat: support add_columns with embedding function
+zhangyue19921010 (first_time) · L (+259/-5, 5 files)  ⚠ escalation: public-api forced
+
+ONE-LINER
+  Adds a Python `Table.add_columns(EmbeddingFunctionConfig)` path that embeds a
+  source column into a new fixed-size-list vector column via a Python UDF, and
+  writes the embedding-function metadata into the table schema. Plumbed through
+  a new pyo3 `add_columns_with_embedding_function` (Python-handler → Rust
+  RecordBatch mapper → lance `NewColumnTransform::BatchUDF`) plus a new
+  `update_schema_metadata` pyo3 method and a thin `add_columns_with_mapper`
+  wrapper on the Rust `Table`.
+
+SUBJECTIVE (intent)
+  Useful, real feature: lets users add an embedding column after table creation
+  while recording the embedding-function metadata so later `search(str)` works.
+  Body of the PR in GitHub metadata was about an unrelated cache change at packet
+  time, but the actual diff is squarely the embedding-column feature; reviewed
+  against the diff, not the body.
+
+OBJECTIVE (what I checked, tied to ground truth)
+  • python/src/table.rs:802 `update_schema_metadata` — clones the manifest,
+    swaps in a new `Schema { fields, metadata }`, and sets
+    `dataset.manifest = Arc::new(manifest)` on a `get_mut()` guard. I traced the
+    guard: rust/lancedb/src/table/dataset.rs:286 `DatasetWriteGuard` is a bare
+    `RwLockWriteGuard` with only `Deref`/`DerefMut` (lines 290-307) and NO `Drop`
+    impl. So this assignment mutates ONLY the in-process cached `Dataset`; it
+    issues no commit and writes no new manifest to storage. The rest of the crate
+    persists changes through commit operations (rust/lancedb/src/table.rs uses
+    commit/Operation throughout), never by poking `dataset.manifest`. =&gt; the
+    embedding-function metadata is NOT durable. (BLOCKING)
+  • Ordering compounds it: python/python/lancedb/table.py:4271 dispatch runs
+    `update_embedding_function_metadata` (the in-memory poke) FIRST, then
+    `add_columns_with_embedding_function` which performs a real
+    `NewColumnTransform::BatchUDF` commit. That commit advances the table version
+    and reloads the manifest from storage, discarding the in-memory metadata
+    poke. So after `add_columns` returns, `schema.metadata` very likely has NO
+    embedding config. (BLOCKING — same root cause)
+  • python/python/tests/test_table.py:1681 — the only test for the feature is
+    `@pytest.mark.slow` and `pytest.importorskip(&quot;sentence_transformers&quot;)`. The
+    passing CI matrix (Linux py3.9/3.12, Mac, Windows, Type Check) does NOT run
+    `slow` tests, and sentence-transformers is unlikely installed there, so the
+    feature&#x27;s happy path is effectively UNVERIFIED by CI. The assertion
+    `parsed[&quot;vector&quot;].source_column == &quot;text&quot;` (line 1710) is exactly the durability
+    claim that the manifest analysis says should fail on a fresh read — strong
+    signal the test was only ever run, if at all, against in-process state.
+    (NOT covered by CI)
+  • python/src/table.rs:751 + :802 — both new fns are inside the
+    `#[pymethods] impl Table` block (267-909), so they ARE registered/callable
+    from Python. Verified, not an issue.
+  • Schema field-name match: Python handler builds `pa.list_(float32, ndims)`
+    whose inner field is `item`/nullable; Rust output_schema declares inner
+    `Field::new(&quot;item&quot;, Float32, true)` (python/src/table.rs ~:770). Names and
+    nullability match, so lance&#x27;s BatchUDF output validation should accept the
+    mapper output. Verified (could not run pyarrow locally to double-check the
+    default inner-field name, but it is `item` by pyarrow convention). 
+  • python/src/table.rs ~:786 mapper error handling collapses any Python
+    exception from the embedding handler into a generic
+    `InvalidInput { source: &quot;computing embedding failed&quot; }`, dropping the original
+    Python traceback. Debuggability nit, not gating. (non-blocking)
+  • python/python/lancedb/table.py:4298 `update_embedding_function_metadata`
+    raises if a function already exists for the vector column (&quot;Modifying ...
+    not supported&quot;) — reasonable guard. But because the metadata write is not
+    durable (above), this guard also can&#x27;t actually see previously-persisted
+    functions across sessions. Resolves once persistence is fixed.
+
+ASSESSMENT
+  risk: HIGH (refined up from baseline med) — IO/format-correctness: a new
+    public write path that claims to persist schema metadata but does not commit
+    it, so it silently loses data the user believes is stored. This is exactly the
+    class the baseline can&#x27;t see from paths alone.
+  urgency: high (baseline) — feature PR, first-time contributor.
+  escalation: forced on `public-api` → full rounds regardless. New public Python
+    surface (`add_columns(EmbeddingFunctionConfig)`) + two new pyo3 methods.
+  merge_state: GitHub reports mergeable_state=&quot;dirty&quot; (merge conflict vs main)
+    and not mergeable — must rebase. CI is effectively green (only `pydantic1x`
+    cancelled, not failed); the packet&#x27;s ci=&quot;red&quot; is stale/conservative.
+  could not read: none (0 omitted; all 5 files read).
+
+PLAN / DRAFT COMMENTS
+  issue(blocking): Schema-metadata write is not durable.
+    `update_schema_metadata` mutates the in-memory `dataset.manifest` on a
+    get_mut guard with no commit, so the embedding-function metadata is never
+    written to storage and is discarded by the subsequent BatchUDF commit.
+    acceptance: metadata persists across a reopen — i.e. perform the schema-
+    metadata update via a real lance commit (replace_schema_metadata / a manifest
+    commit operation), AND add a non-slow test that reopens the table (new
+    connection/handle) and asserts `parse_functions(schema.metadata)[&quot;vector&quot;]`
+    is present. (python/src/table.rs:802, table.py:4271)
+
+  issue(blocking): Feature happy-path has no CI-exercised test.
+    The only test is `slow` + importorskip(sentence_transformers), so it does not
+    run in the passing matrix.
+    acceptance: add a test using a trivial in-repo/stub embedding function (no
+    sentence-transformers dependency) that runs in the default CI matrix and
+    asserts (a) the vector column is added with correct dtype/ndims and (b) the
+    embedding metadata is readable after reopen. (test_table.py:1681)
+
+  issue(non-blocking): Mapper swallows the Python embedding error.
+    Collapsing to &quot;computing embedding failed&quot; drops the original traceback;
+    propagate the Python error message into the InvalidInput source.
+    (python/src/table.rs ~:786)
+
+  suggestion: Consider writing the metadata as part of the same transaction/
+    commit as the column add (or after it) rather than a separate pre-step, so a
+    failure in the embedding step can&#x27;t leave a half-applied state and so a single
+    version captures both. (table.py:4271)
+
+  question: Is `add_columns_with_embedding_function` intended to also be exposed
+    on the sync `Table` and on remote tables? `update_schema_metadata` errors on
+    remote (&quot;This cannot be run on a remote table&quot;); is remote explicitly out of
+    scope for this PR? (python/src/table.rs:802)
+
+RECOMMENDATION: block on 2 conditions (durable metadata write + CI-exercised
+  test). Plus rebase to clear the merge conflict before merge.
+  confidence: high on the durability bug — traced the guard to no-Drop/no-commit
+    and confirmed the crate commits everything else; the test asserts exactly the
+    property that should fail on reopen.
+  what would make this wrong: only if a raw `dataset.manifest = ...` assignment
+    were itself durable. It is not: a trace of the lance commit path confirms the
+    durable route is `Dataset::replace_schema_metadata` →
+    `Operation::UpdateConfig` → `apply_commit` (writes the manifest to object
+    storage, THEN updates the in-memory `dataset.manifest`). The PR skips that
+    entire path and assigns the in-memory field directly, so nothing is written.
+    This corroborates the block and names the fix: use `replace_schema_metadata`.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>python</code> · Drafted blocking conditions: 2</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/6265">feat: support hamming clustering</a> <span class="num">lance-format/lance#6265</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>93d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 5 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#6265 — feat: support hamming clustering
+jackye1995 (core) · XL (+2848/-58, 13 files)  ⚠ escalation forced
+
+ONE-LINER
+  Adds SIMD-accelerated pairwise hamming distance + binary-vector clustering
+  (union-find over a hash column), with new lance::index::vector::hamming entry
+  points (IVF partition / sample / fragment range) and a Python binding surface
+  (vector.py + pyo3 Dataset methods). Net +2848 lines, two ~1k-line new modules.
+
+SUBJECTIVE  (author&#x27;s framing)
+  PR body: SIMD pairwise hamming + cluster binary vectors within a threshold to
+  find near-duplicate representations; exposed in Python. Author is core; this is
+  a first review (fresh lane, blocked_on=me, no prior ledger).
+
+OBJECTIVE  (what I checked, tied to ground truth)
+  CI / merge state
+  • merge_state: ci=red, mergeable=false. Every gate is failing at head dca3410:
+    format, clippy, rustdoc, MSRV, linux/mac/windows/arm builds, build-no-lock,
+    query-integration-tests, aws-integtest, lint, Java, and all Python wheels.
+    This is wholesale-red, not a flake — the branch does not build/lint as-is.
+
+  Correctness — lance-linalg/src/distance/hamming.rs
+  • L398-399 extract_hashes_from_fixed_list — reads values.values()[i*8 .. i*8+8]
+    with i in 0..array.len(), with NO array.offset() term and NO null/validity
+    check. A sliced FixedSizeListArray (non-zero offset) reads the wrong bytes and
+    can over-read / panic; null list entries are silently treated as valid data.
+    Confirmed against the patch. This function has ZERO test coverage.
+  • L111/L168-198/L233-237 SIMD pairwise (avx512 store, avx2, scalar) rely on
+    results.len()==targets.len() but enforce it only via debug_assert_eq! — in a
+    release build a short `results` buffer is an out-of-bounds heap WRITE through
+    _mm256_storeu_si256 / raw ptr. The unsafe blocks assume an invariant nothing
+    guarantees in release. No test exercises a length mismatch.
+  • L97/L567 .expect(&quot;Failed to create RecordBatch&quot;) panics on user-controlled
+    data instead of returning Result (non-blocking).
+  • UnionFind (L408-475) is correct: path compression + union-by-rank with a
+    deterministic min-id tie-break; representative is chosen as cluster-min
+    independent of union order (L638), so clustering output is order-independent
+    (verified by test_cluster_edges_random_order). The parallel path concatenates
+    per-chunk results in chunk order, so output is stable. Good.
+
+  Correctness — lance/src/index/vector/hamming.rs (NEW)
+  • L294-298 total_rows sums fragment physical_rows — counts DELETED rows. The
+    sampling fallback threshold (sample_size &lt; total_rows) and the sample index
+    space are both computed against this inflated count. Untested on a dataset
+    with deletions.
+  • L304-319 hamming_clustering_for_sample builds positional indices in
+    0..total_rows and feeds them to dataset.take(&amp;[u64]). If take interprets the
+    u64s as row addresses rather than dense positional offsets, sampled rows are
+    wrong / take fails. The take-semantics assumption is unverified and untested.
+  • L449-472 hamming_clustering_for_range applies limit/offset over a post-delete
+    scan while bounds-checking against physical_rows (includes deletes) — same
+    physical-vs-logical mismatch; the clamping path (num_rows past fragment end)
+    is untested.
+  • L164/L324/L330/L480/L487 as_fixed_size_list()/as_primitive downcasts on
+    scan/storage results panic on type mismatch; the storage FLAT_COLUMN type is
+    not re-validated before downcast (non-blocking).
+  • Multi-fragment/multi-batch hash↔row_id alignment (IVF path L138/L157-167)
+    assumes to_batches() ordering matches storage.row_ids() ordering — not
+    asserted (question).
+
+  Surface / API
+  • Public-API + large-blast-radius escalation is FORCED → full rounds regardless
+    of how clean the code looks. New pub fns in lance-linalg distance::* and a new
+    public lance::index::vector::hamming module + 4 new pyo3 Dataset methods. The
+    Python typing imports (Optional/List) are present in vector.py head — clean.
+  • lance-linalg gains a rayon dependency; the old standalone hamming bench was
+    deleted and re-added under rust/lance/benches.
+
+ASSESSMENT
+  risk: HIGH (refined up from baseline med) · urgency: high
+  Rationale: refined to HIGH from the diff — an unguarded unsafe SIMD store
+  (release-mode OOB write) and an offset/null-blind FixedSizeList reader, both on
+  a brand-new public IO/compute path, both with zero direct test coverage, on top
+  of physical-vs-logical row-count bugs in the dataset-reading helpers. These are
+  IO-correctness + memory-safety, not style.
+  escalation: forced on [public-api, large-blast-radius] → full rounds.
+  could not read: none (13/13 files in packet; both ~1k-line hamming files read
+  in full from GitHub, not the truncated packet copy).
+
+DRAFT COMMENTS  (drafts only — never posted)
+  issue(blocking): extract_hashes_from_fixed_list ignores array.offset() and
+    nulls (lance-linalg/src/distance/hamming.rs:398) — acceptance: index the
+    child values at (array.offset()+i)*8, handle/ reject null list entries, and
+    add a test that passes a SLICED FixedSizeList&lt;UInt8,8&gt; (non-zero offset) and a
+    null-containing array and asserts correct/erroring behavior.
+
+  issue(blocking): SIMD pairwise relies on a debug-only length invariant
+    (lance-linalg/src/distance/hamming.rs:111,168) — acceptance: enforce
+    results.len()==targets.len() with a real assert!/length check (or bound the
+    stores) so a release build cannot perform an out-of-bounds write; add a test
+    covering a mismatched-length buffer.
+
+  issue(blocking): sample/range row counting uses physical_rows incl. deletions
+    (lance/src/index/vector/hamming.rs:294,449) — acceptance: compute the sample
+    space and range bounds from the LOGICAL row count, and add a test over a
+    dataset with deleted rows showing sampling/range never address deleted
+    positions.
+
+  issue(blocking): verify dataset.take semantics for sampled indices
+    (lance/src/index/vector/hamming.rs:304) — acceptance: confirm take(&amp;[u64])
+    interprets these as positional offsets (cite the take contract) or switch to
+    the correct addressing; add a multi-fragment sample test that asserts the
+    returned hashes match the sampled rows.
+
+  issue(blocking): CI is wholesale-red at head (format/clippy/rustdoc/builds/
+    integration on all platforms) — acceptance: green CI, or at minimum cargo fmt
+    + clippy clean and the Rust/Python build jobs passing.
+
+  issue(non-blocking): replace .expect(&quot;Failed to create RecordBatch&quot;) and the
+    bare downcasts (as_fixed_size_list / as_primitive) with Result-returning
+    error paths so malformed input errors instead of panicking
+    (lance-linalg .../hamming.rs:97,567; lance .../hamming.rs:164).
+
+  question: in the IVF path, is to_batches() ordering guaranteed to match
+    storage.row_ids() so hashes and row-ids stay index-aligned?
+    (lance/src/index/vector/hamming.rs:157)
+
+  praise: UnionFind + clustering is solid — deterministic min-representative
+    independent of edge/union order, with thorough order-independence tests.
+
+RECOMMENDATION: block on 5 conditions (4 code + green CI)
+  confidence: high on the two memory/IO-safety blockers (extract offset/null +
+  SIMD release store) — both verified against the patch and both untested. The
+  deletion/ take-semantics blockers are high-confidence-as-questions: the bug
+  exists if take(&amp;[u64]) is positional and datasets can have deletions, which is
+  the normal case.
+  what would make this wrong: if a layer above always passes contiguous,
+  offset-zero, non-null, exactly-length-matched arrays AND datasets in scope are
+  guaranteed delete-free — then the offset/length/deletion concerns degrade from
+  bugs to missing defensive guards. The SIMD release-store OOB and the absent
+  tests still stand regardless.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-linalg</code> · Drafted blocking conditions: 5</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3489">feat(query): add use_lsm_read to query data via the MemWAL LSM scanner</a> <span class="num">lancedb/lancedb#3489</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>27d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 1 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lancedb/lancedb#3489 — feat(query): add use_lsm_read to query data via the MemWAL LSM scanner
+touch-of-grey (regular) · XL (+1135/-0, 16 files)  ⚠ escalation: public-api + large-blast-radius
+
+ONE-LINER
+  Adds an opt-in `use_lsm_read` query flag: when a table has an LSM write spec, reads route
+  through Lance&#x27;s MemWAL `LsmScanner`/LSM planners so in-flight `merge_insert` data (active +
+  frozen memtables and flushed L0 generations) is visible, deduplicated by primary key
+  (newest generation wins). Off by default; exposed across Rust core + Python + TypeScript.
+
+SUBJECTIVE (author&#x27;s framing, from the PR body)
+  Without this flag a plain scan over an LSM-spec table returns stale data — it never sees
+  rows written via the LSM merge_insert path until an external compaction folds them into the
+  base. The flag is positioned as opt-in, behavior-preserving by default, with unsupported
+  query shapes rejected as hard errors (not silent fallback) because the caller opted in.
+
+OBJECTIVE (what I checked, tied to ground truth)
+  Net diff read in full: 16/16 files, 0 omitted. New module rust/lancedb/src/table/query/lsm.rs
+  (+441) and merge.rs test block (+349) carry the weight; bindings + docs are mechanical.
+
+  Dispatch wiring
+  • rust/lancedb/src/table/query.rs:90 — `if query.base.use_lsm_read { return lsm::create_lsm_plan(...) }`
+    placed before the standard scan setup. Single entry point; clean.
+  • rust/lancedb/src/query.rs:781/809 — `QueryRequest.use_lsm_read: bool` added with
+    `Default = false`; builder `use_lsm_read()` on the `QueryBase` blanket impl. Default path
+    unchanged — confirmed the field defaults false in the Default impl (query.rs:809).
+
+  Guard rails (lsm.rs)
+  • create_lsm_plan:54 — no MemWAL index details ⇒ Error::InvalidInput with an actionable
+    message. Verified by test lsm_read_without_spec_errors (merge.rs) + Python/TS equivalents.
+  • reject_unsupported:99 — multi-vector, hybrid, with_row_id, reranker, order_by,
+    dynamic/expr projection, and Substrait filters all return Error::NotSupported. Caller
+    opted in, so hard error not silent base-only fallback — matches the body&#x27;s stated contract.
+  • remote/table.rs:819 — remote (Cloud) tables reject use_lsm_read with NotSupported for both
+    AnyQuery arms. Covered by TS test &quot;useLsmRead errors without an LSM spec&quot; (local) but the
+    remote-rejection arm itself is NOT covered by a test.
+  • pk_columns:142 — MemWAL index but empty unenforced PK ⇒ Error::Runtime. Not covered by a
+    test (no fixture builds that state), but it is a defensive guard, not a happy path.
+
+  Read context assembly (build_read_context:159)
+  • Uses `dataset.object_store(None)` deliberately rather than ObjectStore::from_uri, with an
+    inline WHY comment: from_uri builds a fresh registry that would miss memory:// and
+    custom-registered stores. base_path = branch_location().path matches
+    list_mem_wal_latest_shard_ids. This is the correct-store subtlety and it is documented.
+  • The active shard is overridden by the cached ShardWriter&#x27;s authoritative in-memory manifest
+    + memtables (merge/lsm.rs read_snapshot:300). Snapshot-after-close still sees flushed
+    generations via the on-disk manifest — covered by lsm_read_after_close_sees_flushed.
+
+  Pagination
+  • plain_plan:264 calls LsmScanner::limit(limit, offset) (applies both internally); offset-only
+    (no limit) is folded via apply_limit_offset. fts_plan/vector_plan compute k = limit+offset
+    then slice with GlobalLimitExec afterward — correct top-k-then-page. No double application
+    spotted.
+
+  Vector arm (vector_plan:301, resolve_distance_type:380, to_fixed_size_list:420)
+  • Distance type: explicit query metric → column&#x27;s vector-index metric → L2 fallback, so
+    cross-source distances match the maintained memtable index. Sensible.
+  • Binary (uint8) FSL query vectors are explicitly rejected (NotSupported); non-f32 numeric
+    rejected as InvalidInput. Documented as a deliberate scope cut (body: binary-vector LSM
+    search is follow-up).
+
+  Tests (the strong part of this PR)
+  • Rust merge.rs: active-memtable visibility, dedup-newest-wins, point-lookup filter,
+    multi-shard (bucket spec), flushed-after-close, error-without-spec, FTS (memtable-only term
+    + base term), vector KNN (memtable row ranks first). Genuinely exercises the new paths
+    against real LsmScanner output, not mocks.
+  • Python test_merge_insert_lsm.py: sync active-memtable, dedup, error-without-spec, async.
+  • nodejs table.test.ts: useLsmRead surfaces memtable row; errors without spec.
+
+  Bindings parity
+  • Python query.py: field carried in all three concrete sync to_query_object (vector:1388,
+    fts:1591, empty:1662). Verified at head that the base builder to_query_object (1126) is
+    abstract and the hybrid one (1764) raises NotImplementedError — so no concrete sync builder
+    silently drops the flag. async/take builders forward to the Rust inner via _inner.use_lsm_read().
+  • from_inner:531 normalizes default False → None so a round-tripped Query only carries the
+    flag when explicitly set. _sync_query_to_async (table.py:4953) propagates it.
+  • TS: useLsmRead() on StandardQueryBase; napi bindings on Query/VectorQuery/TakeQuery.
+
+ASSESSMENT
+  risk: med — refined from diff, not raised above the path-only baseline. This is a read-path
+    feature gated behind an opt-in flag that defaults false; the standard scan path is
+    untouched (single early-return at query.rs:90, Default::use_lsm_read = false). No unsafe, no
+    format-write/serialization changes, no wire-compat break (additive bool field). The new
+    code is substantial but well-fenced and well-tested. I do NOT see grounds for high.
+  urgency: high (baseline) — core library + public API.
+  escalation: forced on [public-api, large-blast-radius] → full rounds regardless of how clean
+    it reads. Routing, not a risk verdict.
+  could not read: none (0 omitted). I did NOT download CI logs to attribute the failing job.
+
+  Merge-readiness (separate from code quality): merge_state is ci=red, mergeable=false. The
+  head commit&#x27;s &quot;Linux (NodeJS 20)&quot; check is a failure and &quot;Linux (NodeJS 18)&quot; was cancelled.
+  These are hard merge gates independent of review judgment.
+
+DRAFT COMMENTS
+  issue(blocking): CI is red on the head commit — &quot;Linux (NodeJS 20)&quot; failed. Resolve the
+    failing NodeJS job (and the not-mergeable / needs-rebase state) before merge.
+    acceptance: head commit shows all required checks green and the PR is mergeable.
+
+  issue(non-blocking): The remote-table rejection (remote/table.rs:819) has no test. A small
+    test asserting a RemoteTable query with use_lsm_read returns NotSupported would lock the
+    Cloud contract so a future refactor can&#x27;t silently start sending the flag to the server.
+    acceptance: a test covers the remote NotSupported arm (author&#x27;s call; not gating).
+
+  suggestion: pk_columns() returning Error::Runtime for &quot;MemWAL index but empty unenforced PK&quot;
+    is currently unexercised. If that state is reachable in practice, a one-line test would
+    pin the message; if it&#x27;s structurally impossible, a comment saying so would help the next
+    reader. Author&#x27;s call.
+
+  question: For the sync hybrid builder, calling .use_lsm_read() then running a hybrid query —
+    the flag is dropped (hybrid to_query_object raises; to_arrow builds sub-builders without
+    propagating _use_lsm_read). The Rust path rejects hybrid+LSM anyway, so the user gets an
+    error either way. Is the intent that hybrid+use_lsm_read surfaces a clear NotSupported
+    rather than silently ignoring the flag? Not gating, but worth confirming the UX.
+
+RECOMMENDATION: block on 1 condition (CI green + mergeable). The code itself reads as approvable
+  — coherent design, correct store handling, hard-error-on-unsupported contract honored, and
+  strong multi-language test coverage — but it cannot merge while the head commit is CI-red and
+  not mergeable, and escalation forces full rounds.
+  confidence: high on the design read and test coverage; medium on the CI failure&#x27;s root cause
+    (I did not pull the NodeJS job logs to confirm whether it is this PR&#x27;s code or flaky/infra).
+  what would make this wrong: if the NodeJS failure is a genuine binding/compile error from
+    this PR&#x27;s napi additions (nodejs/src/query.rs), the &quot;code is approvable&quot; read is too
+    generous and there is a second blocking code condition hiding in the red CI.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lancedb/src/table/query</code> · Drafted blocking conditions: 1</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7497">refactor(arrow): simplify normalize_slicing to a no-op</a> <span class="num">lance-format/lance#7497</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7497 — refactor(arrow): simplify normalize_slicing to a no-op
+LuciferYang (core) · M (+18/-47, 1 file)
+
+ONE-LINER
+  Removes ~30 lines of `normalized_struct_array_data` (the offset-folding branch)
+  from `StructArrayExt::normalize_slicing` and collapses the method to
+  `Ok(self.clone())` guarded by a `debug_assert!`, on the claim that an arrow-rs
+  `StructArray` can never carry a parent-level slice offset, so the branch was
+  dead. Public API unchanged; docs rewritten to state the invariant.
+
+FINDINGS  (each tied to ground truth)
+  • rust/lance-arrow/src/struct.rs:50-63 — new body is `debug_assert!(offset==0 &amp;&amp;
+    all columns.len()==len)` then `Ok(self.clone())`. Logically equivalent to the
+    OLD early-return guard (old line: `if self.offset()==0 &amp;&amp; columns all len==len
+    { return Ok(self.clone()) }`). The only behavioral difference is what happens
+    when that predicate is FALSE: old code ran `normalized_struct_array_data`; new
+    code returns `self.clone()` unchanged (and panics only in debug builds).
+  • Central &quot;dead branch&quot; claim — VERIFIED against the test the author cites.
+    test_arrow_cpp_slicing (struct.rs:143-161) builds raw `ArrayData` with
+    `.offset(1).len(2)` then `make_array(...).as_struct()`. This is exactly the
+    C Data Interface import shape (`arrow::ffi::from_ffi` lands in `make_array`),
+    and the test asserts the result equals `struct_array.slice(1,2)` — i.e. the
+    offset was already pushed into children at construction. So the FFI path the
+    author flags as the one residual risk is in fact already covered: arrow-rs
+    normalizes at `make_array`/`StructArray::from(ArrayData)` time.
+  • Covered by tests: test_normalize_slicing_no_offset (no-offset), test_arrow_rs_slicing
+    (Array::slice path), test_arrow_cpp_slicing (raw ArrayData/FFI path). All three
+    exercise the early-return predicate and are unmodified — so they pass iff the
+    predicate held for every shape tested, which is the author&#x27;s whole claim. PR
+    states cargo test/clippy/fmt green; packet merge_state.ci = green.
+  • Callers checked (the write-path consequence). Two external callers, both on the
+    encode/write path:
+      - rust/lance-encoding/src/encodings/logical/struct.rs:431 (StructStructuralEncoder::maybe_encode)
+      - rust/lance/src/dataset/blob.rs:642 (preprocess_struct_array)
+    Both take a public `ArrayRef`, downcast to StructArray, call normalize_slicing,
+    then pushdown_nulls + per-child processing. If a non-normalized StructArray ever
+    reached either, the OLD code corrected it; the NEW code in a RELEASE build
+    silently encodes the un-normalized array (debug_assert compiled out). No such
+    path exists today, but this is the one place the change is not behavior-preserving.
+  • arrow_data import removal (struct.rs:8) — `ArrayData`/`ArrayDataBuilder` were
+    only used by the deleted fn; pushdown_nulls uses `to_data()`/`make_array` which
+    come from arrow_array. Import removal is correct, no other use in file.
+
+ASSESSMENT
+  risk: low · urgency: high — Refining the path-only baseline (med) DOWN to low,
+    with evidence: this is a pure deletion of a provably-dead branch in a small
+    leaf crate; the retained guard is logically identical to the prior early-return;
+    all three pre-existing tests (including the FFI-shaped one) exercise the claim
+    and are unmodified. The only non-equivalence is release-build behavior on an
+    input that cannot currently be produced. Not an IO-correctness or wire-compat
+    break in any reachable path.
+  escalation: none (escalation.forced = false)
+  could not read: none (0 omitted files)
+
+DRAFT COMMENTS
+  praise: Nice tightening — the rewritten trait doc now states the real arrow-rs
+    invariant instead of the old &quot;both are legal (╥﹏╥)&quot; hand-wave, and the deleted
+    branch was genuinely dead (test_arrow_cpp_slicing already proves make_array
+    normalizes the FFI shape).
+
+  suggestion (non-blocking): Release-build safety net. `debug_assert!` is compiled
+    out in release, so if a future arrow-rs change (or an FFI path we haven&#x27;t
+    foreseen) ever yields a non-normalized StructArray, the two encode-path callers
+    (struct.rs:431, blob.rs:642) would silently encode it instead of correcting it.
+    Consider either (a) returning `ArrowError::InvalidArgumentError` when the
+    invariant fails so it surfaces in release too, or (b) keeping a cheap
+    always-on check. You already offered to retain the original normalization as a
+    defensive net — that also works. Author&#x27;s call; current behavior is unchanged.
+
+RECOMMENDATION: approve
+  confidence: high · what would make this wrong: an arrow-rs version (or an FFI /
+    C Data Interface import path) that constructs a StructArray with a non-zero
+    parent offset and children NOT pre-sliced. The cited test and make_array
+    semantics indicate this is not representable today; if a reviewer knows such a
+    path the suggestion above (return Err vs debug_assert) becomes the fix, not a
+    revert.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-arrow</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7498">fix(arrow): preserve inner nulls in convert_to_floating_point</a> <span class="num">lance-format/lance#7498</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7498 — fix(arrow): preserve inner nulls in convert_to_floating_point
+LuciferYang (core) · M (+69/-12, 1 file)
+
+ONE-LINER
+  FixedSizeListArrayExt::convert_to_floating_point built each integer arm&#x27;s
+  float values with from_iter_values(...filter_map(|x| x.map(...))), which
+  DROPS null inner elements — shortening the values buffer while the outer
+  FixedSizeList null buffer stays full-length. For a nullable integer vector
+  that panics in FixedSizeListArray::new (surviving count not a multiple of
+  list size) or silently shifts every later element into the wrong list. The
+  fix switches each arm to from_iter(...map(|x| x.map(...))), which keeps the
+  Option&lt;T&gt; stream so length and null positions are preserved.
+
+SUBJECTIVE (author&#x27;s framing)
+  Focused correctness fix to the vector-indexing conversion helper. Author
+  explicitly scopes out collapsing the match to arrow_cast::cast (would add an
+  arrow-cast dep) — reasonable, kept separate.
+
+OBJECTIVE (what I verified against ground truth)
+  • lib.rs:283-411 (fetched at head acbf746) — read the WHOLE match, not just
+    the diff. Six integer arms changed: Int8/Int16/Int32 -&gt; Float32,
+    Int64/UInt8/UInt32 -&gt; Float64. The supported-type set is UNCHANGED; only
+    null handling per arm changed. No arm was missed — UInt16/Int*-others/
+    UInt64 were never supported and still fall to the error arm (lib.rs:401).
+  • The primitive choice is correct. from_iter_values consumes T and the
+    .filter_map unwraps Option, discarding None -&gt; short, all-valid values
+    buffer paired with a full-length outer null buffer = the bug. from_iter
+    consumes Option&lt;T&gt;, so the new Float array has the same length and a
+    validity buffer matching the inner element nulls. into_iter() on a
+    PrimitiveArray yields Option&lt;T&gt; reflecting that array&#x27;s own nulls — correct
+    source. self.nulls().cloned() (outer/list-level validity) is untouched and
+    still correct; the two validity levels are distinct and both now consistent.
+  • For all-non-null input the new code is value-for-value identical to the old
+    (no None in the stream), so existing callers feeding dense vectors are
+    unaffected — confirmed by construction, not just asserted.
+  • Callers (code search, 6 hits): residual.rs, dot.rs, ivf.rs, kmeans.rs,
+    cosine.rs, l2.rs — exactly the vector-indexing path the body names. None
+    relied on the drop-nulls behavior (it was a latent panic/corruption, not a
+    contract).
+  • Tests: test_convert_to_floating_point_preserves_inner_nulls (Int8-&gt;f32,
+    lib.rs:1566) and ..._f64_arm (UInt8-&gt;f64) cover BOTH branch families. Each
+    asserts len()==2 lists / 4 values with the null kept at position 1 and
+    neighbours intact — directly pins the shift/panic regression. The f32 test
+    panics on main (3 surviving values, 3 % 2 != 0), passes with fix. Adequate.
+  • could not read: none — 1/1 files in packet, 0 omitted; full function and
+    callers cross-checked against GitHub at head.
+
+ASSESSMENT
+  risk: low (refined DOWN from baseline med with reason) · urgency: high
+    — Single-file, mechanical, behavior-preserving for the non-null case and
+    strictly-corrective for the null case. The only &quot;risk&quot; axis here is
+    IO/data-correctness, and the change moves it from broken to correct. No
+    unsafe, no concurrency, no wire/format change. Baseline med was path-only
+    (core lib); content does not support holding it at med.
+  escalation: none (forced=false, no rules)
+  CI: green · mergeable: true
+
+DRAFT COMMENTS
+  praise(non-blocking): Clean root-cause fix — from_iter vs from_iter_values is
+    exactly the right lever, and covering both the f32 and f64 arm families in
+    tests pins the regression precisely.
+  question(non-blocking): Now that inner nulls survive into the Float arrays fed
+    to l2/dot/cosine/kmeans, do those distance kernels handle inner-null float
+    elements as intended (e.g. NaN-propagation vs skip), or was the previous
+    behavior masking that path entirely? Not gating this fix — the old behavior
+    was a panic/corruption — but worth confirming there isn&#x27;t a second latent
+    issue downstream. Does not block.
+
+RECOMMENDATION: approve
+  confidence: high · what would make this wrong: if some caller actually
+  depended on convert_to_floating_point compacting out nulls (it does not —
+  that path panicked), or if a distance kernel downstream now mis-handles the
+  newly-preserved inner nulls (flagged as a non-blocking question; separate
+  from this fix&#x27;s correctness). 0 blocking conditions.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-arrow</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7463">feat(index): read a column&#x27;s min/max from ZoneMap without a scan</a> <span class="num">lance-format/lance#7463</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7463 — feat(index): read a column&#x27;s min/max from ZoneMap without a scan
+Ali2Arslan (first_time) · L (+357/-2, 5 files) · no escalation
+
+ONE-LINER
+  Folds the per-zone min/max already stored in a ZoneMap scalar index into a single
+  global (min, max) for a column with no data scan, exposed as
+  DatasetIndexExt::column_value_range(column). Intended as a cheap planning input
+  (range pruning) and stats accessor. Conservative by construction: the returned
+  range is a superset of live values, safe to prune with, never tight.
+
+SUBJECTIVE (author&#x27;s framing)
+  PR claims two soundness guards: (1) NaN bail — any zone whose max is NaN forces
+  None, because ScalarValue total order ranks NaN above all finite values, so a
+  NaN-bearing zone hides its true finite max and folding only finite maxes would
+  yield an unsound *subset*; (2) joint fragment coverage — the dataset accessor
+  returns None unless the column&#x27;s ZoneMap segments jointly cover every live
+  fragment. Multi-segment indices are folded raw (over zones, not per-segment
+  value_range) to stay exact. Result is conservative under deletion vectors.
+
+OBJECTIVE (verified against the diff at head 1fc46c07)
+  • zonemap.rs:167-188 value_range_over — fold loop. Verified: bails to None on the
+    FIRST zone with NaN max (line 173, before any accumulation), so a single NaN
+    zone anywhere in any segment poisons the whole fold. Correct and matches the
+    documented contract.
+  • zonemap.rs:176-185 — min takes smallest finite zone.min, max takes largest
+    finite zone.max via partial_cmp + is_some_and. Verified min-side soundness:
+    each zone.min is the true min of its (post-superset) zone, so the global min =
+    smallest zone min is a valid lower bound; max symmetric. partial_cmp returning
+    None (incomparable) is treated as &quot;not better&quot; and skipped — safe, and all
+    segments are over the same field so type mismatch can&#x27;t arise.
+  • NaN-min asymmetry checked: with NaN ranked above all finite values, max &gt;= min
+    means a NaN min implies a NaN max, which is already caught by the line-173 bail.
+    No separate NaN-min guard needed. Confirmed against scalar_is_nan (zonemap.rs:134)
+    and the existing zone_has_finite_min/extrema helpers (144-151).
+  • scalar_is_finite_bound (zonemap.rs:192) — !is_null &amp;&amp; !is_nan; new helper, but
+    duplicates the predicate already inlined in zone_has_finite_min. Minor.
+  • index.rs:1458-1515 column_value_range — segment selection filters by single
+    matching field_id AND index_details.type_url ending in &quot;ZoneMapIndexDetails&quot;,
+    so a BTree on the same column is excluded. Verified coverage check: unions each
+    segment&#x27;s fragment_bitmap (None bitmap → None result) and requires
+    self.fragment_bitmap.is_subset(covered). An appended-but-unindexed fragment is
+    NOT in covered → None. Extra dead fragments in the union are harmless. Sound.
+  • index.rs:1500-1514 — opened indices kept alive in `opened` so the borrowed
+    ZoneMapIndex refs survive the fold; downcast-miss returns None. Correct lifetime
+    handling; downcast can&#x27;t realistically miss given the type_url filter, and None
+    on miss is conservatively safe anyway.
+  • Tests verify every critical edge: spans fragments/zones, all-null→None,
+    NaN max→None, multi-segment fold, NaN-in-any-segment→None, all-null-segment
+    skipped (zonemap.rs tests); dataset basic range, no-index column→None,
+    appended-uncovered-fragment→None, multi-segment commit fold (scalar.rs tests).
+    The two highest-risk soundness paths (NaN bail, uncovered-fragment bail) are
+    each covered by a dedicated test. codecov/patch check is green.
+  • CI: all required checks green at head (clippy, format, rustdoc, MSRV, codecov,
+    cross-platform builds, Python/Java/integration). mergeable_state=blocked is the
+    missing required human review, not a failing check. (Packet baseline showed CI
+    red — stale; re-checked live.)
+  • could not read: none (0 omitted files).
+
+ASSESSMENT
+  risk: low (refined down from baseline med) — additive, read-only API; no format
+    read/write or wire-compat change; no unsafe/concurrency; the only correctness
+    surface is the soundness of the folded bound, which is conservative-by-design
+    (errs toward None) and the two unsound-subset traps are each test-covered.
+    Worst plausible failure is an over-conservative None, never an unsound range.
+  urgency: low — new opt-in accessor, no existing caller wired to it yet.
+  escalation: none (not public-API-breaking; purely additive trait method with a
+    default-None impl on ScalarIndex, so no downstream impls break).
+  blast radius: contained to lance-index ZoneMap + one new dataset method.
+
+DRAFT COMMENTS
+  praise(non-blocking): The NaN bail and joint-fragment-coverage guards are the
+    right two traps, and each has a dedicated test (test_value_range_nan_max_is_none,
+    test_column_value_range_none_when_index_misses_fragments). The &quot;conservative,
+    superset, safe-to-prune, not tight&quot; contract is documented at every layer.
+
+  suggestion(non-blocking): PR description names the dataset method
+    `zonemap_value_range` / `DatasetIndexExt::zonemap_value_range`, but the shipped
+    method is `column_value_range` (api.rs:248, index.rs:1458). Harmless drift, but
+    update the description so the docs/changelog match the actual public name.
+
+  suggestion(non-blocking): scalar_is_finite_bound (zonemap.rs:192) re-expresses the
+    same !is_null &amp;&amp; !is_nan predicate already inlined in zone_has_finite_min
+    (zonemap.rs:144). Consider expressing one in terms of the other to keep the NaN
+    policy single-sourced. Author&#x27;s call; not gating.
+
+  question(non-blocking): column_value_range opens each matched segment via
+    open_generic_index on every call (no cache of the folded result). Fine for a
+    planning-time call; is repeated invocation on a hot path a concern, or is this
+    expected to be called once per plan? Does not gate.
+
+RECOMMENDATION: approve (comment) — no blocking conditions.
+  confidence: high. The soundness argument holds under inspection (min lower-bound
+  validity, NaN-min subsumed by NaN-max bail, uncovered-fragment bail), CI is green,
+  and the two unsound-subset failure modes are each test-covered.
+  what would make this wrong: if a ZoneMap zone.min could ever be *larger* than some
+  live value in that zone (i.e. min not a true lower bound) — that would break the
+  global-min soundness — but that contradicts the existing ZoneMap invariant the
+  rest of the file already relies on for pruning. No evidence of that here.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-index</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7464">perf(index): coalesce concurrent scalar-index opens (single-flight)</a> <span class="num">lance-format/lance#7464</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7464 — perf(index): coalesce concurrent scalar-index opens (single-flight)
+Ali2Arslan (first_time) · L (+184/-21, 2 files) · no escalation
+
+SUBJECTIVE (what the PR claims)
+  On a cold `open_scalar_index`, every concurrent caller independently re-reads
+  `page_lookup.lance` and rebuilds the lookup — an N× I/O + transient-memory
+  spike. The PR adds a single-flight cache primitive
+  (`LanceCache::get_or_insert_unsized_with_key`, the `Arc&lt;dyn Trait&gt;` analogue of
+  the existing sized `get_or_insert_with_key`) and routes the scalar-index open
+  through it, so racing cold opens share one load. Warm open returns the live
+  index with no I/O. Author asserts behavior is otherwise unchanged.
+
+OBJECTIVE (ground truth, verified at head 7fef56a)
+  • rust/lance-core/src/cache/mod.rs:435 — new `get_or_insert_unsized_with_key`.
+    Wraps loader result in `Arc::new(value)` → `Arc&lt;Arc&lt;dyn Trait&gt;&gt;` and
+    downcasts `entry.downcast::&lt;Arc&lt;K::ValueType&gt;&gt;()`. This Arc-nesting EXACTLY
+    matches `insert_unsized_with_key` (mod.rs:599: `Arc::new(value)`) and
+    `get_unsized_with_key` (mod.rs:591: `downcast::&lt;Arc&lt;K::ValueType&gt;&gt;`). So the
+    new method and the default `put_in_cache`/`get_from_cache` agree on layout —
+    no downcast-type mismatch. Verified, not assumed.
+  • Single-flight backend contract — rust/lance-core/src/cache/moka.rs:74
+    `get_or_insert` uses moka `optionally_get_with`, which runs `init` at most
+    once per full key under concurrency. On loader error it returns `None`,
+    propagates the error via a oneshot, and does NOT cache the entry. So the new
+    method&#x27;s doc claim (&quot;a failing loader is not cached … next call retries&quot;) is
+    backed by the backend. Verified.
+  • Cache-key uniqueness — `ScalarIndexCacheKey.key()` is the constant
+    `&quot;scalar_index&quot;` (registry.rs:230-244). It is safe because the caller derives
+    a per-index-namespaced cache: scalar.rs:447
+    `index_cache = dataset.index_cache.for_index(&amp;index.uuid, frag_reuse uuid)`,
+    and `build_key` (mod.rs:150) prepends `self.prefix`. Different indices → different
+    prefix → different full key. Constant key does NOT collide across indices.
+    This is the same key the pre-existing in-memory path already used.
+  • The renamed binding is correct — scalar.rs:496 tracing line reads
+    `index_uuid = %index.uuid` (the `&amp;IndexMetadata` param, still in scope inside
+    the `move` closure) and `index_type = opened.index_type()` (the loaded index).
+    The deleted `let index_uuid = index.uuid;` is harmless: `index` is still
+    captured. No dangling/renamed-variable bug.
+  • Tests genuinely exercise single-flight, not just happy path:
+    - cache `test_get_or_insert_unsized_dedup` (mod.rs:1073): 5 racing callers, a
+      `yield_now()` inside the loader so losers register as waiters before the
+      winner finishes, asserts `load_count == 1`. Sound.
+    - lance `test_open_scalar_index_coalesces_concurrent_cold_opens`
+      (scalar.rs:1788): builds a BTree index, REOPENS the dataset so the index
+      cache is cold, fires 8 concurrent `open_scalar_index`, asserts all 8 return
+      and `metrics.index_loads == 1`. Directly proves coalescing. Sound.
+  • CI green, mergeable=true; PR body reports `cargo fmt` + `clippy -p lance-core
+    -p lance --tests` clean. The trait bounds (`dyn ScalarIndex: DeepSizeOf +
+    Send + Sync + &#x27;static`) compile (CI), so the generic is satisfiable.
+  • Could not read: none — both changed files read in full, 0 omitted, no patch
+    truncation.
+
+ASSESSMENT
+  risk: med (refined from baseline med, held) · urgency: high
+  Rationale: pure concurrency/caching change on a hot read path. The two failure
+  modes that would make this dangerous — (a) a wrong/colliding cache key
+  returning the wrong index, and (b) a poisoned entry caching a transient I/O
+  failure — were both checked against ground truth and are handled correctly
+  (per-index namespaced prefix; moka does not cache loader errors). The change
+  faithfully mirrors an already-shipped sized primitive. No `unsafe`, no
+  format/wire change, no API break (new pub method is additive). Risk does not
+  rise to high.
+  escalation: none (no forced rules)
+
+  Non-gating observations (NOT conditions):
+  • Per-caller metrics under coalescing: only the winner&#x27;s loader runs, so only
+    the winner&#x27;s `MetricsCollector` records `record_index_load()`; the 7 coalesced
+    losers record 0. This is DEFENSIBLE — the losers performed no I/O, and the
+    pre-existing warm-hit path likewise recorded 0. It is a deliberate semantic
+    (&quot;record_index_load == an actual load IOP happened&quot;), and the test documents
+    it. Flagging for visibility, not as a defect.
+  • Redundant in-memory double-store for the DEFAULT plugin: inside the loader,
+    `put_in_cache` (→ `insert_unsized_with_key` under &quot;scalar_index&quot;) writes the
+    index, and then `get_or_insert` stores the same `Arc` under the same key.
+    Idempotent (same value, last-write-wins). The explicit `put_in_cache` is still
+    needed for plugins that override it to persist a serializable form under a
+    different sized key, so it is correct to keep — just redundant for the default.
+  • The single-flight coalesces the expensive part (`load_index` + the
+    `page_lookup.lance` read, which the PR body names as the dominant cost). The
+    pre-loader prelude (`LanceIndexStore::from_dataset_for_existing`,
+    `fetch_index_details`, `open_frag_reuse_index`) still runs once per caller;
+    `fetch_index_details` is in-memory/cached in the common path. The headline
+    N× cost is addressed; the prelude is comparatively cheap. Scope is fine.
+
+PLAN
+
+  DRAFT COMMENTS (all for the attending to co-sign; nothing posted)
+    question(non-blocking): Under concurrent cold-open FAILURE, the moka backend&#x27;s
+      oneshot error channel (moka.rs:~100) delivers the real error to only one
+      racing caller; the others fall through to the generic
+      &quot;Failed to retrieve error from cache loader&quot; internal error. This is
+      pre-existing backend behavior you are now exercising on the index-open path.
+      Intentional / acceptable for open_scalar_index? (Not gating — observability
+      only, and it predates this PR.)
+    suggestion(non-blocking): Consider a one-line comment at the loader&#x27;s
+      `put_in_cache` call noting it is kept for serializable-form plugins and is
+      redundant for the default in-memory plugin (which `get_or_insert` already
+      caches), so a future reader doesn&#x27;t &quot;simplify&quot; it away.
+    praise: The dedup test uses `yield_now()` to force waiter registration before
+      the winner resolves — that is the difference between a test that proves
+      single-flight and one that merely happens to pass. Nice.
+
+RECOMMENDATION: approve — no blocking conditions.
+  confidence: high. Cache-key namespacing, Arc-nesting, error-not-poisoned, and
+  the renamed binding were each verified against source at the PR head; both
+  tests genuinely exercise the concurrent path; CI green.
+  what would make this wrong: if `for_index` did NOT actually fold the uuid into
+  the cache prefix (then the constant &quot;scalar_index&quot; key would alias across
+  indices and return the wrong index) — but that namespacing predates this PR and
+  is the same mechanism the existing in-memory cache path already relied on, so a
+  regression there would have surfaced before. Worth a 30-second confirm of
+  `for_index`&#x27;s prefix construction if the attending wants belt-and-suspenders.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance/index/scalar</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7465">perf(encoding): initialize only the page metadata a read will touch</a> <span class="num">lance-format/lance#7465</span></span>
+      <span class="meta"><span>4d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7465 — perf(encoding): initialize only the page metadata a read will touch
+Ali2Arslan (first_time) · XL (+521/-212, 12 files)
+
+ONE-LINER
+  The structural decoder eagerly initialized every page&#x27;s metadata before
+  scheduling, so a point/range read paid metadata IO proportional to total page
+  count. This makes init range-scoped and per-page: `initialize` takes an
+  optional `requested_ranges`, initializes only overlapping pages, coalesces all
+  missed pages&#x27; metadata into a single `submit_request`, and caches per page via
+  `PageDataCacheKey{column,page,view_tag}` (was per-column `FieldDataCacheKey`).
+  `None` preserves the prior eager behavior.
+
+== SUBJECTIVE ==
+  Author&#x27;s stated intent (PR body): cold point/range read metadata IO should be
+  invariant to a column&#x27;s total page count. The diff matches that intent — the
+  scoping (`map_ranges_to_pages` → `page_indices`) and the per-page cache key are
+  exactly the two mechanisms required. Body claims `cargo test -p lance-encoding`
+  (393) and `-p lance-file` (76) pass plus a new coalescing test; corroborated
+  below.
+
+== OBJECTIVE  (each tied to ground truth) ==
+  • decoder.rs:1056-1095 — `DecodeBatchScheduler::try_new` /
+    `StructuralFieldScheduler::initialize` gain `requested_ranges:
+    Option&lt;Arc&lt;[Range&lt;u64&gt;]&gt;&gt;`; `None` documented and used by all non-scoped
+    callers (decode_batch, benches, lance-file reader test). Threaded cleanly.
+  • decoder.rs:2158 `requested_rows_to_ranges` — converts both Ranges and Indices
+    (via `indices_to_ranges`) to the scoping ranges, the SAME coalescing
+    `schedule_take` uses. So initialized pages are a superset of scheduled pages.
+  • primitive.rs:3522 `map_ranges_to_pages` is the SINGLE converter from global
+    rows → (page, page-local ranges); BOTH `initialize` (3573) and the scheduling
+    job (3212) consume it. This is the strongest form of the superset invariant —
+    init and schedule cannot disagree because they call the same function.
+    Verified its boundary-spanning logic matches the old hand-rolled
+    `schedule_next` it replaces (clamp to page start, consume range only when it
+    ends within the page).
+  • primitive.rs:3611-3661 `initialize` — misses&#x27; `init_ranges()` concatenated in
+    file order into ONE `submit_request`; buffers redistributed per page via
+    `buffers.by_ref().take(count)` in the same order; `debug_assert!` that ranges
+    are globally ascending and that all buffers are consumed (3659). Page inits
+    run concurrently via disjoint `&amp;mut` peeling (split_at_mut/split_first_mut),
+    sound because miss_indices is ascending. Errors propagate via `try_collect`.
+  • StructuralPageScheduler split into `init_ranges()` + `init_from_buffers()`
+    across all impls (ComplexAllNull, SimpleAllNull, MiniBlock, FullZip, Blob*,
+    Constant). For each, the buffer order produced by `init_ranges` matches the
+    order consumed by `init_from_buffers` — verified pairwise.
+  • FullZip (primitive.rs:2532,2545) — `buffers[0]` indexed only inside
+    `enable_cache &amp;&amp; rep_index.is_some()`, the exact condition under which
+    `init_ranges` returns one range. No panic risk; conditions paired.
+  • constant.rs — refactor introduces `ConstantBufferLayout` computed once at
+    construction so `init_ranges`/`init_from_buffers` share one source of truth
+    for buffer presence+order (scalar,rep,def). Removes the prior duplicated
+    range computation; behavior-preserving.
+  • Nested schedulers forward ranges per their schedule_ranges semantics:
+    struct.rs:209 (1:1 to all children), list.rs:120 + map.rs:112 (unchanged —
+    child uses same top-level rows), fixed_size_list.rs:145 (scaled by
+    `dimension`). Each forwarding documents why it&#x27;s a valid superset.
+  • PageDataCacheKey (primitive.rs:3477) — key is `&quot;{col}-{page}:{view_tag}&quot;`.
+    `view_tag` retained so a blob column decoded as `Struct&lt;pos,size&gt;` vs raw
+    `LargeBinary` can&#x27;t collide on cached state (the prior crash documented in
+    dataset/blob.rs regression test, comment updated to match new key name).
+  • COVERED: new `test_initialize_coalesces_missed_page_metadata`
+    (primitive.rs:6780) — 64 pages with metadata 1MB apart (uncoalescable by IO),
+    asserts exactly ONE submit_request carrying all 64 ranges. Directly validates
+    the core perf claim. Also `test_fullzip_initialize_is_lazy` (6673) and
+    `test_fullzip_initialize_caches_rep_index_when_enabled` (6908). testing.rs
+    round-trip harness now drives all three paths: eager (None), range (lazy),
+    take (scattered, lazy).
+  • CI verified GREEN at head dd100bbb: 30 check-runs, 0 non-success, 0 pending —
+    confirms all `.initialize(` call sites updated and the suite passes.
+  • Read all 12/12 files; 0 omitted from the packet.
+
+== ASSESSMENT ==
+  risk: low-med · urgency: high (baseline)
+    Refined DOWN from baseline path-only &quot;med&quot; on evidence: this is an
+    IO-correctness change in the format read path (would normally hold med risk),
+    but the superset invariant is structurally enforced (single shared
+    map_ranges_to_pages), buffer ordering is asserted at runtime, the panic-prone
+    indexing is condition-guarded, and the exact behavior is covered by a
+    targeted test plus the existing round-trip harness extended to the new paths.
+    No unsafe, no new concurrency primitive (uses existing FuturesOrdered +
+    disjoint borrows), no wire-format change (cache-key string changes but cache
+    is process-local, not persisted format).
+  escalation: none (baseline forced=false; no public-API/large-blast rule fired)
+  could not read: none
+
+== PLAN / DRAFT COMMENTS ==
+  suggestion (non-blocking): primitive.rs:3659
+    `debug_assert!(buffers.next().is_none())` and the ascending-order
+    `debug_assert!` only fire in debug builds. The leftover-buffer case in
+    particular would, in release, silently feed a page the wrong buffers if a
+    future `init_ranges`/`init_from_buffers` count ever drifts. Consider whether
+    the consumed-count check warrants a hard `Error::Internal` return instead, to
+    fail loud in production. Author&#x27;s call — current tests cover today&#x27;s impls.
+
+  question (non-blocking): empty requested range. `map_ranges_to_pages` pushes a
+    `start_in_page..end_in_page` sub-range even when the source range is empty
+    (start==end) but `start &lt; page_end`. The old code had the same behavior and
+    callers coalesce so empties shouldn&#x27;t occur — confirming this is genuinely
+    unreachable, not just unlikely. Does not gate.
+
+RECOMMENDATION: approve
+  No blocking conditions. The risky surface (superset invariant, buffer
+  ordering, panic indexing) is either structurally enforced or test-covered, and
+  CI is green at head. The two draft comments are author&#x27;s-call quality notes,
+  not merge gates.
+  confidence: high · what would make this wrong: a nested-scheduler path where
+  the forwarded `requested_ranges` is NOT actually a superset of what
+  schedule_ranges later touches (e.g. a custom list rep-index mapping that
+  expands beyond the forwarded rows) — I verified the three nested impls present,
+  but a future child type relying on this contract would need the same audit.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-encoding</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7510">fix: avoid stack overflow on deep logical filters</a> <span class="num">lance-format/lance#7510</span></span>
+      <span class="meta"><span>31h in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7510 — fix: avoid stack overflow on deep logical filters
+Xuanwo (core) · M (+107/-27, 2 files) · no forced escalation
+
+ONE-LINER
+  Deeply chained same-operator AND/OR SQL filters overflowed the Rust stack
+  during Lance&#x27;s SQL planning (recursive AST clone + recursive AST→DataFusion
+  conversion). This PR flattens a same-operator logical chain iteratively, parses
+  each leaf, and rebuilds a balanced (log-depth) DataFusion expr tree; and in
+  sql.rs moves the parsed expr out of the AST instead of deep-cloning it.
+
+SUBJECTIVE (author&#x27;s framing)
+  Explicitly a Lance-side workaround for OSS-1232. Body acknowledges the fix is
+  scoped to the &quot;known vulnerable path&quot; and that a systematic follow-up should
+  add shared expression depth/complexity limits across SQL / Substrait /
+  DF-expr / merge-insert predicates. So narrow scope is intentional, not an
+  oversight.
+
+OBJECTIVE (what I checked, tied to ground truth)
+  • planner.rs:343-366 flatten_logical_binary_exprs — iterative, explicit
+    `stack`, no self-recursion. Same-op children are expanded in place; other
+    nodes become leaves. Confirmed: for an N-deep same-operator chain this is
+    O(1) recursion depth. This is the mechanism that fixes OSS-1232.
+  • planner.rs:368-392 balanced_binary_expr — iterative pairwise merge over a
+    VecDeque (`while exprs.len() &gt; 1`), no recursion. Builds a log-depth tree.
+    Empty-input guard returns invalid_input rather than panicking.
+  • Leaf ordering is preserved: stack seeded `[right, left]`, pops left first →
+    left-to-right pre-order; balanced merge pairs front-to-back. AND/OR are
+    associative + commutative, so the rebalanced tree is semantically equivalent
+    to the original left-deep tree. No operand-order hazard.
+  • planner.rs:394-410 binary_expr — only the logical (AND/OR) arm is rerouted;
+    every non-logical op keeps the original two-child construction. `binary_op`
+    is computed once up front (`df_op`) and reused — no behavior change for the
+    non-logical path beyond that hoist.
+  • sql.rs:45-58 / 63-78 — rewritten from borrow-then-`.clone()` to let-chains
+    that MOVE the expr out of the AST (`*query.body`, `select.selection`,
+    `select.projection.into_iter().next()`). Removes the deep AST clone the body
+    cites as a contributing cause. Behaviorally equivalent on the happy path;
+    the new projection path via `into_iter().next()` is strictly safer than the
+    old `s.projection[0]` index (no panic on an empty projection).
+  • Edition 2024, MSRV 1.91.0 (workspace Cargo.toml @ head) — let-chains
+    (stable 1.88) are within MSRV. CI reported green (compiles + tests pass).
+  • COVERED: planner.rs:1177 test_parse_deep_logical_filter builds a 1000-wide
+    flat AND chain and a 1000-wide flat OR chain, parses + optimizes, asserts
+    `lit(true)`. This is exactly the OSS-1232 shape and would overflow on main.
+  • NOT COVERED: (a) mixed/alternating operators — `a AND b OR c AND b OR …`;
+    (b) deeply parenthesized input — `(((…)))`, which hits SQLExpr::Nested
+    (planner.rs:773) and recurses through parse_sql_expr per level. The
+    flattening only collapses *same-operator* chains, so these shapes still
+    recurse O(depth) and remain vulnerable. I did NOT find a test or a depth
+    guard covering them; per the body they are deferred to the follow-up.
+
+ASSESSMENT
+  risk: low-med · urgency: low
+  Net: a correctness/robustness fix on the SQL planning path, well-scoped, with
+  a regression test that reproduces the reported overflow. No format/IO/wire
+  surface, no unsafe, no concurrency. The residual recursion on mixed-operator
+  and nested-parenthesis inputs is a real but explicitly-deferred limitation,
+  not introduced by this PR — it does not gate this focused fix.
+  escalation: none (no forced rules)
+  could not read: none (0 omitted; both patches full, untruncated)
+
+DRAFT COMMENTS
+  praise: flatten_logical_binary_exprs + balanced_binary_expr cleanly remove the
+    recursion for the reported case, and the regression test reproduces the
+    1000-deep overflow. Moving the expr out of the AST in sql.rs (instead of the
+    prior deep clone) is a nice second-order win.
+
+  issue(non-blocking): The fix only protects *same-operator* chains. Alternating
+    operators (`a AND b OR c AND d OR …`) and deeply parenthesized filters
+    (SQLExpr::Nested, planner.rs:773) still recurse through parse_sql_expr per
+    level and can overflow. The PR body already commits to a follow-up depth
+    limit — fine to land this as-is; flagging so the residual path is tracked,
+    not forgotten. acceptance: author&#x27;s call (track via the follow-up issue).
+
+  suggestion: Add a test (or a `#[should_panic]`/error-returning case) for a
+    deep *alternating-operator* and a deep *nested-parenthesis* filter, so the
+    boundary of what this PR does and does not protect is documented in code and
+    the eventual depth-limit work has a target. acceptance: author&#x27;s call.
+
+  question: Is OSS-1232&#x27;s reproducer a flat same-operator chain (matching
+    test_parse_deep_logical_filter), or did it involve nesting/mixed operators?
+    If the latter, the fix may not fully close the report. Non-gating — the
+    drafted recommendation assumes the flat-chain reproducer the body describes.
+
+RECOMMENDATION: approve (0 blocking conditions)
+  confidence: high for the same-operator path (mechanism traced, regression test
+    reproduces and passes, CI green). 
+  what would make this wrong: if OSS-1232&#x27;s actual reproducer is mixed-operator
+    or deeply nested rather than a flat same-op chain — then this fix is
+    necessary but not sufficient. That is the open question above; it lowers
+    completeness, not correctness, so it does not convert to a blocking gate.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-datafusion</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row escalated">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7523">feat(cache): support batch get-or-insert single-flight</a> <span class="num">lance-format/lance#7523</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>6h in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">REVIEW · lance-format/lance#7523 — feat(cache): support batch get-or-insert single-flight
+zouhuajian (first_time) · XL (+2744/-116, 6 files)  ⚠ escalation: large-blast-radius
+
+ONE-LINER
+  Adds a backend-level batch get-or-insert API (get_or_insert_many) to the Lance
+  cache so a single loader can fill multiple missing keys while preserving
+  per-key single-flight. Replaces moka&#x27;s built-in optionally_get_with dedup with
+  a hand-rolled in-flight &quot;flight&quot; registry shared by both single-key and batch
+  paths, so mixed callers coalesce on the same key. Groundwork for coalesced
+  BTree page reads (#6759). Additive; existing single-key behavior preserved.
+
+SUBJECTIVE (author&#x27;s framing)
+  Body is unusually complete: states the two properties it wants (coalesced
+  loading + single-flight), why neither existing pattern gives both, the exact
+  validation contract, the was_cached semantics shift, and explicitly scopes out
+  BTree query changes. Claims local green on stable: cargo fmt / test -p
+  lance-core cache (38) / doctests (3) / clippy / bench. First-time contributor.
+
+OBJECTIVE (what I verified against the diff)
+  • backend.rs — new types CacheLoadedEntry / CacheBatchEntry / CacheBatchLoader
+    are plain and well-documented. validate_unique_keys + validate_loaded_entries
+    enforce the contract (missing/extra/duplicate loader keys -&gt; InvalidInput) and
+    are reused by both the default fallback and the moka override. The default
+    trait impl is a correct compatibility fallback (loops single-key get_or_insert,
+    documented as non-atomic and non-coalescing). Sound.
+  • moka.rs — the core. Hand-rolled FlightRegistry (Arc&lt;Mutex&lt;HashMap&lt;key,
+    Arc&lt;CacheFlight&gt;&gt;&gt;&gt;) replaces moka optionally_get_with. CacheFlight = state
+    Mutex(Loading/Ready/Retry) + tokio Notify. Reviewed the three hard properties:
+      - No lost wakeup: wait() registers notify.notified() BEFORE reading state
+        under the state lock; owner sets state under the same lock BEFORE
+        notify_waiters(). A waiter that registers after the owner completes still
+        reads Ready/Retry and returns without awaiting. Correct tokio Notify usage.
+      - Liveness on owner death: FlightOwner::Drop calls retry() when not
+        completed, flipping state -&gt; Retry and waking waiters, who re-loop. So an
+        aborted/panicked owner cannot strand waiters. This is the canonical
+        failure mode for hand-rolled single-flight and it is handled.
+      - Lock ordering: claim_flight takes ONLY the registry lock and never reads
+        flight.state under it (comment documents this); owners complete in
+        state-&gt;registry order. No lock-order inversion between the two mutexes.
+    The unreachable Loading branch in wait()/the waiter loops returns a defensive
+    Error::internal rather than spinning — good invariant hygiene.
+  • mod.rs (typed layer) — get_or_insert_with_key_batch on both LanceCache and
+    WeakLanceCache. Type-erasure plumbing (build_batch_keys, typed_loader) is
+    consistent; preserves input order; rejects duplicate typed keys. WeakLanceCache
+    degrades to load_batch_without_cache when the backend is gone, still validating
+    + reordering. Also opportunistically hardens existing downcast().unwrap() call
+    sites into Error::internal on type mismatch (defensive, in-scope).
+  • Tests (read full patch from GitHub; packet truncates mod.rs at 500 lines) —
+    coverage is strong and maps 1:1 to the risk surface:
+      - dedups_overlapping_keys, waits_on_in_flight_batch_owner,
+        dedups_high_fanout_overlap
+      - shares_flights_with_single_key_get_or_insert (BOTH directions): proves the
+        cross-path coalescing claim — a batch owner waits on a single-key flight
+        for the shared key (was_cached=true) and only loads the disjoint key
+      - waiter_retries_after_owner_error AND after_owner_cancel, for BOTH single
+        and batch paths, using owner.abort() / pending() with a 5s timeout guard —
+        directly exercises the Drop-retry liveness path
+      - loader-contract tests: receives_owned_keys_in_input_order,
+        rejects_duplicate_input_keys, rejects_loader_key_validation (rstest cases)
+      - clear_does_not_cancel_in_flight_get_or_insert, default-fallback path,
+        weak-cache-drop paths
+  • Cargo.toml — adds criterion under [dev-dependencies] + a harness=false bench
+    target only. tokio::sync::Notify is the sole new runtime primitive (tokio
+    already a dep). No new production dependency. Cargo.lock +1 line.
+  • diff.omitted: none — all 6 files had patches.
+
+ASSESSMENT
+  risk: med (refined from baseline med — NOT raised to high)
+    Rationale: this is concurrency-correctness territory (replaces a battle-tested
+    moka primitive with hand-rolled single-flight), which on content alone argues
+    for high. I traced the three properties that would make hand-rolled
+    single-flight unsound — lost wakeup, owner-death liveness, lock ordering — and
+    each is correct AND has a direct test (including abort()-based cancel). The
+    blast radius is wide (cache is on the vector-index + BTree hot paths) but the
+    new batch API has no production caller yet (it is groundwork), and the
+    single-key path&#x27;s externally observable behavior is unchanged. Net: med.
+  urgency: low (baseline) — no production caller depends on it yet.
+  escalation: FORCED on rule large-blast-radius (XL diff) -&gt; full rounds
+    regardless of how clean it reads. This is routing, not a risk score.
+  CI: red. Investigated: the linux-build failure is a rustc INTERNAL COMPILER
+    ERROR (ICE) on the nightly+instrument-coverage toolchain, in
+    lance-index/src/scalar/ngram.rs::stream_spill_reader
+    (DynCompatible(IndexReader) trait-selection panic, edition 2024). That crate
+    is NOT touched by this PR (PR touches only lance-core/cache). The failure is
+    environmental (nightly compiler bug in the coverage build), not attributable
+    to this change. Java-11 failure + the two cancelled Java jobs are the same run
+    cascade. So CI-red is NOT a code condition on this PR.
+  could not read locally: I did not run the test suite myself; coverage assessed
+    by reading the tests against the implementation. Author&#x27;s stable-toolchain
+    green run is plausible and consistent with the ICE being nightly-only.
+
+DRAFT COMMENTS  (drafts only — never posted)
+  question: CI linux-build is red due to a nightly rustc ICE in lance-index
+    (ngram stream_spill_reader), unrelated to this diff. Can you rebase onto the
+    latest base once the toolchain pin is fixed and confirm a green run? Treating
+    this as infra, not a code defect — flagging so the attending knows the red X
+    is not on you. (gates nothing about the code; verifies before merge)
+  suggestion: The new batch API has no production caller in this PR (groundwork
+    for #6759). Consider a one-line doc/TODO pointer from get_or_insert_many to
+    the intended BTree coalesced-read caller so the next reader knows where it
+    lands. Non-blocking.
+  praise: The Drop-based retry on owner cancel + the matching abort()/error tests
+    for both single and batch paths are exactly the right thing for hand-rolled
+    single-flight — this is the failure mode most such implementations miss.
+
+RECOMMENDATION: approve (no blocking code conditions)
+  The implementation is correct on the three properties that matter for
+  hand-rolled single-flight, the contract is validated, and the test suite
+  exercises the hard concurrency cases directly. Escalation is forced
+  (large-blast-radius) so this still gets full rounds / attending co-sign — but I
+  found no merge-blocking defect. Recommend approve, contingent only on a green CI
+  re-run once the unrelated nightly ICE clears (verification, not a code change).
+  confidence: med-high on correctness (reasoned + test-backed, did not run);
+    high that CI-red is environmental.
+  what would make this wrong: a concurrency bug under a scheduling interleaving
+    not covered by the deterministic tests (e.g. loom-style exhaustive check would
+    raise confidence further); or moka&#x27;s get-after-insert visibility being weaker
+    than assumed in the owner.complete() cache-hit fast path. Neither observed.</div><div class="kv" style="margin-top:8px">Lane: fresh · Domain: <code>rust/lance-core</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
   </section>
-  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">17</span><span class="desc">ordered by proximity to merge</span></div>
+  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">18</span><span class="desc">ordered by proximity to merge</span></div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2395">feat(python): handle strenum in pydantic</a> <span class="num">lancedb/lancedb#2395</span></span>
@@ -176,7 +1291,7 @@ RECOMMENDATION: block on 2 conditions
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6215">feat: add manifest namespace extended properties</a> <span class="num">lance-format/lance#6215</span></span>
-      <span class="meta"><span class="esc">ESCALATED</span><span>90d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <span class="meta"><span class="esc">ESCALATED</span><span>94d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
       <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#6215 — feat: add manifest namespace extended properties
 reviewed ed73cb73 → 95746654  (packet range spans 67 commits / base-branch churn; PR-authored delta = 1 commit, 3 source files)
@@ -394,30 +1509,6 @@ FRESH-EYES DELTA
 RECOMMENDATION: approve
   confidence: high · what would make this wrong: if downstream callers depended on the old (inflated) partial-coverage scores as intended behavior — but the docstring and MRR semantics confirm the old behavior was a bug.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb/rerankers</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
-    <div class="row escalated">
-      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
-      <span class="title"><a href="https://github.com/lance-format/lance/pull/7265">ci(python): typecheck arrow.py and test_arrow.py</a> <span class="num">lance-format/lance#7265</span></span>
-      <span class="meta"><span class="esc">ESCALATED</span><span>9d in state</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
-      <div class="note">core library change; resident to refine from diff content</div>
-      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-26</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#7265 — ci(python): typecheck arrow.py and test_arrow.py
-reviewed 0d8d5c13 → fdb65ccc  (1 commit, 2 files)
-
-CONDITIONS LEDGER (0/0 met)
-  (no prior blocking conditions reconstructed — last review left no `issue(blocking)` comments; nothing to verify against the delta)
-
-FRESH-EYES DELTA
-  Delta is purely type-checker hygiene: adds `# pyright: ignore[...]` suppressions and one cosmetic line-wrap. No runtime behavior changes.
-
-  - `python/python/lance/arrow.py` @@ -283 (hunk 1): `fs.FileSystem.from_uri(uri.as_py())` is re-wrapped across lines with `# pyright: ignore[reportPrivateImportUsage]`. Same callee, same single argument — semantically identical. No concern.
-  - `arrow.py` @@ -303, -374, -489 (hunks 2,3,5): `from PIL import Image` gains `# pyright: ignore[reportMissingImports]`. PIL is an optional/lazy import already inside guarded local scopes; suppressing the missing-stub/import diagnostic is appropriate. No concern.
-  - `test_arrow.py` @@ -11: `import pytest # pyright: ignore[reportMissingImports]` — pytest is a dev-only dep; suppression is appropriate. No concern.
-  - nitpick (non-blocking): `arrow.py` @@ -389 (hunk 4) deletes the comment explaining tf.stack&#x27;s None-typed stub while keeping the `# pyright: ignore[reportOptionalCall]` on the next line. The suppression now stands without its rationale. Consider folding the reason into the ignore line. Not gating.
-
-  No new correctness, safety, API/compat, or test-integrity issues introduced. No suppression is broad enough to mask real defects (each is line-scoped to a specific rule).
-
-RECOMMENDATION: approve
-  confidence: high · what would make this wrong: if any of the `reportMissingImports`/`reportPrivateImportUsage` suppressions were masking a genuinely broken import path (rather than a stubs/optional-dep gap), or if the `from_uri` line-wrap had silently altered the call — both checked and ruled out against the patch. A CI-config reviewer would also want to confirm the accompanying pyright CI job actually gates these files, but that config is not present in this delta.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lance</code> · Drafted blocking conditions: 0</div></div></details>
-    </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XS</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3536">docs(python): add missing parameter documentation for when_matched_update_all</a> <span class="num">lancedb/lancedb#3536</span></span>
@@ -469,45 +1560,727 @@ RECOMMENDATION: comment (do not block on the test-existence condition; do hold o
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2345">chore: bump Python 3.12 to 3.13 in actions</a> <span class="num">lancedb/lancedb#2345</span></span>
       <span class="meta"><span>424d in state</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
       <div class="note">docs/tests/config/deps only</div>
-      
+      <details class="soap"><summary><span class="rec rec-comment">COMMENT</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#2345 — chore: bump Python 3.12 to 3.13 in actions
+reviewed 7ea333f8 → aac34e66  (42 commits on branch, 7 of the PR&#x27;s own files; 57 base-merge files excluded as off-branch churn)
+domain: .github/workflows (CI)
+
+=== S (Subjective) ===
+Author intent: a CI chore — move the Python matrix/pin from 3.12 to 3.13 across
+the GitHub Actions workflows and composite actions, declare 3.13 support in
+pyproject classifiers + pyright pythonVersion, and clean up the now-unused
+`python-minor-version` composite-action input. Since my last review the branch
+took 42 commits, most of which are base-branch merges (57 files excluded as
+off-branch). The PR&#x27;s own delta is small and confined to CI config + pyproject.
+
+=== O (Objective) ===
+Ground truth = the commit-anchored delta 7ea333f8...aac34e66, scoped to the PR&#x27;s
+own 7 changed files, plus file reads at head.
+
+Changed (own work):
+- .github/workflows/build_linux_wheel/action.yml  — remove python-minor-version input
+- .github/workflows/build_mac_wheel/action.yml     — remove python-minor-version input
+- .github/workflows/build_windows_wheel/action.yml — remove python-minor-version input
+- .github/workflows/run_tests/action.yml           — remove input; pip upgrade + PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+- .github/workflows/pypi-publish.yml               — setup-python 3.8→3.9 (linux), 3.12→3.13 (mac/win)
+- .github/workflows/python.yml                     — 3.12→3.13 pins; matrix [&quot;9&quot;,&quot;12&quot;]→[&quot;9&quot;,&quot;13&quot;]; --prefer-binary --only-binary pandas; uninstall pandas in no-pylance test
+- python/pyproject.toml                            — add 3.13 classifier; add colpali-engine&gt;=0.3.10 to embeddings; pythonVersion 3.12→3.13
+
+Verified at head (aac34e66):
+- build_mac_wheel/action.yml and build_windows_wheel/action.yml inputs: block no
+  longer declares python-minor-version (confirmed by file read).
+- pypi-publish.yml STILL passes `python-minor-version: 8` at lines 80 (mac) and
+  101 (windows) — to actions that no longer accept it (confirmed).
+- python.yml run_tests call sites (lines 138/176/206) correctly pass NO
+  python-minor-version — the cleanup WAS applied here. So the input removal is
+  inconsistent: run_tests call sites fixed, pypi-publish mac/win call sites missed.
+
+=== A (Assessment) ===
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior issue(blocking) conditions reconstructed from posted comments —
+   nothing to verify. Conspicuous but correct: this PR carried no blocking
+   ledger into the re-review.)
+
+FRESH-EYES DELTA (findings in code changed since last review)
+
+  1. issue: orphaned `python-minor-version: 8` passed to mac/windows build
+     actions whose input was removed in this same PR.
+     → pypi-publish.yml:80 and :101 still pass `python-minor-version: 8`, but
+       build_mac_wheel/action.yml and build_windows_wheel/action.yml no longer
+       declare that input (this PR removed it). The run_tests call sites in
+       python.yml were cleaned up; these two were missed. Composite actions
+       don&#x27;t hard-fail on extra `with:` keys, so CI won&#x27;t break — but it&#x27;s stale,
+       misleading config and the literal `8` is now meaningless. Drop both lines.
+     blocking: no (dead config, not a build breaker)
+
+  2. note: scope creep — `colpali-engine&gt;=0.3.10` added to the `embeddings`
+     extra in pyproject.toml. Unrelated to a &quot;bump 3.12→3.13&quot; chore; it adds a
+     new dependency and a new lower-bound constraint to the solver. Either split
+     it out or call it out in the PR description so it isn&#x27;t silently shipped
+     under a CI-chore title.
+     blocking: no
+
+  3. note: 3.13-compat workarounds look intentional and reasonable, but worth a
+     one-line rationale in the PR body so they aren&#x27;t mistaken for accidents:
+     `--prefer-binary --only-binary &quot;pandas&quot;` (avoid building pandas from sdist
+     on 3.13), `pip uninstall -y pylance pandas` + renamed &quot;without pylance or
+     pandas&quot; test, and `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` in run_tests
+     (lets an abi3 wheel built against an older Python load under 3.13).
+     blocking: no
+
+  4. observation (non-issue): pypi-publish linux setup-python bumped 3.8→3.9, not
+     to 3.13. Consistent with build_linux_wheel using maturin/manylinux for the
+     actual build; the host Python only drives maturin. Fine.
+
+No new correctness regressions found in the delta.
+
+=== P (Plan) ===
+RECOMMENDATION: comment (approve-with-nits) — no blocking conditions, no build
+breaker. One real cleanup (finding #1: drop the two orphaned `python-minor-version: 8`
+lines) plus two PR-hygiene notes (#2 scope creep, #3 document the 3.13 workarounds).
+
+confidence: high on the orphaned-input finding (verified input removal + live
+call sites at head) and on the empty ledger. Medium on whether colpali-engine is
+truly out of scope vs. a deliberate piggyback the author intends.
+
+what would make this wrong: if GitHub Actions were configured to error on unknown
+composite-action inputs (it is not, by default), finding #1 would escalate to
+blocking; if the author&#x27;s PR description already explains colpali-engine and the
+pandas workarounds, notes #2/#3 are moot.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>.github/workflows</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3584">feat: add polars dataframe integration</a> <span class="num">lancedb/lancedb#3584</span></span>
+      <span class="meta"><span>0h in state</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3584 — feat: add polars dataframe integration
+reviewed 06259a3e → 64e1d8e6  (13 commits, 5 PR-own files; 46 base-merge files excluded)
+domain: rust/lancedb
+
+================================================================
+SUBJECTIVE
+================================================================
+Re_review lane: author pushed since my last look. PR adds a first-class
+Polars DataFrame integration to the Rust crate — `polars::frame::DataFrame`
+now implements the internal `Scannable` trait so it can be passed directly to
+`create_table` / `add`, and results round-trip back out via the existing
+`IntoPolars`. Alongside this, the PR removes the older public `IntoArrow` /
+`IntoArrowStream` conversion traits in favor of `Scannable`.
+
+My reconstructed conditions ledger from prior posted issue(blocking) comments
+is EMPTY (0 conditions). There were no outstanding blocking conditions from my
+last review to verify against this delta.
+
+================================================================
+OBJECTIVE  (verified against the commit-anchored delta patch, not GitHub claims)
+================================================================
+Delta = 06259a3e...64e1d8e6, scoped to the PR&#x27;s own changed files:
+
+  rust/lancedb/src/data/scannable.rs   +93 -0   (new Scannable impl + 2 tests)
+  rust/lancedb/src/arrow.rs            +2 -47   (removes IntoArrow/IntoArrowStream)
+  rust/lancedb/examples/polars.rs      +47 -0   (new, feature-gated example)
+  rust/lancedb/Cargo.toml              +15 -3   (version bump, deps, example entry)
+  nodejs/src/merge.rs                  +4 -6    (callsite updated for trait removal)
+
+Ground-truth checks performed:
+  - Scannable trait signature at head (scannable.rs:28-55) — schema()-&gt;SchemaRef,
+    scan_as_stream(&amp;mut self)-&gt;SendableRecordBatchStream, num_rows()-&gt;Option&lt;usize&gt;,
+    rescannable()-&gt;bool. New `impl Scannable for DataFrame` matches exactly and
+    reuses the same SimpleRecordBatchStream / futures::stream patterns as the
+    existing impls (imports present: once, stream::iter, SimpleRecordBatchStream).
+  - Referenced symbols exist at head: PolarsDataFrameRecordBatchReader struct +
+    Iterator + RecordBatchReader impls (arrow.rs:145-200), IntoPolars trait
+    (arrow.rs:203), polars_arrow_convertors module present.
+  - DANGLING-REFERENCE SWEEP for the removed traits: fetched all 120 .rs files
+    at head sha 64e1d8e6 and grepped for `IntoArrow` (and case-insensitive
+    `into_arrow`). ZERO matches in any file, including arrow.rs itself. The
+    nodejs callsite (merge.rs) is the only consumer and was updated. =&gt; no
+    build break from the trait removal.
+  - Tests present and meaningful: test_dataframe_scannable_round_trip (create +
+    add + read-back, asserts height*2 and schema equality) and
+    test_dataframe_scannable_rescannable (scans twice, asserts row counts).
+
+================================================================
+ASSESSMENT
+================================================================
+
+CONDITIONS LEDGER (0/0 met)
+  (no prior blocking conditions to reconcile — ledger empty)
+
+FRESH-EYES DELTA
+  No new blocking concerns. The new code is internally consistent, gated behind
+  the `polars` feature, and covered by round-trip + rescannable tests. Three
+  non-blocking observations:
+
+  1. note (non-blocking) — Public API break. Removing the public `IntoArrow`
+     and `IntoArrowStream` traits is a breaking change for any downstream crate
+     that imported them. Confirmed clean inside this repo (zero remaining refs),
+     but external users are affected. Acceptable for a 0.31.0-beta crate and
+     arguably the point of the refactor (consolidating on Scannable); flag so
+     it lands in release notes / changelog.
+
+  2. note (non-blocking) — `&lt;DataFrame as Scannable&gt;::scan_as_stream`
+     (scannable.rs) materializes ALL record batches into a Vec before turning
+     them into a stream, so it is not lazy. Defensible: a Polars DataFrame is
+     already fully resident in memory, so there is no extra peak-memory cost
+     vs. the source. Not a concern, just noting it isn&#x27;t streaming.
+
+  3. note (non-blocking) — `&lt;DataFrame as Scannable&gt;::schema` uses `.expect(..)`
+     and will panic if Polars-&gt;Arrow schema conversion fails. This is forced by
+     the trait method returning a bare SchemaRef (not a Result), and matches
+     how the other Scannable impls behave, so it is consistent with the
+     existing contract rather than a new wart.
+
+  The Cargo.toml additions of `urlencoding` (to the `remote` feature) and the
+  `tokio` `sync`/dev-dep features plus the version bump look like base-branch
+  merge churn unrelated to Polars; the Polars-specific wiring (the `[[example]]
+  name = &quot;polars&quot;` entry with required-features) is correct.
+
+================================================================
+PLAN / RECOMMENDATION
+================================================================
+RECOMMENDATION: approve
+  Drafted blocking comments: 0
+  Confidence: high. 0 outstanding conditions; the only structural risk (a
+  dangling reference from the trait removal) was checked exhaustively across all
+  120 .rs files at head and is clean; new impl matches the trait and is tested.
+  What would make this wrong: a downstream/off-repo consumer of the removed
+  IntoArrow traits that I cannot see from this repo&#x27;s tree, or a CI failure on
+  the `polars` feature build I did not execute locally (I verified symbols and
+  signatures by inspection at head, not by compiling).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lancedb</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">S</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2915">chore: migrate Gemini embeddings to use `google-genai` SDK</a> <span class="num">lancedb/lancedb#2915</span></span>
       <span class="meta"><span>146d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#2915 — chore: migrate Gemini embeddings to use `google-genai` SDK
+reviewed 46337281 → b5971ddb  (1 commit, 1 file)
+domain: python/lancedb/embeddings
+
+SUBJECTIVE
+I approved this PR cleanly at 46337281 on 2026-01-21 with no inline comments
+and no blocking conditions. The author pushed one commit since. The only
+question on the thread is markmcd asking whether some failing CI tests relate
+to this change (2026-01-27) — a CI question, not a code-review condition.
+
+OBJECTIVE
+Delta 46337281...b5971ddb, scoped to the PR&#x27;s own files (0 off-branch files
+excluded), is a single one-line change in
+python/python/lancedb/embeddings/gemini_text.py:
+
+    @@ -140,5 +140,5 @@ def client(self):
+                     &quot;x-goog-api-client&quot;: f&quot;lancedb/{__version__}&quot;,
+                 }
+    -            }
+    +            },
+             )
+
+A trailing comma added after the `http_options={...}` argument in the
+`genai.Client(...)` call (line 143 at head). Valid Python, almost certainly a
+formatter (ruff/black) normalization. No semantic change. The embeddings
+migration code I approved last cycle is otherwise untouched.
+
+ASSESSMENT
+CONDITIONS LEDGER (0/0 met)
+  No prior blocking conditions to verify — my last review was a clean approval
+  with zero issue(blocking) comments. Nothing to reconstruct or re-confirm.
+
+FRESH-EYES DELTA
+  No new concerns. The sole change since my last review is a cosmetic trailing
+  comma inside a call-argument list; it cannot alter runtime behavior and
+  cannot cause the test failures markmcd referenced (a comma in a kwargs dict
+  literal is a no-op semantically). Nothing new and bad was introduced.
+
+  Note (non-blocking, informational only — CI is out of scope for a
+  diff-anchored re-review): markmcd&#x27;s question about failing tests is unrelated
+  to anything in this delta. If the attending wants to close that loop it would
+  be by checking the CI run, not the code.
+
+PLAN
+RECOMMENDATION: approve (re-affirm prior approval)
+  confidence: high · the entire delta since my approval is one trailing comma
+  with no behavioral effect.
+  what would make this wrong: if the formatter change were a smokescreen
+  masking a force-push that rewrote earlier commits — but the compare is
+  anchored to my exact reviewed sha (46337281...b5971ddb) and shows only this
+  one hunk, so there is no hidden change.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/lancedb/embeddings</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3192">fix: handle empty/wrong-length vectors returned by embedding functions</a> <span class="num">lancedb/lancedb#3192</span></span>
       <span class="meta"><span>71d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3192 — fix: handle empty/wrong-length vectors returned by embedding functions
+author: Spectual (Eric B) · lane: re_review · domain: python/lancedb (table.py vector sanitization)
+reviewed a9b1595d → 45963fab  (PR-scoped delta: 2 files — python/python/lancedb/table.py, python/python/tests/test_embeddings.py)
+
+NOTE on anchoring: the branch merged `main` between reviews, so the raw a9b1595d...45963fab
+compare spans ~90 files of base-branch churn (Cargo.lock, nodejs, rust, docs, version bumps).
+Those are off-branch and excluded. The PR&#x27;s OWN changed files are table.py + test_embeddings.py;
+this re-review is scoped to them.
+
+────────────────────────────────────────────────────────────────────────
+S (Subjective) — what the author says changed
+The PR sanitizes empty / wrong-length vectors emitted by embedding functions before write.
+At the prior review (a9b1595d) I left a COMMENTED review (not a formal inline issue thread):
+the CI test was failing because null vectors produced by _append_vector_columns slipped through
+_handle_bad_vector_column undetected — pc.list_value_length(null)→null, pc.not_equal(null,dim)→null,
+pc.any([null])→False — so on_bad_vectors=&quot;drop&quot;/&quot;error&quot; never fired. I suggested adding
+has_null = pc.is_null(vec_arr) detection. The author has since pushed a substantial follow-up.
+
+O (Objective) — verified against the head diff (45963fab)
+- _handle_bad_vector_column (table.py:3457-3464) now computes is_null = pc.is_null(vec_arr) and
+  folds it into has_wrong_dim via pc.or_kleene(is_null, pc.not_equal(list_value_length, dim)),
+  using Kleene 3-valued logic so True OR null = True. Inline comment cites the exact null→null
+  reasoning from my prior feedback. This is precisely the requested fix.
+- Surrounding refactor: vector-column detection was extracted into _find_vector_columns /
+  _vector_output_schema / _vector_output_type, now target-schema-aware (uses the embedding
+  registry + expected dim/value-type). _handle_bad_vectors casts each batch to a computed
+  output_schema. _is_list_like and _merge_metadata helpers consolidate prior inline checks.
+- test_embeddings.py adds test_url_retrieve_downloads_image, which performs a LIVE HTTP GET to
+  http://farm1.staticflickr.com/53/167798175_7c7845bbbd_z.jpg with no network/slow marker.
+
+A (Assessment)
+The blocking correctness concern from a9b1595d is genuinely resolved in the diff (not just
+marked resolved). The accompanying refactor is larger than the one-line fix I asked for but is
+coherent and the null-handling path is correct. One fresh-eyes concern in newly-changed code:
+the new url_retrieve test is network-dependent and unmarked, so it runs in the default suite and
+will flake if Flickr is unreachable / the image 404s / CI has no egress. It is also tangential
+to this PR&#x27;s stated fix.
+
+────────────────────────────────────────────────────────────────────────
+CONDITIONS LEDGER (1/1 met)
+
+✓ met   [blocking] null vectors must be detected as bad so on_bad_vectors fires
+        source: my a9b1595d COMMENTED review (CI failure root-cause + suggested has_null detection)
+        → table.py:3457-3464 — is_null = pc.is_null(vec_arr); has_wrong_dim =
+          pc.or_kleene(is_null, pc.not_equal(pc.list_value_length(vec_arr), dim)); is_bad then
+          drives drop/fill/null/error. Exactly the requested fix; not merely &quot;resolved&quot;.
+
+(No inline issue(blocking) threads existed on this PR — zero PR review comments. The only prior
+condition is the CI-failure feedback above, reconstructed from the a9b1595d review body.)
+
+────────────────────────────────────────────────────────────────────────
+FRESH-EYES DELTA (code changed since a9b1595d)
+
+issue (non-blocking): network-dependent test with no marker
+  test_embeddings.py — test_url_retrieve_downloads_image does a live HTTP GET to a Flickr URL
+  with no @pytest.mark.slow / network marker (sibling network tests in this file use
+  @pytest.mark.slow). It will run by default and flake on network loss, CI egress restrictions,
+  or the image being removed. Suggest marking it slow/network or mocking the HTTP response.
+  Also tangential to the PR&#x27;s bad-vector fix — consider whether it belongs here.
+
+suggestion (non-blocking): _vector_output_type dead-ish branch
+  table.py:3383-3388 returns pa.list_(expected_value_type) when the reader value_type is
+  null/integer/unsigned and an expected_value_type exists. Reasonable, but worth a one-line
+  comment on why integer reader columns are re-typed to the target float type (intent isn&#x27;t
+  obvious to a future reader).
+
+No new correctness regressions found in the changed regions: the refactored detection helpers,
+the or_kleene null handling, and the output_schema cast path are internally consistent.
+
+────────────────────────────────────────────────────────────────────────
+RECOMMENDATION: approve (with one non-blocking nit on the network test)
+  confidence: high — the one reconstructable blocking condition is met in the actual diff, and
+  the fresh-eyes findings are non-blocking quality concerns, not correctness defects.
+  what would make this wrong: if the new helpers misbehave on a vector-column shape not covered
+  by the in-repo on_bad_vectors tests (those tests live in test_table.py, which is NOT in this
+  PR&#x27;s own diff — they arrived via the base merge — so coverage attribution is uncertain).
+  Running the python test suite locally before co-sign would close that gap.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python/python/lancedb</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row escalated">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">XL</span></span>
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3303">feat: index analyze support</a> <span class="num">lancedb/lancedb#3303</span></span>
       <span class="meta"><span class="esc">ESCALATED</span><span>66d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      
+      <details class="soap"><summary><span class="rec rec-block">BLOCK</span> 1 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lancedb/lancedb#3303 — feat: index analyze support
+reviewed b73b7310 → badb3679  (10 commits, 12 files)
+domain: rust/lancedb (index analysis + new datafusion batch-KNN operator)
+
+================================================================
+SUBJECTIVE
+================================================================
+Since my last review the author replaced the ground-truth (GT) phase of
+`analyze_index` — previously a per-query `nearest_to` loop with a
+`// TODO: swap for Lance&#x27;s batch KNN primitive` placeholder — with a brand-new,
+purpose-built brute-force batch-KNN DataFusion operator (`table/datafusion/knn.rs`
++ `knn_ext.rs` + `knn_optimizer.rs`, public wrapper `table/knn.rs`, and a new
+integration test `tests/knn_test.rs`). The three prior comments I left were all
+non-blocking follow-up notes (two `suggestion`, one `non_blocking`), none gated
+the PR. This re-review therefore turns mostly on a fresh-eyes pass over the new
+~1100 lines of operator code, where the delta concentrates.
+
+================================================================
+OBJECTIVE
+================================================================
+Delta scoped to PR&#x27;s own files (0 off-branch exclusions). Files of substance:
+  rust/lancedb/src/index/analyze.rs           +142 -56  (GT phase rewrite)
+  rust/lancedb/src/table/datafusion/knn.rs    +818      (new operator, core)
+  rust/lancedb/src/table/datafusion/knn_ext.rs +103     (DataFrame .knn() ext)
+  rust/lancedb/src/table/datafusion/knn_optimizer.rs +79 (vector-projection rule)
+  rust/lancedb/src/table/knn.rs               +56       (public batch_knn())
+  rust/lancedb/tests/knn_test.rs              +279      (new integration tests)
+  rust/lancedb/src/table/datafusion.rs        +17       (BaseTableAdapter.with_row_id)
+  + Cargo.{toml,lock}, docs.
+
+================================================================
+ASSESSMENT
+================================================================
+
+----------------------------------------------------------------
+SECTION A — CONDITIONS LEDGER (0 blocking; 0/3 closed-ended &quot;met&quot;)
+----------------------------------------------------------------
+None of my three prior comments were blocking. Status verified against the
+badb3679 diff, not GitHub&#x27;s resolved flags.
+
+~ moot   [non_blocking] &quot;support u8 (binary) vectors with hamming distance&quot;
+         (analyze.rs old line ~551)
+         → The author took a different, explicit approach. At head, that region is
+           now `vector_values_to_f32` (analyze_full.rs:551-573), which *guards*:
+           non-float element types return a clear `InvalidInput` (&quot;supports
+           Float16/Float32/Float64&quot;), rather than silently mis-handling u8. The
+           original comment itself said &quot;can be done as a follow up&quot;; the GT path
+           is now correctly bounded rather than wrong. Treated as moot for this PR.
+           NOTE: the *new* knn operator separately DOES handle Hamming over u8
+           (tests/knn_test.rs::test_hamming_binary_vectors), but analyze&#x27;s GT
+           sampler restricts itself to float columns by design.
+
+✗ not_met [suggestion] &quot;stream results out as they come in&quot;
+         (analyze.rs old line ~323)
+         → The streaming-out suggestion was explicitly &quot;can be done in the future&quot;.
+           The GT phase was rewritten (now collects the whole batch_knn DataFrame
+           via `df.collect()`, analyze_full.rs ~471-487) — still materialized, not
+           streamed. Not addressed; remains a future item. Non-blocking by its own
+           framing.
+
+✗ not_met [suggestion] &quot;make the remote analyze an IPC stream, not an IPC file …
+           should be done as part of this PR since hard to change later&quot;
+         (rust/lancedb/src/remote/table.rs:1967)
+         → remote/table.rs is NOT in the delta (confirmed: absent from the
+           b73b7310...badb3679 compare). The author has not touched it since my
+           review, so this cannot be &quot;met&quot;. At head it still uses `FileReader`
+           (IPC file; remote/table.rs:42) with the standing comment &quot;There isn&#x27;t a
+           way to actually stream this data yet … upstream issue&quot; (line 427).
+           This is the one I framed as &quot;should be done as part of this PR&quot; — worth
+           re-raising with the attending, but I left it as a suggestion, not a
+           blocking token, so it does not by itself gate.
+
+----------------------------------------------------------------
+SECTION B — FRESH-EYES DELTA (new code since b73b7310)
+----------------------------------------------------------------
+The new batch-KNN operator is the bulk of the delta and is where the risk lives.
+One genuine, blocking correctness bug; two lower-severity robustness items.
+
+🔴 issue(blocking): top-k heap orders distances by raw f32 *bit* pattern, which
+   inverts for negative distances → wrong neighbors for Dot / Cosine at k≥2.
+   rust/lancedb/src/table/datafusion/knn.rs:308-343, 552-556
+   `HeapEntry::Ord` compares `dist.to_bits()` as a plain `u32`
+   (`self.dist_bits.cmp(&amp;other.dist_bits)`, line 341). The doc comment itself
+   concedes this only holds &quot;for positive values&quot; (lines 305-310). For NEGATIVE
+   f32, the sign bit makes the bit pattern sort *larger*, so u32 ordering is
+   reversed vs the float. In the per-partition eviction loop the admission test
+   uses correct f32 comparison (`dist &lt; heap.peek().dist()`, line 552) but the
+   `heap.pop()` that evicts the worst entry (line 555) relies on the broken `Ord`.
+   When distances can be negative, `pop()` discards the *nearest* candidate
+   instead of the farthest, corrupting the kept top-k.
+   Lance&#x27;s Dot distance is negative for positively-correlated vectors, and Cosine
+   can be slightly negative; both feed in via `lance_dist.arrow_batch_func()`
+   (line 512). L2 and Hamming are always ≥0 and are unaffected.
+   Why it slipped tests: cosine is only tested at k=1 (test_cosine_distance),
+   where the heap never exceeds 1 and `pop()` is never exercised; the only k≥2
+   test uses L2. `analyze_index` sweeps multiple k values, so a Cosine- or
+   Dot-typed index would hit this in the GT phase and silently report wrong recall.
+   Fix: order the heap on the actual f32 (e.g. `total_cmp`, or normalize bits with
+   the standard sign-flip trick), and add a k≥2 Dot/Cosine test.
+
+🟡 issue (non-blocking): MergeKnnExec infers the query count from the data, not the
+   plan — a query with zero surviving neighbors is silently dropped.
+   rust/lancedb/src/table/datafusion/knn.rs:775-781
+   `num_queries = max_qi + 1` from observed `_query_index` values. A query index
+   that produced no rows in any partition (empty input, or all its rows lost) never
+   appears, shrinks num_queries, and is dropped with no error. In practice every
+   query is compared against all rows so each gets ≥1 neighbor on a non-empty
+   table — edge case only. Prefer carrying `query_vectors.len()` through the plan.
+
+🟡 issue (non-blocking): `k == 0` panics; general-purpose primitive should validate k.
+   rust/lancedb/src/table/datafusion/knn.rs:552
+   With k=0, `heap.len() &lt; k` is false, so the first row evaluates
+   `heap.peek().unwrap()` on an empty heap → panic. analyze_index always uses k≥1,
+   but `batch_knn`/`DataFrame::knn` are public; validate k≥1 at construction.
+
+⚪ nit (non-blocking): doc/code drift on the output column name.
+   knn_ext.rs:30-34 documents the added column as `query_index: Int32`, but the
+   operator emits `_query_index` (knn.rs:353-357; consumers in analyze.rs and
+   tests read `_query_index`). Doc only.
+
+Everything else in the new operator checked out on a careful read: multi-partition
+merge regroups globally (no split/dup), global→(batch,local) index mapping via
+`partition_point` is correct, `with_row_id` schema plumbing is sound, and the
+optimizer&#x27;s vector-projection rule fails safe (keeps the vector when unsure).
+
+================================================================
+PLAN / RECOMMENDATION
+================================================================
+RECOMMENDATION: block on 1 condition (the negative-distance heap-ordering bug).
+  The prior ledger carries nothing blocking, but the fresh-eyes pass found a real
+  correctness regression in code added since my last review: top-k is silently
+  wrong for Dot/Cosine indexes at k≥2 — exactly what analyze_index&#x27;s GT phase
+  exercises — so analyze would report bogus recall for those index types.
+
+  confidence: high on the bug (the Ord impl&#x27;s own doc admits the positive-only
+  precondition; eviction path uses it; no k≥2 negative-distance test exists).
+  what would make this wrong: if Lance&#x27;s `arrow_batch_func` for Dot/Cosine is
+  guaranteed to return only non-negative values here (it is not — Dot distance is
+  routinely negative), the heap ordering would be fine and this drops to a nit.
+
+  Re-raise (non-blocking) with the attending: the remote IPC-stream suggestion I
+  flagged as &quot;do it in this PR&quot; was not addressed and remote/table.rs is untouched.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lancedb</code> · Drafted blocking conditions: 1</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">L</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6890">feat: add early termination for compaction plan with max_compaction_bytes option</a> <span class="num">lance-format/lance#6890</span></span>
       <span class="meta"><span>29d in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#6890 — feat: add early termination for compaction plan with max_compaction_bytes option
+reviewed 7d3c363d → ea8093f4  (4 commits, 1 file in scope: rust/lance/src/dataset/optimize.rs)
+note: 1 file excluded as base-branch merge churn, not the PR&#x27;s own work.
+
+SUBJECTIVE
+The author pushed 4 commits since my last review. Their resolved-thread claim is
+that they addressed the duplication suggestion. The diff also carries two changes
+I did not previously ask for: a usize→u64 retype of all byte accounting, and a
+rewrite of the bytes-budget test.
+
+OBJECTIVE (verified against the ea8093f4 patch and full file, not GitHub flags)
+1. Duplication removed. The &quot;if !is_noop { accumulate frags + inline byte-sum };
+   push bin; check budget&quot; block that previously appeared verbatim in two match
+   arms (the `else` re-binning arm and the `(None, Some(_))` flush arm) is now a
+   single method `DefaultCompactionPlanner::finalize_bin` (optimize.rs:636),
+   called at both sites (optimize.rs:771, :793). The inline
+   `flat_map(files).filter_map(file_size_bytes).map(get).sum` byte-summing that
+   recurred three times is centralized into `CandidateBin::fragment_known_bytes`
+   (optimize.rs:1093) plus a cached per-bin `known_bytes` field (optimize.rs:1089).
+   Verified one remaining inline sum at optimize.rs:661, but that is in
+   `apply_budget_limits` over `TaskData` (a different type, post-binning) — a
+   legitimately separate use, not the duplicated pattern.
+2. Byte accounting retyped usize→u64 across `exceeds_budget`, the running totals,
+   `apply_budget_limits`, `max_compaction_bytes`, and `known_bytes`. No residual
+   `as usize` casts on byte values remain; budget math no longer depends on
+   pointer width (correct on 32-bit targets).
+3. Incremental `known_bytes` bookkeeping is balanced: `+= new_fragment_bytes` on
+   add (optimize.rs:754) is mirrored by `-= new_fragment_bytes` on the
+   budget-revert pop (optimize.rs:764). `split_for_size` resets split-off bins to
+   `known_bytes: 0` (optimize.rs:1131), which is safe because splitting runs after
+   budget enforcement and never re-reads the field for budget purposes.
+4. Test rewrite: the degenerate `max_compaction_bytes: Some(1)` boundary is
+   replaced by computing `first_task_bytes` from the unlimited plan and asserting
+   both `limited_frags &gt; 0` and `limited_frags &lt; unlimited_frags` — a meaningful
+   budget assertion rather than a trivially-zero edge.
+
+ASSESSMENT
+The single open condition is MET, and met by real code, not by the resolved-thread
+claim. The fresh-eyes pass over everything that changed since 7d3c363 surfaced no
+new correctness, overflow, or symmetry defects: the u64 migration is complete and
+consistent, the cached-bytes invariant holds on all add/revert/split paths, and
+the test is strengthened rather than weakened. No new blocking concerns.
+
+CONDITIONS LEDGER (1/1 met)
+  ~ MET  [suggestion] &quot;this pattern appears three times — extract into a function
+         or a method on a bin?&quot;
+         → extracted to finalize_bin (optimize.rs:636, called :771/:793) and
+           fragment_known_bytes (optimize.rs:1093); was author-marked resolved AND
+           confirmed in the diff.
+
+FRESH-EYES DELTA
+  No new concerns. The unrequested u64 retype and test rewrite were reviewed
+  independently and are both improvements; the new `known_bytes` cache is
+  invariant-correct across add, budget-revert, and split paths.
+
+PLAN / RECOMMENDATION: approve
+  confidence: high · what would make this wrong: if `known_bytes` were consumed by
+  a budget check on a post-split bin (it is not — split is size-only and runs after
+  budget), or if a 32-bit overflow path I did not enumerate still used `usize` (the
+  full-file grep for `as usize` on byte values came back clean).
+
+drafted blocking comments: 0</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance</code> · Drafted blocking conditions: 0</div></div></details>
+    </div>
+    <div class="row">
+      <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7511">docs(arrow): add SAFETY comments to lance-arrow unsafe blocks</a> <span class="num">lance-format/lance#7511</span></span>
+      <span class="meta"><span>7h in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <div class="note">core library change; resident to refine from diff content</div>
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#7511 — docs(arrow): add SAFETY comments to lance-arrow unsafe blocks
+reviewed cdc25d7f → f2596e9b  (1 commit, 1 file)
+domain: rust/lance-arrow
+
+# SOAP
+
+## Subjective
+Author (LuciferYang, core) pushed one commit since my last review. The PR&#x27;s
+purpose is documentation/hardening: annotate the five `unsafe` blocks in
+`lance-arrow` with `// SAFETY:` invariant chains, gate little-endian at the
+crate root with `compile_error!`, add a `debug_assert` on the 2-byte alignment
+precondition of `as_slice`, and document the `# Panics`/`# Preconditions`
+contract on the float traits. The new commit is the one piece I asked for in my
+prior review: turn the project&#x27;s &quot;every unsafe needs a SAFETY comment&quot; rule into
+a mechanically-enforced clippy lint.
+
+## Objective
+Delta `cdc25d7f...f2596e9b`, scoped to the PR&#x27;s own files (0 off-branch files
+excluded):
+
+- `rust/lance-arrow/src/lib.rs` (+2/-0): adds
+  `#![warn(clippy::undocumented_unsafe_blocks)]` at the crate root, immediately
+  after the module docstring and before the `compile_error!` little-endian gate.
+
+Verification against ground truth:
+- Lint placement is correct (crate root attribute, ahead of items).
+- CI `clippy` job PASSES at head, so the new lint does not fire on the existing
+  code — i.e. every in-scope unsafe block already carries a SAFETY comment
+  (confirmed by reading bfloat16.rs/deepcopy.rs: 5 documented unsafe blocks; the
+  one pre-existing block at bfloat16.rs:102 uses lowercase `// Safety:`, which
+  the lint accepts case-insensitively, and is untouched by this PR).
+- `format`, `rustdoc`, MSRV, mac/windows/linux-arm builds all PASS.
+- One red check: `linux-build` FAILS — but the failure is a rustc INTERNAL
+  COMPILER ERROR (ICE) while compiling `lance-index` (lib test), not a defect in
+  this PR. The compiler panicked in the trait solver (`check_opaque` /
+  `evaluate_obligation`) and emitted a `rustc-ice-*.txt` bug-report note. It is
+  unrelated to lance-arrow and is infra/toolchain flake; a re-run should clear it.
+
+## Assessment
+
+### Section A — Conditions ledger (0 of 0 met)
+No blocking conditions were reconstructed from my prior review — I left no
+`issue(blocking)` comments on this PR. The clippy-lint request from my earlier
+review was a non-blocking suggestion, and the author has now addressed it
+exactly (see lib.rs delta). Nothing outstanding to verify.
+
+### Section B — Fresh-eyes delta
+The only change since last review is the two-line lint addition. It is sound,
+well-placed, and consistent with the rest of the crate (clippy is green at
+head). No new findings. No regressions introduced by the delta.
+
+The lone red CI check is a rustc ICE in an unrelated crate, not attributable to
+this change.
+
+## Plan
+RECOMMENDATION: approve
+- Section A: nothing outstanding (no conditions).
+- Section B: no new concerns; delta is the requested lint and it is correct.
+- Non-blocking note for the attending: the red `linux-build` is a rustc ICE in
+  `lance-index`, unrelated to this PR — recommend re-running that one job rather
+  than treating it as a blocker.
+
+confidence: high · what would make this wrong: if the `linux-build` ICE turned
+out to be deterministically triggered by the new crate-root attribute rather
+than a transient compiler crash — but it fails in `lance-index` (a different
+crate that does not depend on this attribute) and the dedicated `clippy`/`format`
+/`rustdoc` jobs on lance-arrow are green, so this is very unlikely.
+
+DRAFTED COMMENTS: none (no blocking findings; approve recommendation).</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>rust/lance-arrow</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
     <div class="row">
       <span class="badges"><span class="b acuity-MED">MED</span><span class="b size">M</span></span>
       <span class="title"><a href="https://github.com/lance-format/lance/pull/7245">fix(python): use mimalloc as global allocator to fix RSS leak</a> <span class="num">lance-format/lance#7245</span></span>
       <span class="meta"><span>2h in state</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
       <div class="note">core library change; resident to refine from diff content</div>
-      
+      <details class="soap"><summary><span class="rec rec-approve">APPROVE</span> 0 blocking · drafted 2026-06-30</summary><div class="soap-body"><div class="kv">RE-REVIEW · lance-format/lance#7245 — fix(python): use mimalloc as global allocator to fix RSS leak
+reviewed 1b8d31d9 → 686c79c1  (3 commits, 4 files)
+lane: re_review · viewer: wjones127 · prior review state: CHANGES_REQUESTED @ 1b8d31d9
+
+S — SUBJECTIVE (what changed since I last looked)
+  3 commits landed on the delta 1b8d31d9...686c79c1:
+    587bba19  style: add license header to benchmark_allocators.py
+    6918b01b  fix(python): enable mimalloc local_dynamic_tls and update lockfile
+    686c79c1  fix(python): make mimalloc and jemalloc allocators mutually exclusive
+  Net effect: the previously-flagged static-TLS landmine is addressed, and the
+  mimalloc/jemalloc global_allocator selection is hardened against double
+  registration. The benchmark script the author was asked NOT to check in is
+  still present (license header added instead of removal).
+
+O — OBJECTIVE (ground truth from the patch + head files)
+  Files in delta:
+    python/Cargo.lock            +40/-0   (lockfile, follows mimalloc feature)
+    python/Cargo.toml            +6/-1
+    python/benchmark_allocators.py +2/-0
+    python/src/lib.rs            +3/-1
+
+  Cargo.toml [features] @ head:
+    default   = [&quot;mimalloc&quot;]
+    mimalloc  = [&quot;dep:mimalloc&quot;]
+    jemalloc  = [&quot;dep:tikv-jemallocator&quot;]
+    mimalloc dep now built with features = [&quot;local_dynamic_tls&quot;]
+
+  lib.rs @ head:
+    #[cfg(all(feature = &quot;mimalloc&quot;, not(feature = &quot;jemalloc&quot;)))]
+    #[global_allocator] static GLOBAL: mimalloc::MiMalloc = ...;
+    #[cfg(all(feature = &quot;jemalloc&quot;, not(target_os = &quot;windows&quot;)))]
+    #[global_allocator] static GLOBAL: tikv_jemallocator::Jemalloc = ...;
+
+A — ASSESSMENT
+
+  CONDITIONS LEDGER (0/0 met)
+    No closed-ended issue(blocking) conditions were reconstructed from the prior
+    review. My earlier review was CHANGES_REQUESTED but carried no blocking
+    inline ledger items — only one non-blocking suggestion (below). Section A is
+    therefore empty by construction, not by oversight.
+
+  FRESH-EYES DELTA
+    1. local_dynamic_tls fix — CORRECT.
+       mimalloc with default-features off previously used the initial-exec TLS
+       model; dlopen&#x27;ing the extension could exhaust glibc&#x27;s static-TLS surplus
+       (&quot;cannot allocate memory in static TLS block&quot;). Switching to
+       local_dynamic_tls is the standard remedy and the comment explains the WHY.
+       → python/Cargo.toml hunk @ line 62
+    2. mutual-exclusivity fix — CORRECT, verified against the cfg matrix.
+       mimalloc gate gained `not(feature = &quot;jemalloc&quot;)`. Across the feature
+       matrix on non-Windows: jemalloc-only → jemalloc; mimalloc-only → mimalloc;
+       both → jemalloc wins (matches the &quot;jemalloc takes precedence&quot; comment);
+       no target now registers two #[global_allocator] statics, which would have
+       been a hard compile error. The previous code (plain `cfg(feature =
+       &quot;mimalloc&quot;)`) would double-register whenever both features were on.
+       → python/src/lib.rs hunk @ lines 22-30
+       Benign residual (non-blocking): Windows + both features enabled →
+       mimalloc excluded by jemalloc-feature, jemalloc excluded by target_os →
+       zero global_allocator, silent fall back to the system allocator. Not a
+       regression (jemalloc was already Windows-gated) and not a compile error;
+       noting for completeness, not blocking.
+    3. license header on benchmark_allocators.py — fine in isolation, but it
+       doubles down on checking the script in. My prior (non-blocking)
+       suggestion was to NOT commit it and instead run the full benchmark suite
+       across main / --feature mimalloc / --feature jemalloc and report numbers.
+       That suggestion is unaddressed. It was non-blocking then and stays
+       non-blocking now — re-raise as a nit, do not gate merge on it.
+
+    No new bad behavior introduced in the changed regions. The lockfile delta is
+    consistent with the mimalloc feature change.
+
+P — PLAN / RECOMMENDATION: approve
+
+  The two substantive changes since my last review (TLS model + allocator
+  mutual exclusion) are both correct and verified against the head source, not
+  just the author&#x27;s claims. There are zero outstanding blocking conditions. The
+  only open item is a non-blocking suggestion about not vendoring the benchmark
+  script, which should not gate merge.
+
+  DRAFT non-blocking comments to carry forward (do not post here):
+    nit(benchmark_allocators.py): prefer not checking this script in; if kept,
+      attach a one-time benchmark table (main vs --feature mimalloc vs
+      --feature jemalloc, RSS over the existing python/python/benchmarks suite)
+      to the PR description so the RSS-leak claim is reproducible.
+
+  confidence: high · what would make this wrong: a third #[global_allocator]
+  registration (e.g. snmalloc) elsewhere in python/src that I did not see, or a
+  CI/build target where the Windows+both-features zero-allocator gap actually
+  matters. Neither appears in the delta.</div><div class="kv" style="margin-top:8px">Lane: re_review · Domain: <code>python</code> · Drafted blocking conditions: 0</div></div></details>
     </div>
   </section>
-  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">14</span><span class="desc">discharge planning, batched</span></div>
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">12</span><span class="desc">discharge planning, batched</span></div>
+    <div class="row">
+      <span class="title"><a href="https://github.com/lance-format/lance/pull/7500">perf(arrow): avoid per-element allocation in BFloat16Array::from</a> <span class="num">lance-format/lance#7500</span></span>
+      <span class="meta"><span>approved, not merged · 24h</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+    </div>
     <div class="row">
       <span class="title"><a href="https://github.com/lance-format/lance/pull/7203">feat(index): support xabi scalar index plugins</a> <span class="num">lance-format/lance#7203</span></span>
       <span class="meta"><span>stale, waiting on Xuanwo · 9d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
@@ -522,7 +2295,7 @@ RECOMMENDATION: comment (do not block on the test-existence condition; do hold o
     </div>
     <div class="row">
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6811">fix(encoding): use LargeList internally for Utf8/Binary to prevent offset overflow</a> <span class="num">lance-format/lance#6811</span></span>
-      <span class="meta"><span>stale, waiting on beinan · 9d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <span class="meta"><span>stale, waiting on beinan · 14d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
     </div>
     <div class="row">
       <span class="title"><a href="https://github.com/lance-format/lance/pull/6468">feat(python): add target_partition_size parameter to train_ivf()</a> <span class="num">lance-format/lance#6468</span></span>
@@ -538,31 +2311,19 @@ RECOMMENDATION: comment (do not block on the test-existence condition; do hold o
     </div>
     <div class="row">
       <span class="title"><a href="https://github.com/lance-format/lance/pull/5368">feat(io): support HDFS by HdfsStoreProvider</a> <span class="num">lance-format/lance#5368</span></span>
-      <span class="meta"><span>stale, waiting on fMeow · 190d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <span class="meta"><span>stale, waiting on fMeow · 195d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
     </div>
     <div class="row">
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3514">fix(python): reject repeated where clauses</a> <span class="num">lancedb/lancedb#3514</span></span>
-      <span class="meta"><span>stale, waiting on liuzemei · 16d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3597">feat(remote): monotonic reads via x-lancedb-min-read-version watermark</a> <span class="num">lancedb/lancedb#3597</span></span>
+      <span class="meta"><span>approved, not merged · 14h</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
     </div>
     <div class="row">
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3253">feat(ci): add custom PyPI support for manual wheel uploads</a> <span class="num">lancedb/lancedb#3253</span></span>
-      <span class="meta"><span>approved, not merged · 79d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
+      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3578">feat(python): blob v2 fetch API</a> <span class="num">lancedb/lancedb#3578</span></span>
+      <span class="meta"><span>stale, waiting on geruh · 6d</span><span class="ci ci-green"><span class="dot"></span>CI green</span></span>
     </div>
     <div class="row">
       <span class="title"><a href="https://github.com/lancedb/lancedb/pull/3175">feat(nodejs): expr.ts added to enable Expression API. Basic support for Expr in fil…</a> <span class="num">lancedb/lancedb#3175</span></span>
       <span class="meta"><span>stale, waiting on ChinmayGowda71 · 79d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
-    </div>
-    <div class="row">
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2960">chore!: drop pydantic 1 support</a> <span class="num">lancedb/lancedb#2960</span></span>
-      <span class="meta"><span>draft, waiting on eddyxu · 147d</span><span class="ci ci-red"><span class="dot"></span>CI red</span></span>
-    </div>
-    <div class="row">
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/2348">feat(node): added Rate Limiting and Retry Support to Embeddings API in Node.js SDK</a> <span class="num">lancedb/lancedb#2348</span></span>
-      <span class="meta"><span>stale, waiting on Keerthi421 · 426d</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
-    </div>
-    <div class="row">
-      <span class="title"><a href="https://github.com/lancedb/lancedb/pull/1969">chore: python v0.9.0b4 patch</a> <span class="num">lancedb/lancedb#1969</span></span>
-      <span class="meta"><span>draft, waiting on rpgreen · 552d</span><span class="ci ci-pending"><span class="dot"></span>CI pending</span></span>
     </div>
   </section>
   <footer>Generated by render_html.py from the deterministic pre-assembly (pr-sync → pr-relevance → reconcile). SOAP blocks shown where a workup is cached for the current head SHA. Full SOAP reviews are drafted and co-signed in the interactive session.</footer>

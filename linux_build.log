@@ -1,0 +1,1733 @@
+﻿2026-06-30T15:03:53.5502561Z Current runner version: '2.335.1'
+2026-06-30T15:03:53.5510238Z Runner name: 'ubuntu-24.04-8x-1000258919'
+2026-06-30T15:03:53.5511641Z Runner group name: 'default'
+2026-06-30T15:03:53.5530122Z ##[group]Runner Image Provisioner
+2026-06-30T15:03:53.5530941Z Hosted Compute Agent
+2026-06-30T15:03:53.5531605Z Version: 20260616.556
+2026-06-30T15:03:53.5532336Z Commit: 05ea73cc53e342fdbf317d04a1569da09bda004e
+2026-06-30T15:03:53.5533069Z Build Date: 2026-06-16T16:57:21Z
+2026-06-30T15:03:53.5533753Z ##[endgroup]
+2026-06-30T15:03:53.5535566Z ##[group]Operating System
+2026-06-30T15:03:53.5536281Z Ubuntu
+2026-06-30T15:03:53.5536860Z 24.04.4
+2026-06-30T15:03:53.5537367Z LTS
+2026-06-30T15:03:53.5538221Z ##[endgroup]
+2026-06-30T15:03:53.5538805Z ##[group]Runner Image
+2026-06-30T15:03:53.5539420Z Image: ubuntu-24.04
+2026-06-30T15:03:53.5540083Z Version: 20260622.220.1
+2026-06-30T15:03:53.5541343Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260622.220/images/ubuntu/Ubuntu2404-Readme.md
+2026-06-30T15:03:53.5542971Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260622.220
+2026-06-30T15:03:53.5543904Z ##[endgroup]
+2026-06-30T15:03:53.5545079Z ##[group]GITHUB_TOKEN Permissions
+2026-06-30T15:03:53.5547168Z Contents: read
+2026-06-30T15:03:53.5548167Z Metadata: read
+2026-06-30T15:03:53.5548731Z ##[endgroup]
+2026-06-30T15:03:53.5550857Z Secret source: None
+2026-06-30T15:03:53.5551852Z Prepare workflow directory
+2026-06-30T15:03:53.5941407Z Prepare all required actions
+2026-06-30T15:03:53.5979090Z Getting action download info
+2026-06-30T15:03:53.8165430Z Download action repository 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-06-30T15:03:54.7063065Z Download action repository 'rui314/setup-mold@725a8794d15fc7563f59595bd9556495c0564878' (SHA:725a8794d15fc7563f59595bd9556495c0564878)
+2026-06-30T15:03:54.8247539Z Download action repository 'Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5' (SHA:779680da715d629ac1d338a641029a2f4372abb5)
+2026-06-30T15:03:55.0064922Z Download action repository 'taiki-e/install-action@66068bfca13dcb2ea07c3f613ca2836a37c755d5' (SHA:66068bfca13dcb2ea07c3f613ca2836a37c755d5)
+2026-06-30T15:03:55.2853926Z Download action repository 'codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238' (SHA:b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238)
+2026-06-30T15:03:56.3028981Z Complete job name: linux-build
+2026-06-30T15:03:56.3787874Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-06-30T15:03:56.3796164Z ##[group]Run actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+2026-06-30T15:03:56.3796833Z with:
+2026-06-30T15:03:56.3797121Z   repository: lance-format/lance
+2026-06-30T15:03:56.3800707Z   token: ***
+2026-06-30T15:03:56.3801015Z   ssh-strict: true
+2026-06-30T15:03:56.3801293Z   ssh-user: git
+2026-06-30T15:03:56.3801570Z   persist-credentials: true
+2026-06-30T15:03:56.3801870Z   clean: true
+2026-06-30T15:03:56.3802153Z   sparse-checkout-cone-mode: true
+2026-06-30T15:03:56.3802488Z   fetch-depth: 1
+2026-06-30T15:03:56.3802758Z   fetch-tags: false
+2026-06-30T15:03:56.3803036Z   show-progress: true
+2026-06-30T15:03:56.3803342Z   lfs: false
+2026-06-30T15:03:56.3803590Z   submodules: false
+2026-06-30T15:03:56.3803867Z   set-safe-directory: true
+2026-06-30T15:03:56.3804439Z env:
+2026-06-30T15:03:56.3804701Z   CARGO_TERM_COLOR: always
+2026-06-30T15:03:56.3804998Z   RUST_BACKTRACE: 1
+2026-06-30T15:03:56.3805256Z   CC: clang
+2026-06-30T15:03:56.3805494Z   CXX: clang++
+2026-06-30T15:03:56.3805762Z   RUSTFLAGS: -D warnings
+2026-06-30T15:03:56.3806043Z ##[endgroup]
+2026-06-30T15:03:56.4779214Z Syncing repository: lance-format/lance
+2026-06-30T15:03:56.4780825Z ##[group]Getting Git version info
+2026-06-30T15:03:56.4781837Z Working directory is '/home/runner/work/lance/lance'
+2026-06-30T15:03:56.4782515Z [command]/usr/bin/git version
+2026-06-30T15:03:56.6170841Z git version 2.54.0
+2026-06-30T15:03:56.6193004Z ##[endgroup]
+2026-06-30T15:03:56.6207748Z Temporarily overriding HOME='/home/runner/work/_temp/2fe3d5cc-306e-497b-9dbb-71376af454a9' before making global git config changes
+2026-06-30T15:03:56.6209299Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-30T15:03:56.6213300Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/lance/lance
+2026-06-30T15:03:56.6471879Z Deleting the contents of '/home/runner/work/lance/lance'
+2026-06-30T15:03:56.6475840Z ##[group]Initializing the repository
+2026-06-30T15:03:56.6481143Z [command]/usr/bin/git init /home/runner/work/lance/lance
+2026-06-30T15:03:56.7007384Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-06-30T15:03:56.7008903Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-06-30T15:03:56.7009749Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-06-30T15:03:56.7010339Z hint: call:
+2026-06-30T15:03:56.7010657Z hint:
+2026-06-30T15:03:56.7011095Z hint: 	git config --global init.defaultBranch <name>
+2026-06-30T15:03:56.7011580Z hint:
+2026-06-30T15:03:56.7012197Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-06-30T15:03:56.7012992Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-06-30T15:03:56.7013571Z hint:
+2026-06-30T15:03:56.7013903Z hint: 	git branch -m <name>
+2026-06-30T15:03:56.7014269Z hint:
+2026-06-30T15:03:56.7014794Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-06-30T15:03:56.7015644Z Initialized empty Git repository in /home/runner/work/lance/lance/.git/
+2026-06-30T15:03:56.7026100Z [command]/usr/bin/git remote add origin https://github.com/lance-format/lance
+2026-06-30T15:03:56.7305350Z ##[endgroup]
+2026-06-30T15:03:56.7306125Z ##[group]Disabling automatic garbage collection
+2026-06-30T15:03:56.7309917Z [command]/usr/bin/git config --local gc.auto 0
+2026-06-30T15:03:56.7339632Z ##[endgroup]
+2026-06-30T15:03:56.7340245Z ##[group]Setting up auth
+2026-06-30T15:03:56.7346620Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-30T15:03:56.7383268Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-30T15:03:56.9677179Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-30T15:03:56.9708963Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-30T15:03:56.9930957Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-30T15:03:56.9961655Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-30T15:03:57.0185007Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-06-30T15:03:57.0219664Z ##[endgroup]
+2026-06-30T15:03:57.0220223Z ##[group]Fetching the repository
+2026-06-30T15:03:57.0228609Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9f868857a811700695d1117005e529546f76250f:refs/remotes/pull/7523/merge
+2026-06-30T15:03:57.7169276Z From https://github.com/lance-format/lance
+2026-06-30T15:03:57.7170459Z  * [new ref]         9f868857a811700695d1117005e529546f76250f -> pull/7523/merge
+2026-06-30T15:03:57.7448745Z ##[endgroup]
+2026-06-30T15:03:57.7449275Z ##[group]Determining the checkout info
+2026-06-30T15:03:57.7451077Z ##[endgroup]
+2026-06-30T15:03:57.7456285Z [command]/usr/bin/git sparse-checkout disable
+2026-06-30T15:03:57.7558772Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-06-30T15:03:57.7584738Z ##[group]Checking out the ref
+2026-06-30T15:03:57.7588318Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/7523/merge
+2026-06-30T15:03:57.9742378Z Note: switching to 'refs/remotes/pull/7523/merge'.
+2026-06-30T15:03:57.9742875Z 
+2026-06-30T15:03:57.9743209Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-06-30T15:03:57.9743825Z changes and commit them, and you can discard any commits you make in this
+2026-06-30T15:03:57.9744421Z state without impacting any branches by switching back to a branch.
+2026-06-30T15:03:57.9744785Z 
+2026-06-30T15:03:57.9745073Z If you want to create a new branch to retain commits you create, you may
+2026-06-30T15:03:57.9745632Z do so (now or later) by using -c with the switch command. Example:
+2026-06-30T15:03:57.9745956Z 
+2026-06-30T15:03:57.9746104Z   git switch -c <new-branch-name>
+2026-06-30T15:03:57.9746342Z 
+2026-06-30T15:03:57.9746490Z Or undo this operation with:
+2026-06-30T15:03:57.9746697Z 
+2026-06-30T15:03:57.9746821Z   git switch -
+2026-06-30T15:03:57.9746987Z 
+2026-06-30T15:03:57.9747264Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-06-30T15:03:57.9747957Z 
+2026-06-30T15:03:57.9748460Z HEAD is now at 9f86885 Merge 50dd286d26ea4b39a35f829a1951fd6fbff33a12 into 7914da6a5bda11813636c5ca9a2e3e35c2df973c
+2026-06-30T15:03:57.9757043Z ##[endgroup]
+2026-06-30T15:03:57.9799829Z [command]/usr/bin/git log -1 --format=%H
+2026-06-30T15:03:57.9822912Z 9f868857a811700695d1117005e529546f76250f
+2026-06-30T15:03:58.0009523Z ##[group]Run rustup toolchain install nightly
+2026-06-30T15:03:58.0009956Z [36;1mrustup toolchain install nightly[0m
+2026-06-30T15:03:58.0010269Z [36;1mrustup default nightly[0m
+2026-06-30T15:03:58.1740284Z shell: /usr/bin/bash -e {0}
+2026-06-30T15:03:58.1740668Z env:
+2026-06-30T15:03:58.1740927Z   CARGO_TERM_COLOR: always
+2026-06-30T15:03:58.1741272Z   RUST_BACKTRACE: 1
+2026-06-30T15:03:58.1741586Z   CC: clang
+2026-06-30T15:03:58.1741830Z   CXX: clang++
+2026-06-30T15:03:58.1742150Z   RUSTFLAGS: -D warnings
+2026-06-30T15:03:58.1742486Z ##[endgroup]
+2026-06-30T15:03:59.5063778Z info: syncing channel updates for nightly-x86_64-unknown-linux-gnu
+2026-06-30T15:03:59.8566335Z info: latest update on 2026-06-30 for version 1.98.0-nightly (096694416 2026-06-29)
+2026-06-30T15:03:59.8634948Z info: downloading 3 components
+2026-06-30T15:04:07.3901128Z 
+2026-06-30T15:04:07.3973774Z   nightly-x86_64-unknown-linux-gnu installed - rustc 1.98.0-nightly (096694416 2026-06-29)
+2026-06-30T15:04:07.3974451Z 
+2026-06-30T15:04:07.4144576Z info: using existing install for nightly-x86_64-unknown-linux-gnu
+2026-06-30T15:04:07.4151158Z info: default toolchain set to nightly-x86_64-unknown-linux-gnu
+2026-06-30T15:04:07.4151526Z 
+2026-06-30T15:04:07.4222875Z   nightly-x86_64-unknown-linux-gnu unchanged - rustc 1.98.0-nightly (096694416 2026-06-29)
+2026-06-30T15:04:07.4223468Z 
+2026-06-30T15:04:07.4224162Z info: note that the toolchain '1.94.0-x86_64-unknown-linux-gnu' is currently in use (overridden by '/home/runner/work/lance/lance/rust-toolchain.toml')
+2026-06-30T15:04:07.4291375Z ##[group]Run rui314/setup-mold@725a8794d15fc7563f59595bd9556495c0564878
+2026-06-30T15:04:07.4291766Z with:
+2026-06-30T15:04:07.4291971Z   mold-version: 2.40.4
+2026-06-30T15:04:07.4292191Z   make-default: true
+2026-06-30T15:04:07.4292397Z env:
+2026-06-30T15:04:07.4292583Z   CARGO_TERM_COLOR: always
+2026-06-30T15:04:07.4292812Z   RUST_BACKTRACE: 1
+2026-06-30T15:04:07.4293009Z   CC: clang
+2026-06-30T15:04:07.4293191Z   CXX: clang++
+2026-06-30T15:04:07.4293395Z   RUSTFLAGS: -D warnings
+2026-06-30T15:04:07.4293613Z ##[endgroup]
+2026-06-30T15:04:07.4408188Z ##[group]Run set -x
+2026-06-30T15:04:07.4408467Z [36;1mset -x[0m
+2026-06-30T15:04:07.4408677Z [36;1mecho "mold 2.40.4"[0m
+2026-06-30T15:04:07.4409013Z [36;1mif [ "$(whoami)" = root ]; then SUDO=; else SUDO=sudo; fi[0m
+2026-06-30T15:04:07.4410339Z [36;1mwget -O- --timeout=10 --waitretry=3 --retry-connrefused --progress=dot:mega https://github.com/rui314/mold/releases/download/v2.40.4/mold-2.40.4-$(uname -m)-linux.tar.gz | $SUDO tar -C /usr/local --strip-components=1 --no-overwrite-dir -xzf -[0m
+2026-06-30T15:04:07.4411617Z [36;1mtest true = true -a "$(realpath /usr/bin/ld)" != /usr/local/bin/mold && $SUDO ln -sf /usr/local/bin/mold "$(realpath /usr/bin/ld)"; true[0m
+2026-06-30T15:04:07.4445808Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-30T15:04:07.4446156Z env:
+2026-06-30T15:04:07.4446351Z   CARGO_TERM_COLOR: always
+2026-06-30T15:04:07.4446603Z   RUST_BACKTRACE: 1
+2026-06-30T15:04:07.4446802Z   CC: clang
+2026-06-30T15:04:07.4446989Z   CXX: clang++
+2026-06-30T15:04:07.4447193Z   RUSTFLAGS: -D warnings
+2026-06-30T15:04:07.4447420Z ##[endgroup]
+2026-06-30T15:04:07.4497969Z + echo 'mold 2.40.4'
+2026-06-30T15:04:07.4498449Z mold 2.40.4
+2026-06-30T15:04:07.4500809Z ++ whoami
+2026-06-30T15:04:07.4626491Z + '[' runner = root ']'
+2026-06-30T15:04:07.4626887Z + SUDO=sudo
+2026-06-30T15:04:07.4630715Z + sudo tar -C /usr/local --strip-components=1 --no-overwrite-dir -xzf -
+2026-06-30T15:04:07.4632105Z ++ uname -m
+2026-06-30T15:04:07.4643050Z + wget -O- --timeout=10 --waitretry=3 --retry-connrefused --progress=dot:mega https://github.com/rui314/mold/releases/download/v2.40.4/mold-2.40.4-x86_64-linux.tar.gz
+2026-06-30T15:04:07.6115325Z --2026-06-30 15:04:07--  https://github.com/rui314/mold/releases/download/v2.40.4/mold-2.40.4-x86_64-linux.tar.gz
+2026-06-30T15:04:07.6341940Z Resolving github.com (github.com)... 140.82.113.4
+2026-06-30T15:04:07.6359163Z Connecting to github.com (github.com)|140.82.113.4|:443... connected.
+2026-06-30T15:04:07.7153221Z HTTP request sent, awaiting response... 302 Found
+2026-06-30T15:04:07.7163576Z Location: https://release-assets.githubusercontent.com/github-production-release-asset/299510783/211930e7-1ad7-4907-9b06-eaf7cfae7198?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-30T15%3A57%3A58Z&rscd=attachment%3B+filename%3Dmold-2.40.4-x86_64-linux.tar.gz&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-30T14%3A56%3A59Z&ske=2026-06-30T15%3A57%3A58Z&sks=b&skv=2018-11-09&sig=drMg0L75vMOaOTEK5X04zpqpFN5mc2RTzZLY0v2zj%2BE%3D&jwt=*** [following]
+2026-06-30T15:04:07.7172882Z --2026-06-30 15:04:07--  https://release-assets.githubusercontent.com/github-production-release-asset/299510783/211930e7-1ad7-4907-9b06-eaf7cfae7198?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-30T15%3A57%3A58Z&rscd=attachment%3B+filename%3Dmold-2.40.4-x86_64-linux.tar.gz&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-30T14%3A56%3A59Z&ske=2026-06-30T15%3A57%3A58Z&sks=b&skv=2018-11-09&sig=drMg0L75vMOaOTEK5X04zpqpFN5mc2RTzZLY0v2zj%2BE%3D&jwt=***
+2026-06-30T15:04:07.7178896Z Resolving release-assets.githubusercontent.com (release-assets.githubusercontent.com)... 185.199.110.133, 185.199.108.133, 185.199.109.133, ...
+2026-06-30T15:04:07.7198012Z Connecting to release-assets.githubusercontent.com (release-assets.githubusercontent.com)|185.199.110.133|:443... connected.
+2026-06-30T15:04:07.7409502Z HTTP request sent, awaiting response... 200 OK
+2026-06-30T15:04:07.7410422Z Length: 5069795 (4.8M) [application/octet-stream]
+2026-06-30T15:04:07.7411606Z Saving to: ‘STDOUT’
+2026-06-30T15:04:07.7428936Z 
+2026-06-30T15:04:07.8114738Z      0K ........ ........ ........ ........ ........ ........ 62% 42.6M 0s
+2026-06-30T15:04:07.8512133Z   3072K ........ ........ ........ .....                     100% 46.1M=0.1s
+2026-06-30T15:04:07.8512688Z 
+2026-06-30T15:04:07.8513028Z 2026-06-30 15:04:07 (43.9 MB/s) - written to stdout [5069795/5069795]
+2026-06-30T15:04:07.8513584Z 
+2026-06-30T15:04:07.8930819Z ++ realpath /usr/bin/ld
+2026-06-30T15:04:07.8950897Z + test true = true -a /usr/bin/x86_64-linux-gnu-ld.bfd '!=' /usr/local/bin/mold
+2026-06-30T15:04:07.8953314Z ++ realpath /usr/bin/ld
+2026-06-30T15:04:07.8963361Z + sudo ln -sf /usr/local/bin/mold /usr/bin/x86_64-linux-gnu-ld.bfd
+2026-06-30T15:04:07.9036536Z + true
+2026-06-30T15:04:07.9122447Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-06-30T15:04:07.9124120Z ##[group]Run Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+2026-06-30T15:04:07.9124485Z with:
+2026-06-30T15:04:07.9124681Z   prefix-key: v0-rust
+2026-06-30T15:04:07.9124904Z   add-job-id-key: true
+2026-06-30T15:04:07.9125141Z   add-rust-environment-hash-key: true
+2026-06-30T15:04:07.9125410Z   cache-targets: true
+2026-06-30T15:04:07.9125625Z   cache-all-crates: false
+2026-06-30T15:04:07.9125861Z   cache-workspace-crates: false
+2026-06-30T15:04:07.9126099Z   save-if: true
+2026-06-30T15:04:07.9126316Z   cache-provider: github
+2026-06-30T15:04:07.9126554Z   cache-bin: true
+2026-06-30T15:04:07.9126754Z   lookup-only: false
+2026-06-30T15:04:07.9126971Z env:
+2026-06-30T15:04:07.9127164Z   CARGO_TERM_COLOR: always
+2026-06-30T15:04:07.9127387Z   RUST_BACKTRACE: 1
+2026-06-30T15:04:07.9127582Z   CC: clang
+2026-06-30T15:04:07.9128086Z   CXX: clang++
+2026-06-30T15:04:07.9128290Z   RUSTFLAGS: -D warnings
+2026-06-30T15:04:07.9128508Z ##[endgroup]
+2026-06-30T15:04:08.1107454Z (node:2531) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-06-30T15:04:08.1108882Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-06-30T15:04:17.1492951Z ##[group]Cache Configuration
+2026-06-30T15:04:17.1493451Z Cache Provider:
+2026-06-30T15:04:17.1493863Z     github
+2026-06-30T15:04:17.1494179Z Workspaces:
+2026-06-30T15:04:17.1494508Z     /home/runner/work/lance/lance
+2026-06-30T15:04:17.1494944Z Cache Paths:
+2026-06-30T15:04:17.1495161Z     /home/runner/.cargo/bin
+2026-06-30T15:04:17.1495444Z     /home/runner/.cargo/.crates.toml
+2026-06-30T15:04:17.1495754Z     /home/runner/.cargo/.crates2.json
+2026-06-30T15:04:17.1496037Z     /home/runner/.cargo/registry
+2026-06-30T15:04:17.1496298Z     /home/runner/.cargo/git
+2026-06-30T15:04:17.1496550Z     /home/runner/work/lance/lance/target
+2026-06-30T15:04:17.1496811Z Restore Key:
+2026-06-30T15:04:17.1497034Z     v0-rust-linux-build-Linux-x64-bea57297
+2026-06-30T15:04:17.1497445Z Cache Key:
+2026-06-30T15:04:17.1497950Z     v0-rust-linux-build-Linux-x64-bea57297-b3bba05b
+2026-06-30T15:04:17.1498276Z .. Prefix:
+2026-06-30T15:04:17.1498501Z   - v0-rust-linux-build-Linux-x64
+2026-06-30T15:04:17.1498783Z .. Environment considered:
+2026-06-30T15:04:17.1499201Z   - Rust Version: 1.94.0 x86_64-unknown-linux-gnu (4a4ef493e3a1488c6e321570238084b38948f6db)
+2026-06-30T15:04:17.1499659Z   - CARGO_INCREMENTAL
+2026-06-30T15:04:17.1499885Z   - CARGO_TERM_COLOR
+2026-06-30T15:04:17.1500094Z   - CC
+2026-06-30T15:04:17.1500436Z   - CXX
+2026-06-30T15:04:17.1500705Z   - RUST_BACKTRACE
+2026-06-30T15:04:17.1500921Z   - RUSTFLAGS
+2026-06-30T15:04:17.1501141Z .. Lockfiles considered:
+2026-06-30T15:04:17.1501425Z   - /home/runner/work/lance/lance/.cargo/config.toml
+2026-06-30T15:04:17.1501766Z   - /home/runner/work/lance/lance/Cargo.lock
+2026-06-30T15:04:17.1502161Z   - /home/runner/work/lance/lance/java/lance-jni/rust-toolchain.toml
+2026-06-30T15:04:17.1502604Z   - /home/runner/work/lance/lance/python/.cargo/config.toml
+2026-06-30T15:04:17.1503010Z   - /home/runner/work/lance/lance/python/rust-toolchain.toml
+2026-06-30T15:04:17.1503396Z   - /home/runner/work/lance/lance/rust-toolchain.toml
+2026-06-30T15:04:17.1503786Z   - /home/runner/work/lance/lance/rust/arrow-scalar/Cargo.toml
+2026-06-30T15:04:17.1504201Z   - /home/runner/work/lance/lance/rust/arrow-stats/Cargo.toml
+2026-06-30T15:04:17.1504654Z   - /home/runner/work/lance/lance/rust/compression/bitpacking/Cargo.toml
+2026-06-30T15:04:17.1505333Z   - /home/runner/work/lance/lance/rust/compression/fsst/Cargo.toml
+2026-06-30T15:04:17.1506084Z   - /home/runner/work/lance/lance/rust/examples/Cargo.toml
+2026-06-30T15:04:17.1520336Z   - /home/runner/work/lance/lance/rust/lance-arrow/Cargo.toml
+2026-06-30T15:04:17.1521068Z   - /home/runner/work/lance/lance/rust/lance-core/Cargo.toml
+2026-06-30T15:04:17.1521776Z   - /home/runner/work/lance/lance/rust/lance-datafusion/Cargo.toml
+2026-06-30T15:04:17.1522526Z   - /home/runner/work/lance/lance/rust/lance-datagen/Cargo.toml
+2026-06-30T15:04:17.1523255Z   - /home/runner/work/lance/lance/rust/lance-derive/Cargo.toml
+2026-06-30T15:04:17.1523976Z   - /home/runner/work/lance/lance/rust/lance-encoding/Cargo.toml
+2026-06-30T15:04:17.1524653Z   - /home/runner/work/lance/lance/rust/lance-file/Cargo.toml
+2026-06-30T15:04:17.1525327Z   - /home/runner/work/lance/lance/rust/lance-geo/Cargo.toml
+2026-06-30T15:04:17.1526049Z   - /home/runner/work/lance/lance/rust/lance-index/Cargo.toml
+2026-06-30T15:04:17.1526747Z   - /home/runner/work/lance/lance/rust/lance-io/Cargo.toml
+2026-06-30T15:04:17.1527453Z   - /home/runner/work/lance/lance/rust/lance-linalg/Cargo.toml
+2026-06-30T15:04:17.1528553Z   - /home/runner/work/lance/lance/rust/lance-namespace-datafusion/Cargo.toml
+2026-06-30T15:04:17.1529431Z   - /home/runner/work/lance/lance/rust/lance-namespace-impls/Cargo.toml
+2026-06-30T15:04:17.1530392Z   - /home/runner/work/lance/lance/rust/lance-namespace/Cargo.toml
+2026-06-30T15:04:17.1531260Z   - /home/runner/work/lance/lance/rust/lance-select/Cargo.toml
+2026-06-30T15:04:17.1531955Z   - /home/runner/work/lance/lance/rust/lance-table/Cargo.toml
+2026-06-30T15:04:17.1532688Z   - /home/runner/work/lance/lance/rust/lance-test-macros/Cargo.toml
+2026-06-30T15:04:17.1533452Z   - /home/runner/work/lance/lance/rust/lance-testing/Cargo.toml
+2026-06-30T15:04:17.1534190Z   - /home/runner/work/lance/lance/rust/lance-tokenizer/Cargo.toml
+2026-06-30T15:04:17.1534940Z   - /home/runner/work/lance/lance/rust/lance-tools/Cargo.toml
+2026-06-30T15:04:17.1535588Z   - /home/runner/work/lance/lance/rust/lance/Cargo.toml
+2026-06-30T15:04:17.1536478Z ##[endgroup]
+2026-06-30T15:04:17.1536694Z 
+2026-06-30T15:04:17.1536797Z ... Restoring cache ...
+2026-06-30T15:04:17.3017126Z Cache hit for restore-key: v0-rust-linux-build-Linux-x64-bea57297-fadc0cb2
+2026-06-30T15:04:18.3333297Z Received 268435456 of 1313018551 (20.4%), 255.5 MBs/sec
+2026-06-30T15:04:19.3333079Z Received 536870912 of 1313018551 (40.9%), 255.7 MBs/sec
+2026-06-30T15:04:20.3343160Z Received 843055104 of 1313018551 (64.2%), 267.7 MBs/sec
+2026-06-30T15:04:21.3387581Z Received 1111490560 of 1313018551 (84.7%), 264.5 MBs/sec
+2026-06-30T15:04:22.0509643Z Received 1313018551 of 1313018551 (100.0%), 265.4 MBs/sec
+2026-06-30T15:04:22.0510618Z Cache Size: ~1252 MB (1313018551 B)
+2026-06-30T15:04:22.0567344Z [command]/usr/bin/tar -xf /home/runner/work/_temp/8098a0fb-2bdf-4841-b524-b82ed25d25a9/cache.tzst -P -C /home/runner/work/lance/lance --use-compress-program unzstd
+2026-06-30T15:04:29.1691389Z Cache restored successfully
+2026-06-30T15:04:29.3461740Z Restored from cache key "v0-rust-linux-build-Linux-x64-bea57297-fadc0cb2" full match: false.
+2026-06-30T15:04:29.3670006Z ##[group]Run sudo apt update
+2026-06-30T15:04:29.3670327Z [36;1msudo apt update[0m
+2026-06-30T15:04:29.3670651Z [36;1msudo apt install -y protobuf-compiler libssl-dev[0m
+2026-06-30T15:04:29.3702876Z shell: /usr/bin/bash -e {0}
+2026-06-30T15:04:29.3703135Z env:
+2026-06-30T15:04:29.3703338Z   CARGO_TERM_COLOR: always
+2026-06-30T15:04:29.3703580Z   RUST_BACKTRACE: 1
+2026-06-30T15:04:29.3703792Z   CC: clang
+2026-06-30T15:04:29.3703991Z   CXX: clang++
+2026-06-30T15:04:29.3704197Z   RUSTFLAGS: -D warnings
+2026-06-30T15:04:29.3704434Z   CACHE_ON_FAILURE: false
+2026-06-30T15:04:29.3704665Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:04:29.3704883Z ##[endgroup]
+2026-06-30T15:04:29.5424753Z 
+2026-06-30T15:04:29.5425453Z WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+2026-06-30T15:04:29.5426239Z 
+2026-06-30T15:04:29.7361026Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-06-30T15:04:29.7782930Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2026-06-30T15:04:29.7783877Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-06-30T15:04:29.7784790Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-06-30T15:04:29.7842535Z Get:8 https://dl.google.com/linux/chrome-stable/deb stable InRelease [1825 B]
+2026-06-30T15:04:29.7943850Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-06-30T15:04:29.8003325Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-06-30T15:04:29.8072814Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-06-30T15:04:30.0144121Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [154 kB]
+2026-06-30T15:04:30.0262975Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [11.6 kB]
+2026-06-30T15:04:30.0299865Z Get:11 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [187 kB]
+2026-06-30T15:04:30.0880012Z Get:12 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1211 B]
+2026-06-30T15:04:30.1180120Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1041 kB]
+2026-06-30T15:04:30.1250141Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [261 kB]
+2026-06-30T15:04:30.1276148Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
+2026-06-30T15:04:30.1298337Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 c-n-f Metadata [17.5 kB]
+2026-06-30T15:04:30.1313429Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1656 kB]
+2026-06-30T15:04:30.1394304Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [326 kB]
+2026-06-30T15:04:30.1421149Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
+2026-06-30T15:04:30.1502189Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 c-n-f Metadata [34.8 kB]
+2026-06-30T15:04:30.1518269Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1134 kB]
+2026-06-30T15:04:30.1641553Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [257 kB]
+2026-06-30T15:04:30.2123281Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2026-06-30T15:04:30.2138886Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5760 B]
+2026-06-30T15:04:30.2154171Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2026-06-30T15:04:30.2260768Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [791 kB]
+2026-06-30T15:04:30.2325163Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [181 kB]
+2026-06-30T15:04:30.2347462Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [44.9 kB]
+2026-06-30T15:04:30.2363025Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 c-n-f Metadata [11.6 kB]
+2026-06-30T15:04:30.2378676Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1171 kB]
+2026-06-30T15:04:30.2441765Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [230 kB]
+2026-06-30T15:04:30.2463371Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.3 kB]
+2026-06-30T15:04:30.2480337Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 c-n-f Metadata [24.1 kB]
+2026-06-30T15:04:30.2495415Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1071 kB]
+2026-06-30T15:04:30.2553536Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [245 kB]
+2026-06-30T15:04:39.7171387Z Fetched 9896 kB in 1s (7504 kB/s)
+2026-06-30T15:04:40.3644320Z Reading package lists...
+2026-06-30T15:04:40.5109687Z Building dependency tree...
+2026-06-30T15:04:40.5115348Z Reading state information...
+2026-06-30T15:04:40.5243487Z 17 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2026-06-30T15:04:40.5358577Z 
+2026-06-30T15:04:40.5359338Z WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+2026-06-30T15:04:40.5359898Z 
+2026-06-30T15:04:40.5468691Z Reading package lists...
+2026-06-30T15:04:40.6993029Z Building dependency tree...
+2026-06-30T15:04:40.6999743Z Reading state information...
+2026-06-30T15:04:40.8308216Z libssl-dev is already the newest version (3.0.13-0ubuntu3.11).
+2026-06-30T15:04:40.8309303Z The following additional packages will be installed:
+2026-06-30T15:04:40.8310406Z   libprotobuf-dev libprotobuf32t64 libprotoc32t64
+2026-06-30T15:04:40.8316175Z Suggested packages:
+2026-06-30T15:04:40.8316653Z   protobuf-mode-el
+2026-06-30T15:04:40.9136718Z The following NEW packages will be installed:
+2026-06-30T15:04:40.9142029Z   libprotobuf-dev libprotobuf32t64 libprotoc32t64 protobuf-compiler
+2026-06-30T15:04:40.9596826Z 0 upgraded, 4 newly installed, 0 to remove and 17 not upgraded.
+2026-06-30T15:04:41.0104130Z Need to get 3048 kB of archives.
+2026-06-30T15:04:41.0104757Z After this operation, 17.8 MB of additional disk space will be used.
+2026-06-30T15:04:41.0105221Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-06-30T15:04:41.0377037Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotobuf32t64 amd64 3.21.12-8.2ubuntu0.3 [923 kB]
+2026-06-30T15:04:41.0581548Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotoc32t64 amd64 3.21.12-8.2ubuntu0.3 [683 kB]
+2026-06-30T15:04:41.0770601Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libprotobuf-dev amd64 3.21.12-8.2ubuntu0.3 [1413 kB]
+2026-06-30T15:04:41.0991368Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 protobuf-compiler amd64 3.21.12-8.2ubuntu0.3 [29.0 kB]
+2026-06-30T15:04:41.3457813Z Fetched 3048 kB in 0s (30.7 MB/s)
+2026-06-30T15:04:41.3820517Z Selecting previously unselected package libprotobuf32t64:amd64.
+2026-06-30T15:04:41.4336659Z (Reading database ... 
+2026-06-30T15:04:41.4337107Z (Reading database ... 5%
+2026-06-30T15:04:41.4337501Z (Reading database ... 10%
+2026-06-30T15:04:41.4338171Z (Reading database ... 15%
+2026-06-30T15:04:41.4338551Z (Reading database ... 20%
+2026-06-30T15:04:41.4338924Z (Reading database ... 25%
+2026-06-30T15:04:41.4339303Z (Reading database ... 30%
+2026-06-30T15:04:41.4339682Z (Reading database ... 35%
+2026-06-30T15:04:41.4340047Z (Reading database ... 40%
+2026-06-30T15:04:41.4340413Z (Reading database ... 45%
+2026-06-30T15:04:41.4340779Z (Reading database ... 50%
+2026-06-30T15:04:41.4780960Z (Reading database ... 55%
+2026-06-30T15:04:41.9594888Z (Reading database ... 60%
+2026-06-30T15:04:42.2947884Z (Reading database ... 65%
+2026-06-30T15:04:42.5868656Z (Reading database ... 70%
+2026-06-30T15:04:42.6937551Z (Reading database ... 75%
+2026-06-30T15:04:43.1280391Z (Reading database ... 80%
+2026-06-30T15:04:43.8289711Z (Reading database ... 85%
+2026-06-30T15:04:44.5765301Z (Reading database ... 90%
+2026-06-30T15:04:45.3285269Z (Reading database ... 95%
+2026-06-30T15:04:45.3285910Z (Reading database ... 100%
+2026-06-30T15:04:45.3286560Z (Reading database ... 202407 files and directories currently installed.)
+2026-06-30T15:04:45.3328947Z Preparing to unpack .../libprotobuf32t64_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-06-30T15:04:45.3382243Z Unpacking libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.3891366Z Selecting previously unselected package libprotoc32t64:amd64.
+2026-06-30T15:04:45.4015278Z Preparing to unpack .../libprotoc32t64_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-06-30T15:04:45.4023589Z Unpacking libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.4366628Z Selecting previously unselected package libprotobuf-dev:amd64.
+2026-06-30T15:04:45.4490447Z Preparing to unpack .../libprotobuf-dev_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-06-30T15:04:45.4499397Z Unpacking libprotobuf-dev:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.5312496Z Selecting previously unselected package protobuf-compiler.
+2026-06-30T15:04:45.5442732Z Preparing to unpack .../protobuf-compiler_3.21.12-8.2ubuntu0.3_amd64.deb ...
+2026-06-30T15:04:45.5452472Z Unpacking protobuf-compiler (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.5986793Z Setting up libprotobuf32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.6008572Z Setting up libprotobuf-dev:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.6028728Z Setting up libprotoc32t64:amd64 (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.6049354Z Setting up protobuf-compiler (3.21.12-8.2ubuntu0.3) ...
+2026-06-30T15:04:45.6073466Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-06-30T15:04:45.6102773Z Not building database; man-db/auto-update is not 'true'.
+2026-06-30T15:04:45.6115490Z Processing triggers for libc-bin (2.39-0ubuntu8.7) ...
+2026-06-30T15:04:46.7954165Z 
+2026-06-30T15:04:46.7954899Z Running kernel seems to be up-to-date.
+2026-06-30T15:04:46.7955374Z 
+2026-06-30T15:04:46.7955545Z No services need to be restarted.
+2026-06-30T15:04:46.7955838Z 
+2026-06-30T15:04:46.7956000Z No containers need to be restarted.
+2026-06-30T15:04:46.7956306Z 
+2026-06-30T15:04:46.7956508Z No user sessions are running outdated binaries.
+2026-06-30T15:04:46.7956860Z 
+2026-06-30T15:04:46.7957185Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-06-30T15:04:47.6324378Z ##[group]Run docker compose -f docker-compose.yml up -d --wait
+2026-06-30T15:04:47.6324895Z [36;1mdocker compose -f docker-compose.yml up -d --wait[0m
+2026-06-30T15:04:47.6357398Z shell: /usr/bin/bash -e {0}
+2026-06-30T15:04:47.6357910Z env:
+2026-06-30T15:04:47.6358129Z   CARGO_TERM_COLOR: always
+2026-06-30T15:04:47.6358380Z   RUST_BACKTRACE: 1
+2026-06-30T15:04:47.6358596Z   CC: clang
+2026-06-30T15:04:47.6358787Z   CXX: clang++
+2026-06-30T15:04:47.6359010Z   RUSTFLAGS: -D warnings
+2026-06-30T15:04:47.6359256Z   CACHE_ON_FAILURE: false
+2026-06-30T15:04:47.6359494Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:04:47.6359713Z ##[endgroup]
+2026-06-30T15:04:51.9453320Z time="2026-06-30T15:04:51Z" level=warning msg="/home/runner/work/lance/lance/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+2026-06-30T15:04:52.0305341Z  localstack Pulling 
+2026-06-30T15:04:52.3977330Z  2d429b9e73a6 Pulling fs layer 
+2026-06-30T15:04:52.3978372Z  14dbff54af92 Pulling fs layer 
+2026-06-30T15:04:52.3979029Z  71ba669986f7 Pulling fs layer 
+2026-06-30T15:04:52.3979650Z  173289c0cbe5 Pulling fs layer 
+2026-06-30T15:04:52.3980283Z  a86200e301b0 Pulling fs layer 
+2026-06-30T15:04:52.3980913Z  671d51721d1e Pulling fs layer 
+2026-06-30T15:04:52.3981554Z  091dbde05e24 Pulling fs layer 
+2026-06-30T15:04:52.3982185Z  2a9fa7a8f389 Pulling fs layer 
+2026-06-30T15:04:52.3982822Z  4f4fb700ef54 Pulling fs layer 
+2026-06-30T15:04:52.3983485Z  736e326ec984 Pulling fs layer 
+2026-06-30T15:04:52.3984107Z  217356078d9e Pulling fs layer 
+2026-06-30T15:04:52.3984689Z  f238bbc6d36a Pulling fs layer 
+2026-06-30T15:04:52.3985301Z  c9691f1a102b Pulling fs layer 
+2026-06-30T15:04:52.3985943Z  eaf2ac2eaf6e Pulling fs layer 
+2026-06-30T15:04:52.3986609Z  4ef64dd54a5b Pulling fs layer 
+2026-06-30T15:04:52.3987349Z  892a565b63ee Pulling fs layer 
+2026-06-30T15:04:52.3987806Z  b280023685e9 Pulling fs layer 
+2026-06-30T15:04:52.3988328Z  0bac7da799b5 Pulling fs layer 
+2026-06-30T15:04:52.3988688Z  a0213e37a9cd Pulling fs layer 
+2026-06-30T15:04:52.3989034Z  03dd51fa0ba0 Pulling fs layer 
+2026-06-30T15:04:52.3989389Z  5dc166b028d4 Pulling fs layer 
+2026-06-30T15:04:52.3989745Z  b910fa222e81 Pulling fs layer 
+2026-06-30T15:04:52.3990240Z  5bceef28babb Pulling fs layer 
+2026-06-30T15:04:52.3990600Z  2a9fa7a8f389 Waiting 
+2026-06-30T15:04:52.3990909Z  4f4fb700ef54 Waiting 
+2026-06-30T15:04:52.3991138Z  736e326ec984 Waiting 
+2026-06-30T15:04:52.3991761Z  217356078d9e Waiting 
+2026-06-30T15:04:52.3991978Z  173289c0cbe5 Waiting 
+2026-06-30T15:04:52.3992188Z  f238bbc6d36a Waiting 
+2026-06-30T15:04:52.3992394Z  c9691f1a102b Waiting 
+2026-06-30T15:04:52.3992607Z  a0213e37a9cd Waiting 
+2026-06-30T15:04:52.3992812Z  03dd51fa0ba0 Waiting 
+2026-06-30T15:04:52.3993018Z  5dc166b028d4 Waiting 
+2026-06-30T15:04:52.3993222Z  a86200e301b0 Waiting 
+2026-06-30T15:04:52.3993428Z  eaf2ac2eaf6e Waiting 
+2026-06-30T15:04:52.3993644Z  4ef64dd54a5b Waiting 
+2026-06-30T15:04:52.3993852Z  671d51721d1e Waiting 
+2026-06-30T15:04:52.3994059Z  892a565b63ee Waiting 
+2026-06-30T15:04:52.3994269Z  5bceef28babb Waiting 
+2026-06-30T15:04:52.3994480Z  091dbde05e24 Waiting 
+2026-06-30T15:04:52.3994688Z  0bac7da799b5 Waiting 
+2026-06-30T15:04:52.4115403Z  14dbff54af92 Downloading [>                                                  ]  48.51kB/3.512MB
+2026-06-30T15:04:52.4132370Z  71ba669986f7 Downloading [>                                                  ]  163.2kB/16.2MB
+2026-06-30T15:04:52.4209523Z  2d429b9e73a6 Downloading [>                                                  ]  294.3kB/29.13MB
+2026-06-30T15:04:52.4321864Z  14dbff54af92 Verifying Checksum 
+2026-06-30T15:04:52.4322190Z  14dbff54af92 Download complete 
+2026-06-30T15:04:52.4644576Z  173289c0cbe5 Downloading [==================================================>]     250B/250B
+2026-06-30T15:04:52.4645835Z  173289c0cbe5 Verifying Checksum 
+2026-06-30T15:04:52.4646789Z  173289c0cbe5 Download complete 
+2026-06-30T15:04:52.4703877Z  71ba669986f7 Verifying Checksum 
+2026-06-30T15:04:52.4704442Z  71ba669986f7 Download complete 
+2026-06-30T15:04:52.5066088Z  2d429b9e73a6 Verifying Checksum 
+2026-06-30T15:04:52.5066597Z  2d429b9e73a6 Download complete 
+2026-06-30T15:04:52.5077921Z  a86200e301b0 Downloading [>                                                  ]  529.7kB/76.8MB
+2026-06-30T15:04:52.5099589Z  671d51721d1e Downloading [>                                                  ]  458.1kB/45.72MB
+2026-06-30T15:04:52.5510363Z  091dbde05e24 Download complete 
+2026-06-30T15:04:52.5525232Z  2d429b9e73a6 Extracting [>                                                  ]  294.9kB/29.13MB
+2026-06-30T15:04:52.5803636Z  2a9fa7a8f389 Downloading [==================================================>]     163B/163B
+2026-06-30T15:04:52.5804824Z  2a9fa7a8f389 Verifying Checksum 
+2026-06-30T15:04:52.5805563Z  2a9fa7a8f389 Download complete 
+2026-06-30T15:04:52.6091323Z  4f4fb700ef54 Downloading [==================================================>]      32B/32B
+2026-06-30T15:04:52.6092749Z  4f4fb700ef54 Verifying Checksum 
+2026-06-30T15:04:52.6094025Z  4f4fb700ef54 Download complete 
+2026-06-30T15:04:52.6109095Z  671d51721d1e Downloading [===================================>               ]  32.57MB/45.72MB
+2026-06-30T15:04:52.6127999Z  a86200e301b0 Downloading [====>                                              ]  6.847MB/76.8MB
+2026-06-30T15:04:52.6369638Z  736e326ec984 Downloading [=================================================> ]  3.501kB/3.57kB
+2026-06-30T15:04:52.6370407Z  736e326ec984 Download complete 
+2026-06-30T15:04:52.6481255Z  671d51721d1e Verifying Checksum 
+2026-06-30T15:04:52.6481765Z  671d51721d1e Download complete 
+2026-06-30T15:04:52.6573023Z  2d429b9e73a6 Extracting [=========>                                         ]  5.308MB/29.13MB
+2026-06-30T15:04:52.6656251Z  217356078d9e Download complete 
+2026-06-30T15:04:52.6728760Z  f238bbc6d36a Downloading [==================================================>]     248B/248B
+2026-06-30T15:04:52.6729534Z  f238bbc6d36a Verifying Checksum 
+2026-06-30T15:04:52.6729959Z  f238bbc6d36a Download complete 
+2026-06-30T15:04:52.7034091Z  c9691f1a102b Downloading [>                                                  ]  261.5kB/25.75MB
+2026-06-30T15:04:52.7144129Z  a86200e301b0 Downloading [==========>                                        ]  15.83MB/76.8MB
+2026-06-30T15:04:52.7189069Z  eaf2ac2eaf6e Downloading [>                                                  ]  540.7kB/132.7MB
+2026-06-30T15:04:52.7888023Z  2d429b9e73a6 Extracting [================>                                  ]  9.732MB/29.13MB
+2026-06-30T15:04:52.7906355Z  c9691f1a102b Verifying Checksum 
+2026-06-30T15:04:52.7906891Z  c9691f1a102b Download complete 
+2026-06-30T15:04:52.8147450Z  a86200e301b0 Downloading [==============================>                    ]  46.79MB/76.8MB
+2026-06-30T15:04:52.8187066Z  4ef64dd54a5b Downloading [=========================>                         ]  3.501kB/6.944kB
+2026-06-30T15:04:52.8188627Z  4ef64dd54a5b Downloading [==================================================>]  6.944kB/6.944kB
+2026-06-30T15:04:52.8189386Z  4ef64dd54a5b Download complete 
+2026-06-30T15:04:52.8191462Z  eaf2ac2eaf6e Downloading [===========>                                       ]  29.42MB/132.7MB
+2026-06-30T15:04:52.8507112Z  892a565b63ee Downloading [==================================================>]   2.76kB/2.76kB
+2026-06-30T15:04:52.8508153Z  892a565b63ee Verifying Checksum 
+2026-06-30T15:04:52.8508627Z  892a565b63ee Download complete 
+2026-06-30T15:04:52.8819870Z  b280023685e9 Downloading [>                                                  ]  48.51kB/3.302MB
+2026-06-30T15:04:52.8902673Z  2d429b9e73a6 Extracting [=====================>                             ]  12.39MB/29.13MB
+2026-06-30T15:04:52.9045591Z  b280023685e9 Verifying Checksum 
+2026-06-30T15:04:52.9046113Z  b280023685e9 Download complete 
+2026-06-30T15:04:52.9063723Z  a86200e301b0 Verifying Checksum 
+2026-06-30T15:04:52.9064527Z  a86200e301b0 Download complete 
+2026-06-30T15:04:52.9208950Z  eaf2ac2eaf6e Downloading [=======================>                           ]  62.01MB/132.7MB
+2026-06-30T15:04:52.9298800Z  0bac7da799b5 Downloading [=>                                                 ]  3.499kB/102.5kB
+2026-06-30T15:04:52.9329231Z  0bac7da799b5 Downloading [==================================================>]  102.5kB/102.5kB
+2026-06-30T15:04:52.9330129Z  0bac7da799b5 Verifying Checksum 
+2026-06-30T15:04:52.9330648Z  0bac7da799b5 Download complete 
+2026-06-30T15:04:52.9450307Z  a0213e37a9cd Downloading [>                                                  ]  490.9kB/48.46MB
+2026-06-30T15:04:52.9762342Z  03dd51fa0ba0 Downloading [>                                                  ]  526.3kB/109.2MB
+2026-06-30T15:04:52.9953095Z  2d429b9e73a6 Extracting [===================================>               ]  20.64MB/29.13MB
+2026-06-30T15:04:53.0207839Z  eaf2ac2eaf6e Downloading [==================================>                ]  91.88MB/132.7MB
+2026-06-30T15:04:53.0457497Z  a0213e37a9cd Downloading [=================================>                 ]  32.93MB/48.46MB
+2026-06-30T15:04:53.0774630Z  03dd51fa0ba0 Downloading [==>                                                ]  5.803MB/109.2MB
+2026-06-30T15:04:53.0879689Z  a0213e37a9cd Verifying Checksum 
+2026-06-30T15:04:53.0880223Z  a0213e37a9cd Download complete 
+2026-06-30T15:04:53.1204782Z  5dc166b028d4 Downloading [==================================================>]     299B/299B
+2026-06-30T15:04:53.1205574Z  5dc166b028d4 Verifying Checksum 
+2026-06-30T15:04:53.1206098Z  5dc166b028d4 Download complete 
+2026-06-30T15:04:53.1210161Z  eaf2ac2eaf6e Downloading [================================================>  ]  128.1MB/132.7MB
+2026-06-30T15:04:53.1341817Z  eaf2ac2eaf6e Verifying Checksum 
+2026-06-30T15:04:53.1342328Z  eaf2ac2eaf6e Download complete 
+2026-06-30T15:04:53.1481103Z  b910fa222e81 Download complete 
+2026-06-30T15:04:53.1588816Z  5bceef28babb Downloading [==================================================>]     197B/197B
+2026-06-30T15:04:53.1589746Z  5bceef28babb Verifying Checksum 
+2026-06-30T15:04:53.1590365Z  5bceef28babb Download complete 
+2026-06-30T15:04:53.1783039Z  03dd51fa0ba0 Downloading [=====>                                             ]  12.67MB/109.2MB
+2026-06-30T15:04:53.2318189Z  2d429b9e73a6 Extracting [==========================================>        ]  24.77MB/29.13MB
+2026-06-30T15:04:53.2793073Z  03dd51fa0ba0 Downloading [=======================>                           ]  50.56MB/109.2MB
+2026-06-30T15:04:53.3631497Z  2d429b9e73a6 Extracting [===============================================>   ]  27.72MB/29.13MB
+2026-06-30T15:04:53.3816133Z  03dd51fa0ba0 Downloading [======================================>            ]  84.67MB/109.2MB
+2026-06-30T15:04:53.4589636Z  03dd51fa0ba0 Verifying Checksum 
+2026-06-30T15:04:53.4590044Z  03dd51fa0ba0 Download complete 
+2026-06-30T15:04:53.6460047Z  2d429b9e73a6 Extracting [================================================>  ]  28.31MB/29.13MB
+2026-06-30T15:04:53.7549436Z  2d429b9e73a6 Extracting [==================================================>]  29.13MB/29.13MB
+2026-06-30T15:04:53.7787382Z  2d429b9e73a6 Pull complete 
+2026-06-30T15:04:53.7823288Z  14dbff54af92 Extracting [>                                                  ]  65.54kB/3.512MB
+2026-06-30T15:04:53.8938549Z  14dbff54af92 Extracting [=============================================>     ]  3.211MB/3.512MB
+2026-06-30T15:04:53.8979276Z  14dbff54af92 Extracting [==================================================>]  3.512MB/3.512MB
+2026-06-30T15:04:53.8983358Z  14dbff54af92 Extracting [==================================================>]  3.512MB/3.512MB
+2026-06-30T15:04:55.0893568Z  14dbff54af92 Pull complete 
+2026-06-30T15:04:55.0919211Z  71ba669986f7 Extracting [>                                                  ]  163.8kB/16.2MB
+2026-06-30T15:04:55.1943216Z  71ba669986f7 Extracting [=============>                                     ]   4.26MB/16.2MB
+2026-06-30T15:04:55.3014176Z  71ba669986f7 Extracting [==========================>                        ]  8.684MB/16.2MB
+2026-06-30T15:04:55.4049356Z  71ba669986f7 Extracting [===================================>               ]  11.63MB/16.2MB
+2026-06-30T15:04:55.5078133Z  71ba669986f7 Extracting [========================================>          ]  13.27MB/16.2MB
+2026-06-30T15:04:55.6080807Z  71ba669986f7 Extracting [============================================>      ]  14.42MB/16.2MB
+2026-06-30T15:04:55.7063206Z  71ba669986f7 Extracting [==================================================>]   16.2MB/16.2MB
+2026-06-30T15:04:55.7731152Z  71ba669986f7 Pull complete 
+2026-06-30T15:04:55.7742091Z  173289c0cbe5 Extracting [==================================================>]     250B/250B
+2026-06-30T15:04:55.7746091Z  173289c0cbe5 Extracting [==================================================>]     250B/250B
+2026-06-30T15:04:55.7842052Z  173289c0cbe5 Pull complete 
+2026-06-30T15:04:55.8097920Z  a86200e301b0 Extracting [>                                                  ]  557.1kB/76.8MB
+2026-06-30T15:04:55.9162455Z  a86200e301b0 Extracting [======>                                            ]   9.47MB/76.8MB
+2026-06-30T15:04:56.0209742Z  a86200e301b0 Extracting [===========>                                       ]  18.38MB/76.8MB
+2026-06-30T15:04:56.1472247Z  a86200e301b0 Extracting [=================>                                 ]  26.18MB/76.8MB
+2026-06-30T15:04:56.2478837Z  a86200e301b0 Extracting [========================>                          ]  37.32MB/76.8MB
+2026-06-30T15:04:56.3524159Z  a86200e301b0 Extracting [==============================>                    ]  46.79MB/76.8MB
+2026-06-30T15:04:56.4772931Z  a86200e301b0 Extracting [=================================>                 ]  51.81MB/76.8MB
+2026-06-30T15:04:56.6103443Z  a86200e301b0 Extracting [====================================>              ]  56.26MB/76.8MB
+2026-06-30T15:04:56.7254404Z  a86200e301b0 Extracting [=====================================>             ]  57.93MB/76.8MB
+2026-06-30T15:04:56.8415213Z  a86200e301b0 Extracting [======================================>            ]   59.6MB/76.8MB
+2026-06-30T15:04:57.0168084Z  a86200e301b0 Extracting [=======================================>           ]  61.28MB/76.8MB
+2026-06-30T15:04:57.1186112Z  a86200e301b0 Extracting [================================================>  ]  74.65MB/76.8MB
+2026-06-30T15:04:57.1915730Z  a86200e301b0 Extracting [==================================================>]   76.8MB/76.8MB
+2026-06-30T15:04:57.3088589Z  a86200e301b0 Pull complete 
+2026-06-30T15:04:57.3208478Z  671d51721d1e Extracting [>                                                  ]  458.8kB/45.72MB
+2026-06-30T15:04:57.4223964Z  671d51721d1e Extracting [===========>                                       ]  10.09MB/45.72MB
+2026-06-30T15:04:57.5271339Z  671d51721d1e Extracting [======================>                            ]  20.19MB/45.72MB
+2026-06-30T15:04:57.6314280Z  671d51721d1e Extracting [==================================>                ]   31.2MB/45.72MB
+2026-06-30T15:04:57.7572476Z  671d51721d1e Extracting [======================================>            ]  35.32MB/45.72MB
+2026-06-30T15:04:57.8692203Z  671d51721d1e Extracting [========================================>          ]   36.7MB/45.72MB
+2026-06-30T15:04:57.9834882Z  671d51721d1e Extracting [=========================================>         ]  38.08MB/45.72MB
+2026-06-30T15:04:58.0936716Z  671d51721d1e Extracting [===========================================>       ]  39.45MB/45.72MB
+2026-06-30T15:04:58.2087488Z  671d51721d1e Extracting [============================================>      ]  40.83MB/45.72MB
+2026-06-30T15:04:58.3238062Z  671d51721d1e Extracting [==============================================>    ]  42.21MB/45.72MB
+2026-06-30T15:04:58.4284030Z  671d51721d1e Extracting [===============================================>   ]  43.12MB/45.72MB
+2026-06-30T15:04:58.5642714Z  671d51721d1e Extracting [================================================>  ]  44.04MB/45.72MB
+2026-06-30T15:04:58.6952591Z  671d51721d1e Extracting [================================================>  ]   44.5MB/45.72MB
+2026-06-30T15:04:58.8123164Z  671d51721d1e Extracting [=================================================> ]  45.42MB/45.72MB
+2026-06-30T15:04:58.9121532Z  671d51721d1e Extracting [==================================================>]  45.72MB/45.72MB
+2026-06-30T15:04:59.0894442Z  671d51721d1e Pull complete 
+2026-06-30T15:04:59.0909821Z  091dbde05e24 Extracting [==================================================>]     145B/145B
+2026-06-30T15:04:59.0911165Z  091dbde05e24 Extracting [==================================================>]     145B/145B
+2026-06-30T15:04:59.0996356Z  091dbde05e24 Pull complete 
+2026-06-30T15:04:59.1007139Z  2a9fa7a8f389 Extracting [==================================================>]     163B/163B
+2026-06-30T15:04:59.1010564Z  2a9fa7a8f389 Extracting [==================================================>]     163B/163B
+2026-06-30T15:04:59.1093674Z  2a9fa7a8f389 Pull complete 
+2026-06-30T15:04:59.1104074Z  4f4fb700ef54 Extracting [==================================================>]      32B/32B
+2026-06-30T15:04:59.1108376Z  4f4fb700ef54 Extracting [==================================================>]      32B/32B
+2026-06-30T15:04:59.1166266Z  4f4fb700ef54 Pull complete 
+2026-06-30T15:04:59.1186683Z  736e326ec984 Extracting [==================================================>]   3.57kB/3.57kB
+2026-06-30T15:04:59.1188838Z  736e326ec984 Extracting [==================================================>]   3.57kB/3.57kB
+2026-06-30T15:04:59.1350154Z  736e326ec984 Pull complete 
+2026-06-30T15:04:59.1359652Z  217356078d9e Extracting [==================================================>]     906B/906B
+2026-06-30T15:04:59.1361611Z  217356078d9e Extracting [==================================================>]     906B/906B
+2026-06-30T15:04:59.1441093Z  217356078d9e Pull complete 
+2026-06-30T15:04:59.1451996Z  f238bbc6d36a Extracting [==================================================>]     248B/248B
+2026-06-30T15:04:59.1454579Z  f238bbc6d36a Extracting [==================================================>]     248B/248B
+2026-06-30T15:04:59.1514530Z  f238bbc6d36a Pull complete 
+2026-06-30T15:04:59.1730020Z  c9691f1a102b Extracting [>                                                  ]  262.1kB/25.75MB
+2026-06-30T15:04:59.3060848Z  c9691f1a102b Extracting [=====>                                             ]  2.884MB/25.75MB
+2026-06-30T15:04:59.5379839Z  c9691f1a102b Extracting [======>                                            ]  3.408MB/25.75MB
+2026-06-30T15:04:59.7865672Z  c9691f1a102b Extracting [=======>                                           ]   3.67MB/25.75MB
+2026-06-30T15:05:00.0272593Z  c9691f1a102b Extracting [=======>                                           ]  3.932MB/25.75MB
+2026-06-30T15:05:00.3138456Z  c9691f1a102b Extracting [========>                                          ]  4.194MB/25.75MB
+2026-06-30T15:05:00.5666520Z  c9691f1a102b Extracting [========>                                          ]  4.456MB/25.75MB
+2026-06-30T15:05:00.6965305Z  c9691f1a102b Extracting [=========>                                         ]  4.719MB/25.75MB
+2026-06-30T15:05:00.8056645Z  c9691f1a102b Extracting [=============>                                     ]  6.816MB/25.75MB
+2026-06-30T15:05:00.9122242Z  c9691f1a102b Extracting [=================>                                 ]  8.913MB/25.75MB
+2026-06-30T15:05:01.0134697Z  c9691f1a102b Extracting [=======================>                           ]  12.06MB/25.75MB
+2026-06-30T15:05:01.1226761Z  c9691f1a102b Extracting [===========================>                       ]  14.16MB/25.75MB
+2026-06-30T15:05:01.2373849Z  c9691f1a102b Extracting [================================>                  ]  16.78MB/25.75MB
+2026-06-30T15:05:01.3425085Z  c9691f1a102b Extracting [====================================>              ]  18.61MB/25.75MB
+2026-06-30T15:05:01.4525029Z  c9691f1a102b Extracting [=======================================>           ]  20.45MB/25.75MB
+2026-06-30T15:05:01.5540036Z  c9691f1a102b Extracting [=========================================>         ]   21.5MB/25.75MB
+2026-06-30T15:05:01.6565234Z  c9691f1a102b Extracting [=============================================>     ]  23.33MB/25.75MB
+2026-06-30T15:05:01.7696051Z  c9691f1a102b Extracting [================================================>  ]  25.17MB/25.75MB
+2026-06-30T15:05:01.7770441Z  c9691f1a102b Extracting [==================================================>]  25.75MB/25.75MB
+2026-06-30T15:05:01.9576865Z  c9691f1a102b Pull complete 
+2026-06-30T15:05:01.9951826Z  eaf2ac2eaf6e Extracting [>                                                  ]  557.1kB/132.7MB
+2026-06-30T15:05:02.0965201Z  eaf2ac2eaf6e Extracting [===>                                               ]   9.47MB/132.7MB
+2026-06-30T15:05:02.1984084Z  eaf2ac2eaf6e Extracting [==========>                                        ]  28.97MB/132.7MB
+2026-06-30T15:05:02.3203304Z  eaf2ac2eaf6e Extracting [==============>                                    ]  39.55MB/132.7MB
+2026-06-30T15:05:02.4719768Z  eaf2ac2eaf6e Extracting [===============>                                   ]  40.67MB/132.7MB
+2026-06-30T15:05:03.0189833Z  eaf2ac2eaf6e Extracting [===============>                                   ]  41.22MB/132.7MB
+2026-06-30T15:05:03.5784624Z  eaf2ac2eaf6e Extracting [===============>                                   ]  41.78MB/132.7MB
+2026-06-30T15:05:03.8156760Z  eaf2ac2eaf6e Extracting [===============>                                   ]  42.34MB/132.7MB
+2026-06-30T15:05:03.9386922Z  eaf2ac2eaf6e Extracting [================>                                  ]  44.56MB/132.7MB
+2026-06-30T15:05:04.0442647Z  eaf2ac2eaf6e Extracting [=================>                                 ]  46.79MB/132.7MB
+2026-06-30T15:05:04.1629730Z  eaf2ac2eaf6e Extracting [==================>                                ]  50.14MB/132.7MB
+2026-06-30T15:05:04.2842216Z  eaf2ac2eaf6e Extracting [===================>                               ]  52.36MB/132.7MB
+2026-06-30T15:05:04.4037334Z  eaf2ac2eaf6e Extracting [====================>                              ]  55.15MB/132.7MB
+2026-06-30T15:05:04.5213238Z  eaf2ac2eaf6e Extracting [=====================>                             ]  57.38MB/132.7MB
+2026-06-30T15:05:05.5178551Z  eaf2ac2eaf6e Extracting [=====================>                             ]  57.93MB/132.7MB
+2026-06-30T15:05:05.8928139Z  eaf2ac2eaf6e Extracting [======================>                            ]  58.49MB/132.7MB
+2026-06-30T15:05:06.0573790Z  eaf2ac2eaf6e Extracting [======================>                            ]  59.05MB/132.7MB
+2026-06-30T15:05:06.2722794Z  eaf2ac2eaf6e Extracting [======================>                            ]   59.6MB/132.7MB
+2026-06-30T15:05:06.5280972Z  eaf2ac2eaf6e Extracting [======================>                            ]  60.16MB/132.7MB
+2026-06-30T15:05:06.7078908Z  eaf2ac2eaf6e Extracting [======================>                            ]  60.72MB/132.7MB
+2026-06-30T15:05:06.8082856Z  eaf2ac2eaf6e Extracting [========================>                          ]  65.18MB/132.7MB
+2026-06-30T15:05:06.9523298Z  eaf2ac2eaf6e Extracting [=========================>                         ]  66.85MB/132.7MB
+2026-06-30T15:05:07.0574748Z  eaf2ac2eaf6e Extracting [=========================>                         ]  67.96MB/132.7MB
+2026-06-30T15:05:07.2041837Z  eaf2ac2eaf6e Extracting [==========================>                        ]  69.63MB/132.7MB
+2026-06-30T15:05:07.3665085Z  eaf2ac2eaf6e Extracting [==========================>                        ]   71.3MB/132.7MB
+2026-06-30T15:05:07.4951437Z  eaf2ac2eaf6e Extracting [===========================>                       ]  72.42MB/132.7MB
+2026-06-30T15:05:07.6012736Z  eaf2ac2eaf6e Extracting [===========================>                       ]  73.53MB/132.7MB
+2026-06-30T15:05:07.7388821Z  eaf2ac2eaf6e Extracting [============================>                      ]   75.2MB/132.7MB
+2026-06-30T15:05:07.8875920Z  eaf2ac2eaf6e Extracting [============================>                      ]  76.87MB/132.7MB
+2026-06-30T15:05:07.9926828Z  eaf2ac2eaf6e Extracting [=============================>                     ]  78.54MB/132.7MB
+2026-06-30T15:05:08.0988354Z  eaf2ac2eaf6e Extracting [==============================>                    ]  79.66MB/132.7MB
+2026-06-30T15:05:08.2111793Z  eaf2ac2eaf6e Extracting [==============================>                    ]  80.22MB/132.7MB
+2026-06-30T15:05:08.3263337Z  eaf2ac2eaf6e Extracting [===============================>                   ]  82.44MB/132.7MB
+2026-06-30T15:05:08.4664089Z  eaf2ac2eaf6e Extracting [===============================>                   ]  84.12MB/132.7MB
+2026-06-30T15:05:08.5808799Z  eaf2ac2eaf6e Extracting [================================>                  ]  85.79MB/132.7MB
+2026-06-30T15:05:08.7129957Z  eaf2ac2eaf6e Extracting [================================>                  ]  86.34MB/132.7MB
+2026-06-30T15:05:08.8594568Z  eaf2ac2eaf6e Extracting [=================================>                 ]  88.01MB/132.7MB
+2026-06-30T15:05:08.9920813Z  eaf2ac2eaf6e Extracting [==================================>                ]   90.8MB/132.7MB
+2026-06-30T15:05:09.0970744Z  eaf2ac2eaf6e Extracting [==================================>                ]  92.47MB/132.7MB
+2026-06-30T15:05:09.2069231Z  eaf2ac2eaf6e Extracting [====================================>              ]  96.37MB/132.7MB
+2026-06-30T15:05:09.3317337Z  eaf2ac2eaf6e Extracting [=====================================>             ]   98.6MB/132.7MB
+2026-06-30T15:05:09.4487046Z  eaf2ac2eaf6e Extracting [=====================================>             ]  100.8MB/132.7MB
+2026-06-30T15:05:09.5837544Z  eaf2ac2eaf6e Extracting [=======================================>           ]  103.6MB/132.7MB
+2026-06-30T15:05:09.6848029Z  eaf2ac2eaf6e Extracting [=======================================>           ]  104.7MB/132.7MB
+2026-06-30T15:05:09.8353467Z  eaf2ac2eaf6e Extracting [========================================>          ]  106.4MB/132.7MB
+2026-06-30T15:05:09.9624222Z  eaf2ac2eaf6e Extracting [========================================>          ]  108.1MB/132.7MB
+2026-06-30T15:05:10.0823332Z  eaf2ac2eaf6e Extracting [=========================================>         ]  110.9MB/132.7MB
+2026-06-30T15:05:10.2058380Z  eaf2ac2eaf6e Extracting [==========================================>        ]  113.6MB/132.7MB
+2026-06-30T15:05:10.3382840Z  eaf2ac2eaf6e Extracting [===========================================>       ]  115.9MB/132.7MB
+2026-06-30T15:05:10.4393091Z  eaf2ac2eaf6e Extracting [============================================>      ]  117.5MB/132.7MB
+2026-06-30T15:05:10.5669845Z  eaf2ac2eaf6e Extracting [=============================================>     ]  120.3MB/132.7MB
+2026-06-30T15:05:10.6894495Z  eaf2ac2eaf6e Extracting [==============================================>    ]  123.1MB/132.7MB
+2026-06-30T15:05:10.8134100Z  eaf2ac2eaf6e Extracting [===============================================>   ]  126.5MB/132.7MB
+2026-06-30T15:05:10.9144132Z  eaf2ac2eaf6e Extracting [================================================>  ]  128.1MB/132.7MB
+2026-06-30T15:05:11.0273343Z  eaf2ac2eaf6e Extracting [================================================>  ]  129.8MB/132.7MB
+2026-06-30T15:05:11.1286868Z  eaf2ac2eaf6e Extracting [=================================================> ]  131.5MB/132.7MB
+2026-06-30T15:05:11.1782735Z  eaf2ac2eaf6e Extracting [==================================================>]  132.7MB/132.7MB
+2026-06-30T15:05:11.7939442Z  eaf2ac2eaf6e Pull complete 
+2026-06-30T15:05:11.7949673Z  4ef64dd54a5b Extracting [==================================================>]  6.944kB/6.944kB
+2026-06-30T15:05:11.7952589Z  4ef64dd54a5b Extracting [==================================================>]  6.944kB/6.944kB
+2026-06-30T15:05:11.8051759Z  4ef64dd54a5b Pull complete 
+2026-06-30T15:05:11.8063787Z  892a565b63ee Extracting [==================================================>]   2.76kB/2.76kB
+2026-06-30T15:05:11.8065064Z  892a565b63ee Extracting [==================================================>]   2.76kB/2.76kB
+2026-06-30T15:05:11.8156131Z  892a565b63ee Pull complete 
+2026-06-30T15:05:11.8169727Z  b280023685e9 Extracting [>                                                  ]  65.54kB/3.302MB
+2026-06-30T15:05:11.9173338Z  b280023685e9 Extracting [==============================>                    ]  2.032MB/3.302MB
+2026-06-30T15:05:12.0228233Z  b280023685e9 Extracting [============================================>      ]  2.949MB/3.302MB
+2026-06-30T15:05:12.1359745Z  b280023685e9 Extracting [=================================================> ]  3.277MB/3.302MB
+2026-06-30T15:05:12.1460208Z  b280023685e9 Extracting [==================================================>]  3.302MB/3.302MB
+2026-06-30T15:05:12.1922808Z  b280023685e9 Pull complete 
+2026-06-30T15:05:12.1935390Z  0bac7da799b5 Extracting [===============>                                   ]  32.77kB/102.5kB
+2026-06-30T15:05:12.1945480Z  0bac7da799b5 Extracting [==================================================>]  102.5kB/102.5kB
+2026-06-30T15:05:12.2198346Z  0bac7da799b5 Pull complete 
+2026-06-30T15:05:12.2411016Z  a0213e37a9cd Extracting [>                                                  ]  491.5kB/48.46MB
+2026-06-30T15:05:12.3842780Z  a0213e37a9cd Extracting [==>                                                ]  2.458MB/48.46MB
+2026-06-30T15:05:12.4855219Z  a0213e37a9cd Extracting [===>                                               ]  3.441MB/48.46MB
+2026-06-30T15:05:12.6122859Z  a0213e37a9cd Extracting [====>                                              ]  3.932MB/48.46MB
+2026-06-30T15:05:12.7414164Z  a0213e37a9cd Extracting [=====>                                             ]  5.407MB/48.46MB
+2026-06-30T15:05:12.8428846Z  a0213e37a9cd Extracting [========================>                          ]  23.59MB/48.46MB
+2026-06-30T15:05:12.9449035Z  a0213e37a9cd Extracting [===========================================>       ]  41.78MB/48.46MB
+2026-06-30T15:05:13.0047322Z  a0213e37a9cd Extracting [==================================================>]  48.46MB/48.46MB
+2026-06-30T15:05:13.0558339Z  a0213e37a9cd Pull complete 
+2026-06-30T15:05:13.0666813Z  03dd51fa0ba0 Extracting [>                                                  ]  557.1kB/109.2MB
+2026-06-30T15:05:13.1675899Z  03dd51fa0ba0 Extracting [===========>                                       ]  24.51MB/109.2MB
+2026-06-30T15:05:13.2697550Z  03dd51fa0ba0 Extracting [====================>                              ]  45.12MB/109.2MB
+2026-06-30T15:05:13.3720257Z  03dd51fa0ba0 Extracting [==========================>                        ]  58.49MB/109.2MB
+2026-06-30T15:05:13.4730605Z  03dd51fa0ba0 Extracting [==================================>                ]  76.32MB/109.2MB
+2026-06-30T15:05:13.5748091Z  03dd51fa0ba0 Extracting [============================================>      ]  97.48MB/109.2MB
+2026-06-30T15:05:13.6796921Z  03dd51fa0ba0 Extracting [================================================>  ]    107MB/109.2MB
+2026-06-30T15:05:13.7118386Z  03dd51fa0ba0 Extracting [==================================================>]  109.2MB/109.2MB
+2026-06-30T15:05:13.7119526Z  03dd51fa0ba0 Extracting [==================================================>]  109.2MB/109.2MB
+2026-06-30T15:05:13.7668845Z  03dd51fa0ba0 Pull complete 
+2026-06-30T15:05:13.7681303Z  5dc166b028d4 Extracting [==================================================>]     299B/299B
+2026-06-30T15:05:13.7683799Z  5dc166b028d4 Extracting [==================================================>]     299B/299B
+2026-06-30T15:05:13.7794744Z  5dc166b028d4 Pull complete 
+2026-06-30T15:05:13.7804345Z  b910fa222e81 Extracting [==================================================>]     296B/296B
+2026-06-30T15:05:13.7808414Z  b910fa222e81 Extracting [==================================================>]     296B/296B
+2026-06-30T15:05:13.7909223Z  b910fa222e81 Pull complete 
+2026-06-30T15:05:13.7921132Z  5bceef28babb Extracting [==================================================>]     197B/197B
+2026-06-30T15:05:13.7922110Z  5bceef28babb Extracting [==================================================>]     197B/197B
+2026-06-30T15:05:13.7996931Z  5bceef28babb Pull complete 
+2026-06-30T15:05:13.8059910Z  localstack Pulled 
+2026-06-30T15:05:13.8154045Z  Network lance_default  Creating
+2026-06-30T15:05:13.8487443Z  Network lance_default  Created
+2026-06-30T15:05:13.8496085Z  Container lance-localstack-1  Creating
+2026-06-30T15:05:13.9386670Z  Container lance-localstack-1  Created
+2026-06-30T15:05:13.9395157Z  Container lance-localstack-1  Starting
+2026-06-30T15:05:14.7453119Z  Container lance-localstack-1  Started
+2026-06-30T15:05:14.7453642Z  Container lance-localstack-1  Waiting
+2026-06-30T15:05:21.7472418Z  Container lance-localstack-1  Healthy
+2026-06-30T15:05:21.7633689Z ##[group]Run taiki-e/install-action@66068bfca13dcb2ea07c3f613ca2836a37c755d5
+2026-06-30T15:05:21.7634132Z with:
+2026-06-30T15:05:21.7634340Z   tool: cargo-llvm-cov
+2026-06-30T15:05:21.7634570Z   checksum: true
+2026-06-30T15:05:21.7634787Z   fallback: cargo-binstall
+2026-06-30T15:05:21.7635025Z env:
+2026-06-30T15:05:21.7635213Z   CARGO_TERM_COLOR: always
+2026-06-30T15:05:21.7635442Z   RUST_BACKTRACE: 1
+2026-06-30T15:05:21.7635649Z   CC: clang
+2026-06-30T15:05:21.7635835Z   CXX: clang++
+2026-06-30T15:05:21.7636050Z   RUSTFLAGS: -D warnings
+2026-06-30T15:05:21.7636287Z   CACHE_ON_FAILURE: false
+2026-06-30T15:05:21.7636526Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:05:21.7636743Z ##[endgroup]
+2026-06-30T15:05:21.7656318Z ##[group]Run set -eu
+2026-06-30T15:05:21.7656581Z [36;1mset -eu[0m
+2026-06-30T15:05:21.7656827Z [36;1mif ! command -v bash >/dev/null; then[0m
+2026-06-30T15:05:21.7657189Z [36;1m  if grep -Eq '^ID=alpine' /etc/os-release; then[0m
+2026-06-30T15:05:21.7657982Z [36;1m    printf '::group::Install packages required for install-action (bash)\n'[0m
+2026-06-30T15:05:21.7658438Z [36;1m    # NB: sync with apk_install in main.sh[0m
+2026-06-30T15:05:21.7658761Z [36;1m    if command -v sudo >/dev/null; then[0m
+2026-06-30T15:05:21.7659081Z [36;1m      sudo apk --no-cache add bash[0m
+2026-06-30T15:05:21.7659402Z [36;1m    elif command -v doas >/dev/null; then[0m
+2026-06-30T15:05:21.7659712Z [36;1m      doas apk --no-cache add bash[0m
+2026-06-30T15:05:21.7659982Z [36;1m    else[0m
+2026-06-30T15:05:21.7660207Z [36;1m      apk --no-cache add bash[0m
+2026-06-30T15:05:21.7660469Z [36;1m    fi[0m
+2026-06-30T15:05:21.7660682Z [36;1m    printf '::endgroup::\n'[0m
+2026-06-30T15:05:21.7661135Z [36;1m  else[0m
+2026-06-30T15:05:21.7661402Z [36;1m    printf '::error::install-action requires bash\n'[0m
+2026-06-30T15:05:21.7661723Z [36;1m    exit 1[0m
+2026-06-30T15:05:21.7661937Z [36;1m  fi[0m
+2026-06-30T15:05:21.7662129Z [36;1mfi[0m
+2026-06-30T15:05:22.1285460Z shell: /usr/bin/sh -e {0}
+2026-06-30T15:05:22.1285772Z env:
+2026-06-30T15:05:22.1286015Z   CARGO_TERM_COLOR: always
+2026-06-30T15:05:22.1286314Z   RUST_BACKTRACE: 1
+2026-06-30T15:05:22.1286572Z   CC: clang
+2026-06-30T15:05:22.1286794Z   CXX: clang++
+2026-06-30T15:05:22.1287037Z   RUSTFLAGS: -D warnings
+2026-06-30T15:05:22.1287314Z   CACHE_ON_FAILURE: false
+2026-06-30T15:05:22.1287754Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:05:22.1288020Z ##[endgroup]
+2026-06-30T15:05:22.1401483Z ##[group]Run bash --noprofile --norc "${GITHUB_ACTION_PATH:?}/main.sh"
+2026-06-30T15:05:22.1402328Z [36;1mbash --noprofile --norc "${GITHUB_ACTION_PATH:?}/main.sh"[0m
+2026-06-30T15:05:22.1446524Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-30T15:05:22.1447160Z env:
+2026-06-30T15:05:22.1447502Z   CARGO_TERM_COLOR: always
+2026-06-30T15:05:22.1448158Z   RUST_BACKTRACE: 1
+2026-06-30T15:05:22.1448523Z   CC: clang
+2026-06-30T15:05:22.1448866Z   CXX: clang++
+2026-06-30T15:05:22.1449242Z   RUSTFLAGS: -D warnings
+2026-06-30T15:05:22.1449677Z   CACHE_ON_FAILURE: false
+2026-06-30T15:05:22.1450091Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:05:22.1450491Z   INPUT_TOOL: cargo-llvm-cov
+2026-06-30T15:05:22.1450922Z   INPUT_CHECKSUM: true
+2026-06-30T15:05:22.1451326Z   INPUT_FALLBACK: cargo-binstall
+2026-06-30T15:05:22.1458185Z   DEFAULT_GITHUB_TOKEN: ***
+2026-06-30T15:05:22.1458931Z   ACTION_USER_AGENT: taiki-e/install-action (66068bfca13dcb2ea07c3f613ca2836a37c755d5)
+2026-06-30T15:05:22.1459689Z ##[endgroup]
+2026-06-30T15:05:22.1702935Z info: host platform: x86_64_linux
+2026-06-30T15:05:22.2024927Z info: installing cargo-llvm-cov@latest
+2026-06-30T15:05:22.2214771Z info: downloading https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.8.4/cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz
+2026-06-30T15:05:22.3973137Z info: verifying sha256 checksum for cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz
+2026-06-30T15:05:22.4388531Z info: cargo-llvm-cov installed at /home/runner/.cargo/bin/cargo-llvm-cov
+2026-06-30T15:05:22.4392329Z + cargo-llvm-cov llvm-cov --version
+2026-06-30T15:05:22.4398231Z cargo-llvm-cov 0.8.4
+2026-06-30T15:05:22.4399520Z 
+2026-06-30T15:05:22.4437995Z ##[group]Run ALL_FEATURES=`cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | .features | keys | .[]' | grep -v -e protoc -e slow_tests | sort | uniq | paste -s -d "," -`
+2026-06-30T15:05:22.4439246Z [36;1mALL_FEATURES=`cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | .features | keys | .[]' | grep -v -e protoc -e slow_tests | sort | uniq | paste -s -d "," -`[0m
+2026-06-30T15:05:22.4440277Z [36;1mcargo +nightly llvm-cov --profile ci --locked --workspace --codecov --output-path coverage.codecov --features ${ALL_FEATURES}[0m
+2026-06-30T15:05:22.4472786Z shell: /usr/bin/bash -e {0}
+2026-06-30T15:05:22.4473042Z env:
+2026-06-30T15:05:22.4473236Z   CARGO_TERM_COLOR: always
+2026-06-30T15:05:22.4473479Z   RUST_BACKTRACE: 1
+2026-06-30T15:05:22.4473684Z   CC: clang
+2026-06-30T15:05:22.4473872Z   CXX: clang++
+2026-06-30T15:05:22.4474078Z   RUSTFLAGS: -D warnings
+2026-06-30T15:05:22.4474320Z   CACHE_ON_FAILURE: false
+2026-06-30T15:05:22.4474586Z   CARGO_INCREMENTAL: 0
+2026-06-30T15:05:22.4474804Z ##[endgroup]
+2026-06-30T15:05:22.5724283Z info: cargo-llvm-cov currently setting cfg(coverage) and cfg(coverage_nightly); you can opt-out it by passing --no-cfg-coverage and --no-cfg-coverage-nightly
+2026-06-30T15:05:22.5943508Z info: running `rustup component add llvm-tools-preview --toolchain nightly-x86_64-unknown-linux-gnu` to install the `llvm-tools-preview` component for the selected toolchain
+2026-06-30T15:05:22.6515656Z info: downloading component llvm-tools
+2026-06-30T15:05:29.2089319Z [1m[92m   Compiling[0m proc-macro2 v1.0.106
+2026-06-30T15:05:29.2091993Z [1m[92m   Compiling[0m quote v1.0.46
+2026-06-30T15:05:29.2092785Z [1m[92m   Compiling[0m unicode-ident v1.0.24
+2026-06-30T15:05:29.2093459Z [1m[92m   Compiling[0m cfg-if v1.0.4
+2026-06-30T15:05:29.2093859Z [1m[92m   Compiling[0m libc v0.2.186
+2026-06-30T15:05:29.2094255Z [1m[92m   Compiling[0m memchr v2.8.2
+2026-06-30T15:05:29.2094643Z [1m[92m   Compiling[0m itoa v1.0.18
+2026-06-30T15:05:29.2759336Z [1m[92m   Compiling[0m autocfg v1.5.1
+2026-06-30T15:05:29.2892774Z [1m[92m   Compiling[0m libm v0.2.16
+2026-06-30T15:05:29.3496265Z [1m[92m   Compiling[0m bytes v1.12.0
+2026-06-30T15:05:29.5889206Z [1m[92m   Compiling[0m num-traits v0.2.19
+2026-06-30T15:05:29.6125579Z [1m[92m   Compiling[0m smallvec v1.15.2
+2026-06-30T15:05:29.7829250Z [1m[92m   Compiling[0m find-msvc-tools v0.1.9
+2026-06-30T15:05:29.8609365Z [1m[92m   Compiling[0m shlex v2.0.1
+2026-06-30T15:05:29.9005152Z [1m[92m   Compiling[0m serde_core v1.0.228
+2026-06-30T15:05:29.9442210Z [1m[92m   Compiling[0m hashbrown v0.17.1
+2026-06-30T15:05:29.9589313Z [1m[92m   Compiling[0m pin-project-lite v0.2.17
+2026-06-30T15:05:29.9859310Z [1m[92m   Compiling[0m once_cell v1.21.4
+2026-06-30T15:05:30.0091888Z [1m[92m   Compiling[0m equivalent v1.0.2
+2026-06-30T15:05:30.0571055Z [1m[92m   Compiling[0m log v0.4.33
+2026-06-30T15:05:30.2132092Z [1m[92m   Compiling[0m futures-core v0.3.32
+2026-06-30T15:05:30.3109118Z [1m[92m   Compiling[0m syn v2.0.118
+2026-06-30T15:05:30.3118850Z [1m[92m   Compiling[0m version_check v0.9.5
+2026-06-30T15:05:30.3319254Z [1m[92m   Compiling[0m serde v1.0.228
+2026-06-30T15:05:30.5170851Z [1m[92m   Compiling[0m jobserver v0.1.34
+2026-06-30T15:05:30.5264439Z [1m[92m   Compiling[0m indexmap v2.14.0
+2026-06-30T15:05:30.5350055Z [1m[92m   Compiling[0m zmij v1.0.21
+2026-06-30T15:05:30.7089809Z [1m[92m   Compiling[0m cc v1.2.65
+2026-06-30T15:05:30.8199400Z [1m[92m   Compiling[0m bitflags v2.13.0
+2026-06-30T15:05:30.9809386Z [1m[92m   Compiling[0m futures-sink v0.3.32
+2026-06-30T15:05:31.0374736Z [1m[92m   Compiling[0m scopeguard v1.2.0
+2026-06-30T15:05:31.0671590Z [1m[92m   Compiling[0m parking_lot_core v0.9.12
+2026-06-30T15:05:31.0989244Z [1m[92m   Compiling[0m lock_api v0.4.14
+2026-06-30T15:05:31.2020649Z [1m[92m   Compiling[0m slab v0.4.12
+2026-06-30T15:05:31.2034054Z [1m[92m   Compiling[0m serde_json v1.0.150
+2026-06-30T15:05:31.2679715Z [1m[92m   Compiling[0m futures-channel v0.3.32
+2026-06-30T15:05:31.3190298Z [1m[92m   Compiling[0m futures-io v0.3.32
+2026-06-30T15:05:31.3209242Z [1m[92m   Compiling[0m errno v0.3.14
+2026-06-30T15:05:31.3292142Z [1m[92m   Compiling[0m futures-task v0.3.32
+2026-06-30T15:05:31.4135506Z [1m[92m   Compiling[0m parking_lot v0.12.5
+2026-06-30T15:05:31.4197096Z [1m[92m   Compiling[0m signal-hook-registry v1.4.8
+2026-06-30T15:05:31.4198664Z [1m[92m   Compiling[0m num-integer v0.1.46
+2026-06-30T15:05:31.4451256Z [1m[92m   Compiling[0m socket2 v0.6.4
+2026-06-30T15:05:31.4521900Z [1m[92m   Compiling[0m mio v1.2.1
+2026-06-30T15:05:31.6229319Z [1m[92m   Compiling[0m zerocopy v0.8.52
+2026-06-30T15:05:31.7348725Z [1m[92m   Compiling[0m fnv v1.0.7
+2026-06-30T15:05:31.7489278Z [1m[92m   Compiling[0m http v1.4.2
+2026-06-30T15:05:31.7979717Z [1m[92m   Compiling[0m typenum v1.20.1
+2026-06-30T15:05:31.8591529Z [1m[92m   Compiling[0m base64 v0.22.1
+2026-06-30T15:05:31.8748348Z [1m[92m   Compiling[0m zeroize v1.9.0
+2026-06-30T15:05:31.9231758Z [1m[92m   Compiling[0m stable_deref_trait v1.2.1
+2026-06-30T15:05:31.9779179Z [1m[92m   Compiling[0m tracing-core v0.1.36
+2026-06-30T15:05:32.0079258Z [1m[92m   Compiling[0m subtle v2.6.1
+2026-06-30T15:05:32.1029332Z [1m[92m   Compiling[0m percent-encoding v2.3.2
+2026-06-30T15:05:32.1300248Z [1m[92m   Compiling[0m generic-array v0.14.7
+2026-06-30T15:05:32.2289718Z [1m[92m   Compiling[0m regex-syntax v0.8.11
+2026-06-30T15:05:32.2709159Z [1m[92m   Compiling[0m getrandom v0.2.17
+2026-06-30T15:05:32.4079150Z [1m[92m   Compiling[0m ryu v1.0.23
+2026-06-30T15:05:32.4549780Z [1m[92m   Compiling[0m const-oid v0.9.6
+2026-06-30T15:05:32.5379042Z [1m[92m   Compiling[0m form_urlencoded v1.2.2
+2026-06-30T15:05:32.5790270Z [1m[92m   Compiling[0m http-body v1.0.1
+2026-06-30T15:05:32.6709876Z [1m[92m   Compiling[0m http-body-util v0.1.3
+2026-06-30T15:05:32.7003413Z [1m[92m   Compiling[0m getrandom v0.3.4
+2026-06-30T15:05:32.7585694Z [1m[92m   Compiling[0m either v1.16.0
+2026-06-30T15:05:32.8685852Z [1m[92m   Compiling[0m tower-service v0.3.3
+2026-06-30T15:05:32.9209243Z [1m[92m   Compiling[0m cmake v0.1.58
+2026-06-30T15:05:32.9397487Z [1m[92m   Compiling[0m dunce v1.0.5
+2026-06-30T15:05:32.9889494Z [1m[92m   Compiling[0m fs_extra v1.3.0
+2026-06-30T15:05:33.0599352Z [1m[92m   Compiling[0m httparse v1.10.1
+2026-06-30T15:05:33.2069276Z [1m[92m   Compiling[0m try-lock v0.2.5
+2026-06-30T15:05:33.2544804Z [1m[92m   Compiling[0m atomic-waker v1.1.2
+2026-06-30T15:05:33.2799176Z [1m[92m   Compiling[0m aws-lc-sys v0.41.0
+2026-06-30T15:05:33.3256342Z [1m[92m   Compiling[0m crypto-common v0.1.7
+2026-06-30T15:05:33.3359289Z [1m[92m   Compiling[0m block-buffer v0.10.4
+2026-06-30T15:05:33.3969248Z [1m[92m   Compiling[0m want v0.3.1
+2026-06-30T15:05:33.4184123Z [1m[92m   Compiling[0m digest v0.10.7
+2026-06-30T15:05:33.4939232Z [1m[92m   Compiling[0m writeable v0.6.3
+2026-06-30T15:05:33.5309643Z [1m[92m   Compiling[0m httpdate v1.0.3
+2026-06-30T15:05:33.5880199Z [1m[92m   Compiling[0m crc32fast v1.5.0
+2026-06-30T15:05:33.6749169Z [1m[92m   Compiling[0m ring v0.17.14
+2026-06-30T15:05:33.7079198Z [1m[92m   Compiling[0m aws-lc-rs v1.17.0
+2026-06-30T15:05:33.7559295Z [1m[92m   Compiling[0m ipnet v2.12.0
+2026-06-30T15:05:33.9180573Z [1m[92m   Compiling[0m rustls-pki-types v1.14.1
+2026-06-30T15:05:34.0009262Z [1m[92m   Compiling[0m synstructure v0.13.2
+2026-06-30T15:05:34.1718724Z [1m[92m   Compiling[0m getrandom v0.4.3
+2026-06-30T15:05:34.2788947Z [1m[92m   Compiling[0m tower-layer v0.3.3
+2026-06-30T15:05:34.3197296Z [1m[92m   Compiling[0m litemap v0.8.2
+2026-06-30T15:05:34.3852895Z [1m[92m   Compiling[0m rand_core v0.10.1
+2026-06-30T15:05:34.4728648Z [1m[92m   Compiling[0m sync_wrapper v1.0.2
+2026-06-30T15:05:34.4839613Z [1m[92m   Compiling[0m untrusted v0.9.0
+2026-06-30T15:05:34.4864794Z [1m[92m   Compiling[0m utf8_iter v1.0.4
+2026-06-30T15:05:34.5240563Z [1m[92m   Compiling[0m fastrand v2.4.1
+2026-06-30T15:05:34.5342610Z [1m[92m   Compiling[0m openssl-probe v0.2.1
+2026-06-30T15:05:34.6186867Z [1m[92m   Compiling[0m rustls v0.23.40
+2026-06-30T15:05:34.6253861Z [1m[92m   Compiling[0m icu_normalizer_data v2.2.0
+2026-06-30T15:05:34.6613627Z [1m[92m   Compiling[0m icu_properties_data v2.2.0
+2026-06-30T15:05:34.6893990Z [1m[92m   Compiling[0m rustls-native-certs v0.8.4
+2026-06-30T15:05:34.6976981Z [1m[92m   Compiling[0m iana-time-zone v0.1.65
+2026-06-30T15:05:34.7510240Z [1m[92m   Compiling[0m webpki-roots v1.0.8
+2026-06-30T15:05:34.8082975Z [1m[92m   Compiling[0m adler2 v2.0.1
+2026-06-30T15:05:34.8303486Z [1m[92m   Compiling[0m simd-adler32 v0.3.9
+2026-06-30T15:05:34.8462018Z [1m[92m   Compiling[0m siphasher v1.0.3
+2026-06-30T15:05:34.8528244Z [1m[92m   Compiling[0m semver v1.0.28
+2026-06-30T15:05:34.8759311Z [1m[92m   Compiling[0m cpufeatures v0.3.0
+2026-06-30T15:05:34.9028230Z [1m[92m   Compiling[0m anyhow v1.0.102
+2026-06-30T15:05:34.9091475Z [1m[92m   Compiling[0m crossbeam-utils v0.8.21
+2026-06-30T15:05:34.9502839Z [1m[92m   Compiling[0m miniz_oxide v0.8.9
+2026-06-30T15:05:34.9953016Z [1m[92m   Compiling[0m aho-corasick v1.1.4
+2026-06-30T15:05:35.0612348Z [1m[92m   Compiling[0m rustc_version v0.4.1
+2026-06-30T15:05:35.2124389Z [1m[92m   Compiling[0m pkg-config v0.3.33
+2026-06-30T15:05:35.3748933Z [1m[92m   Compiling[0m sha2-asm v0.6.4
+2026-06-30T15:05:35.4635208Z [1m[92m   Compiling[0m cpufeatures v0.2.17
+2026-06-30T15:05:35.4801823Z [1m[92m   Compiling[0m flate2 v1.1.9
+2026-06-30T15:05:35.4966108Z [1m[92m   Compiling[0m rand_core v0.9.5
+2026-06-30T15:05:35.5068337Z [1m[92m   Compiling[0m serde_derive v1.0.228
+2026-06-30T15:05:35.5731835Z [1m[92m   Compiling[0m futures-macro v0.3.32
+2026-06-30T15:05:35.6053950Z [1m[92m   Compiling[0m tokio-macros v2.7.0
+2026-06-30T15:05:35.7318680Z [1m[92m   Compiling[0m zerocopy-derive v0.8.52
+2026-06-30T15:05:35.9345584Z [1m[92m   Compiling[0m tokio v1.52.3
+2026-06-30T15:05:36.0336635Z [1m[92m   Compiling[0m futures-util v0.3.32
+2026-06-30T15:05:36.5160712Z [1m[92m   Compiling[0m tracing-attributes v0.1.31
+2026-06-30T15:05:37.3979890Z [1m[92m   Compiling[0m tracing v0.1.44
+2026-06-30T15:05:37.5379590Z [1m[92m   Compiling[0m zerofrom-derive v0.1.7
+2026-06-30T15:05:38.0485916Z [1m[92m   Compiling[0m yoke-derive v0.8.2
+2026-06-30T15:05:38.3406623Z [1m[92m   Compiling[0m zerofrom v0.1.8
+2026-06-30T15:05:38.3976969Z [1m[92m   Compiling[0m zerovec-derive v0.11.3
+2026-06-30T15:05:38.7013553Z [1m[92m   Compiling[0m displaydoc v0.2.6
+2026-06-30T15:05:38.8711097Z [1m[92m   Compiling[0m yoke v0.8.3
+2026-06-30T15:05:39.0259541Z [1m[92m   Compiling[0m chrono v0.4.45
+2026-06-30T15:05:39.0498602Z [1m[92m   Compiling[0m zerovec v0.11.6
+2026-06-30T15:05:39.1086940Z [1m[92m   Compiling[0m zerotrie v0.2.4
+2026-06-30T15:05:39.5442533Z [1m[92m   Compiling[0m tokio-util v0.7.18
+2026-06-30T15:05:39.6319190Z [1m[92m   Compiling[0m ppv-lite86 v0.2.21
+2026-06-30T15:05:39.9018394Z [1m[92m   Compiling[0m tinystr v0.8.3
+2026-06-30T15:05:39.9078989Z [1m[92m   Compiling[0m potential_utf v0.1.5
+2026-06-30T15:05:39.9840879Z [1m[92m   Compiling[0m icu_collections v2.2.0
+2026-06-30T15:05:40.0254269Z [1m[92m   Compiling[0m h2 v0.4.15
+2026-06-30T15:05:40.0920512Z [1m[92m   Compiling[0m icu_locale_core v2.2.0
+2026-06-30T15:05:40.1362411Z [1m[92m   Compiling[0m tower v0.5.3
+2026-06-30T15:05:40.2958584Z [1m[92m   Compiling[0m regex-automata v0.4.14
+2026-06-30T15:05:40.6232878Z [1m[92m   Compiling[0m futures-executor v0.3.32
+2026-06-30T15:05:40.7347999Z [1m[92m   Compiling[0m half v2.7.1
+2026-06-30T15:05:40.9994691Z [1m[92m   Compiling[0m compression-core v0.4.32
+2026-06-30T15:05:41.0586763Z [1m[92m   Compiling[0m compression-codecs v0.4.38
+2026-06-30T15:05:41.1743011Z [1m[92m   Compiling[0m icu_provider v2.2.0
+2026-06-30T15:05:41.2108526Z [1m[92m   Compiling[0m futures v0.3.32
+2026-06-30T15:05:41.2503982Z [1m[92m   Compiling[0m ahash v0.8.12
+2026-06-30T15:05:41.3567107Z [1m[92m   Compiling[0m async-compression v0.4.42
+2026-06-30T15:05:41.4804206Z [1m[92m   Compiling[0m icu_normalizer v2.2.0
+2026-06-30T15:05:41.5984956Z [1m[92m   Compiling[0m icu_properties v2.2.0
+2026-06-30T15:05:41.6235005Z [1m[92m   Compiling[0m num-bigint v0.4.6
+2026-06-30T15:05:41.8056799Z [1m[92m   Compiling[0m rustix v1.1.4
+2026-06-30T15:05:41.9629881Z [1m[92m   Compiling[0m thiserror v2.0.18
+2026-06-30T15:05:42.2925829Z [1m[92m   Compiling[0m rand_chacha v0.9.0
+2026-06-30T15:05:42.5021548Z [1m[92m   Compiling[0m idna_adapter v1.2.2
+2026-06-30T15:05:42.5514438Z [1m[92m   Compiling[0m idna v1.1.0
+2026-06-30T15:05:42.5582221Z [1m[92m   Compiling[0m thiserror-impl v2.0.18
+2026-06-30T15:05:42.9529107Z [1m[92m   Compiling[0m hyper v1.10.1
+2026-06-30T15:05:42.9855034Z [1m[92m   Compiling[0m url v2.5.8
+2026-06-30T15:05:43.4026402Z [1m[92m   Compiling[0m phf_shared v0.12.1
+2026-06-30T15:05:43.5191775Z [1m[92m   Compiling[0m tower-http v0.6.11
+2026-06-30T15:05:43.6000656Z [1m[92m   Compiling[0m arrow-schema v58.3.0
+2026-06-30T15:05:43.6062187Z [1m[92m   Compiling[0m chrono-tz v0.10.4
+2026-06-30T15:05:43.6794284Z [1m[92m   Compiling[0m linux-raw-sys v0.12.1
+2026-06-30T15:05:43.7082559Z [1m[92m   Compiling[0m phf v0.12.1
+2026-06-30T15:05:43.8170799Z [1m[92m   Compiling[0m arrow-buffer v58.3.0
+2026-06-30T15:05:43.8914983Z [1m[92m   Compiling[0m rand v0.9.4
+2026-06-30T15:05:44.0274303Z [1m[92m   Compiling[0m hyper-util v0.1.20
+2026-06-30T15:05:44.3516374Z [1m[92m   Compiling[0m num-complex v0.4.6
+2026-06-30T15:05:44.6985508Z [1m[92m   Compiling[0m arrow-data v58.3.0
+2026-06-30T15:05:45.0526109Z [1m[92m   Compiling[0m uuid v1.23.4
+2026-06-30T15:05:45.4572723Z [1m[92m   Compiling[0m regex v1.12.4
+2026-06-30T15:05:45.5392129Z [1m[92m   Compiling[0m hex v0.4.3
+2026-06-30T15:05:45.6946467Z [1m[92m   Compiling[0m quick-xml v0.39.4
+2026-06-30T15:05:45.7395468Z [1m[92m   Compiling[0m heck v0.5.0
+2026-06-30T15:05:45.8582188Z [1m[92m   Compiling[0m twox-hash v2.1.2
+2026-06-30T15:05:45.8965712Z [1m[92m   Compiling[0m async-trait v0.1.89
+2026-06-30T15:05:45.9865292Z [1m[92m   Compiling[0m csv-core v0.1.13
+2026-06-30T15:05:46.1339196Z [1m[92m   Compiling[0m lz4_flex v0.13.1
+2026-06-30T15:05:46.1645981Z [1m[92m   Compiling[0m vcpkg v0.2.15
+2026-06-30T15:05:46.4744730Z [1m[92m   Compiling[0m csv v1.4.0
+2026-06-30T15:05:46.6488650Z [1m[92m   Compiling[0m lexical-util v1.0.7
+2026-06-30T15:05:46.6681651Z [1m[92m   Compiling[0m sha2 v0.10.9
+2026-06-30T15:05:46.7190018Z [1m[92m   Compiling[0m openssl-sys v0.9.117
+2026-06-30T15:05:46.9060261Z [1m[92m   Compiling[0m zstd-sys v2.0.16+zstd.1.5.7
+2026-06-30T15:05:46.9115392Z [1m[92m   Compiling[0m same-file v1.0.6
+2026-06-30T15:05:46.9659711Z [1m[92m   Compiling[0m allocator-api2 v0.2.21
+2026-06-30T15:05:46.9843093Z [1m[92m   Compiling[0m foldhash v0.2.0
+2026-06-30T15:05:47.0769435Z [1m[92m   Compiling[0m unicode-segmentation v1.13.3
+2026-06-30T15:05:47.1195859Z [1m[92m   Compiling[0m foldhash v0.1.5
+2026-06-30T15:05:47.2181805Z [1m[92m   Compiling[0m hashbrown v0.15.5
+2026-06-30T15:05:47.2269320Z [1m[92m   Compiling[0m walkdir v2.5.0
+2026-06-30T15:05:47.2541340Z [1m[92m   Compiling[0m hashbrown v0.16.1
+2026-06-30T15:05:47.3761795Z [1m[92m   Compiling[0m fixedbitset v0.5.7
+2026-06-30T15:05:47.4470316Z [1m[92m   Compiling[0m lexical-parse-integer v1.0.6
+2026-06-30T15:05:47.5799366Z [1m[92m   Compiling[0m lexical-write-integer v1.0.6
+2026-06-30T15:05:47.5899145Z [1m[92m   Compiling[0m serde_urlencoded v0.7.1
+2026-06-30T15:05:47.7345375Z [1m[92m   Compiling[0m encoding_rs v0.8.35
+2026-06-30T15:05:47.7691919Z [1m[92m   Compiling[0m zstd-safe v7.2.4
+2026-06-30T15:05:47.7834301Z [1m[92m   Compiling[0m openssl v0.10.81
+2026-06-30T15:05:47.8329375Z [1m[92m   Compiling[0m foreign-types-shared v0.1.1
+2026-06-30T15:05:47.8657343Z [1m[92m   Compiling[0m foreign-types v0.3.2
+2026-06-30T15:05:47.8726655Z [1m[92m   Compiling[0m lexical-write-float v1.0.6
+2026-06-30T15:05:47.9062072Z [1m[92m   Compiling[0m lexical-parse-float v1.0.6
+2026-06-30T15:05:48.0909390Z [1m[92m   Compiling[0m openssl-macros v0.1.1
+2026-06-30T15:05:48.2302922Z [1m[92m   Compiling[0m flatbuffers v25.12.19
+2026-06-30T15:05:48.2418426Z [1m[92m   Compiling[0m chacha20 v0.10.0
+2026-06-30T15:05:48.2766995Z [1m[92m   Compiling[0m simdutf8 v0.1.5
+2026-06-30T15:05:48.3188892Z [1m[92m   Compiling[0m unicode-width v0.2.2
+2026-06-30T15:05:48.3715232Z [1m[92m   Compiling[0m native-tls v0.2.18
+2026-06-30T15:05:48.4589078Z [1m[92m   Compiling[0m rand v0.10.1
+2026-06-30T15:05:48.4900513Z [1m[92m   Compiling[0m comfy-table v7.2.2
+2026-06-30T15:05:48.9208357Z [1m[92m   Compiling[0m lexical-core v1.0.6
+2026-06-30T15:05:48.9940967Z [1m[92m   Compiling[0m atoi v2.0.0
+2026-06-30T15:05:49.0751091Z [1m[92m   Compiling[0m mime v0.3.17
+2026-06-30T15:05:49.1130436Z [1m[92m   Compiling[0m unicase v2.9.0
+2026-06-30T15:05:49.2329249Z [1m[92m   Compiling[0m mime_guess v2.0.5
+2026-06-30T15:05:49.2649322Z [1m[92m   Compiling[0m humantime v2.3.0
+2026-06-30T15:05:49.4488069Z [1m[92m   Compiling[0m itertools v0.14.0
+2026-06-30T15:05:49.4669000Z [1m[92m   Compiling[0m arrow-array v58.3.0
+2026-06-30T15:05:49.5944627Z [1m[92m   Compiling[0m tempfile v3.27.0
+2026-06-30T15:05:49.7219271Z [1m[92m   Compiling[0m jiff v0.2.28
+2026-06-30T15:05:49.8804594Z [1m[92m   Compiling[0m paste v1.0.15
+2026-06-30T15:05:49.9975497Z [1m[92m   Compiling[0m md-5 v0.10.6
+2026-06-30T15:05:50.0733479Z [1m[92m   Compiling[0m hashbrown v0.14.5
+2026-06-30T15:05:50.8756306Z [1m[92m   Compiling[0m arrayvec v0.7.6
+2026-06-30T15:05:51.0229092Z [1m[92m   Compiling[0m sqlparser_derive v0.5.0
+2026-06-30T15:05:51.7373517Z [1m[92m   Compiling[0m tokio-native-tls v0.3.1
+2026-06-30T15:05:51.8320219Z [1m[92m   Compiling[0m hyper-tls v0.6.0
+2026-06-30T15:05:51.9760061Z [1m[92m   Compiling[0m arrow-select v58.3.0
+2026-06-30T15:05:52.2147354Z [1m[92m   Compiling[0m arrow-row v58.3.0
+2026-06-30T15:05:52.3392010Z [1m[92m   Compiling[0m arrow-arith v58.3.0
+2026-06-30T15:05:52.4659251Z [1m[92m   Compiling[0m prost-derive v0.14.4
+2026-06-30T15:05:53.7975217Z [1m[92m   Compiling[0m arrow-ord v58.3.0
+2026-06-30T15:05:53.7989037Z [1m[92m   Compiling[0m arrow-string v58.3.0
+2026-06-30T15:05:54.3129255Z [1m[92m   Compiling[0m sqlparser v0.61.0
+2026-06-30T15:05:55.0099391Z [1m[92m   Compiling[0m arrayref v0.3.9
+2026-06-30T15:05:55.0429421Z [1m[92m   Compiling[0m blake3 v1.8.5
+2026-06-30T15:05:56.5939199Z [1m[92m   Compiling[0m arrow-cast v58.3.0
+2026-06-30T15:05:56.6548817Z [1m[92m   Compiling[0m constant_time_eq v0.4.2
+2026-06-30T15:05:56.7585183Z [1m[92m   Compiling[0m spin v0.9.8
+2026-06-30T15:05:56.7817258Z [1m[92m   Compiling[0m byteorder v1.5.0
+2026-06-30T15:05:56.8400172Z [1m[92m   Compiling[0m lazy_static v1.5.0
+2026-06-30T15:05:56.9880097Z [1m[92m   Compiling[0m hmac v0.12.1
+2026-06-30T15:05:57.0436677Z [1m[92m   Compiling[0m datafusion-doc v53.1.0
+2026-06-30T15:05:57.1959206Z [1m[92m   Compiling[0m dashmap v6.2.1
+2026-06-30T15:05:57.4249262Z [1m[92m   Compiling[0m petgraph v0.8.3
+2026-06-30T15:05:57.4364626Z [1m[92m   Compiling[0m crossbeam-epoch v0.9.18
+2026-06-30T15:05:57.5609581Z [1m[92m   Compiling[0m block-padding v0.3.3
+2026-06-30T15:05:57.6469747Z [1m[92m   Compiling[0m strsim v0.11.1
+2026-06-30T15:05:57.6994230Z [1m[92m   Compiling[0m inout v0.1.4
+2026-06-30T15:05:57.7736999Z [1m[92m   Compiling[0m datafusion-macros v53.1.0
+2026-06-30T15:05:57.9069798Z [1m[92m   Compiling[0m cipher v0.4.4
+2026-06-30T15:05:58.0478645Z [1m[92m   Compiling[0m blake2 v0.10.6
+2026-06-30T15:05:58.1045385Z [1m[92m   Compiling[0m hybrid-array v0.4.12
+2026-06-30T15:05:58.3481192Z [1m[92m   Compiling[0m rand_core v0.6.4
+2026-06-30T15:05:58.5029663Z [1m[92m   Compiling[0m base64ct v1.8.3
+2026-06-30T15:05:58.6637251Z [1m[92m   Compiling[0m pem-rfc7468 v0.7.0
+2026-06-30T15:05:58.8597000Z [1m[92m   Compiling[0m cmov v0.5.4
+2026-06-30T15:05:59.0332484Z [1m[92m   Compiling[0m arrow-json v58.3.0
+2026-06-30T15:05:59.4936945Z [1m[92m   Compiling[0m arrow-csv v58.3.0
+2026-06-30T15:06:00.4291015Z [1m[92m   Compiling[0m powerfmt v0.2.0
+2026-06-30T15:06:00.4646905Z [1m[92m   Compiling[0m ctutils v0.4.2
+2026-06-30T15:06:00.5669348Z [1m[92m   Compiling[0m deranged v0.5.8
+2026-06-30T15:06:00.6413555Z [1m[92m   Compiling[0m der v0.7.10
+2026-06-30T15:06:00.7193982Z [1m[92m   Compiling[0m block-buffer v0.12.1
+2026-06-30T15:06:00.8209961Z [1m[92m   Compiling[0m crypto-common v0.2.2
+2026-06-30T15:06:01.5539362Z [1m[92m   Compiling[0m salsa20 v0.10.2
+2026-06-30T15:06:01.6295414Z [1m[92m   Compiling[0m pbkdf2 v0.12.2
+2026-06-30T15:06:01.6899152Z [1m[92m   Compiling[0m time-core v0.1.8
+2026-06-30T15:06:01.7159523Z [1m[92m   Compiling[0m zstd v0.13.3
+2026-06-30T15:06:01.7219488Z [1m[92m   Compiling[0m const-oid v0.10.2
+2026-06-30T15:06:01.7979291Z [1m[92m   Compiling[0m num-conv v0.2.2
+2026-06-30T15:06:01.8547903Z [1m[92m   Compiling[0m digest v0.11.3
+2026-06-30T15:06:01.9069257Z [1m[92m   Compiling[0m arrow-ipc v58.3.0
+2026-06-30T15:06:01.9201656Z [1m[92m   Compiling[0m time v0.3.47
+2026-06-30T15:06:01.9405066Z [1m[92m   Compiling[0m scrypt v0.11.0
+2026-06-30T15:06:01.9816830Z [1m[92m   Compiling[0m spki v0.7.3
+2026-06-30T15:06:02.1215244Z [1m[92m   Compiling[0m aes v0.8.4
+2026-06-30T15:06:02.1349781Z [1m[92m   Compiling[0m cbc v0.1.2
+2026-06-30T15:06:02.2252698Z [1m[92m   Compiling[0m rand_chacha v0.3.1
+2026-06-30T15:06:02.6411118Z [1m[92m   Compiling[0m pkcs5 v0.7.1
+2026-06-30T15:06:02.9930253Z [1m[92m   Compiling[0m bytemuck v1.25.0
+2026-06-30T15:06:03.1329356Z [1m[92m   Compiling[0m num-bigint-dig v0.8.6
+2026-06-30T15:06:03.2122467Z [1m[92m   Compiling[0m pkcs8 v0.10.2
+2026-06-30T15:06:03.2247981Z [1m[92m   Compiling[0m rand v0.8.6
+2026-06-30T15:06:03.4335441Z [1m[92m   Compiling[0m arrow v58.3.0
+2026-06-30T15:06:03.5459670Z [1m[92m   Compiling[0m pin-project-internal v1.1.13
+2026-06-30T15:06:03.5909287Z [1m[92m   Compiling[0m crossbeam-channel v0.5.15
+2026-06-30T15:06:03.6509684Z [1m[92m   Compiling[0m num-iter v0.1.45
+2026-06-30T15:06:03.7280030Z [1m[92m   Compiling[0m pkcs1 v0.7.5
+2026-06-30T15:06:04.0319860Z [1m[92m   Compiling[0m signature v2.2.0
+2026-06-30T15:06:04.0579893Z [1m[92m   Compiling[0m sha1 v0.11.0
+2026-06-30T15:06:04.0849163Z [1m[92m   Compiling[0m hmac v0.13.0
+2026-06-30T15:06:04.1256846Z [1m[92m   Compiling[0m sha2 v0.11.0
+2026-06-30T15:06:04.2003507Z [1m[92m   Compiling[0m tokio-stream v0.1.18
+2026-06-30T15:06:04.2512040Z [1m[92m   Compiling[0m prost v0.14.4
+2026-06-30T15:06:04.4669490Z [1m[92m   Compiling[0m pin-project v1.1.13
+2026-06-30T15:06:04.5104142Z [1m[92m   Compiling[0m anstyle v1.0.14
+2026-06-30T15:06:04.6051098Z [1m[92m   Compiling[0m approx v0.5.1
+2026-06-30T15:06:04.6439600Z [1m[92m   Compiling[0m num_cpus v1.17.0
+2026-06-30T15:06:04.6871026Z [1m[92m   Compiling[0m rayon-core v1.13.0
+2026-06-30T15:06:04.7023233Z [1m[92m   Compiling[0m utf8parse v0.2.2
+2026-06-30T15:06:04.8853150Z [1m[92m   Compiling[0m rsa v0.9.10
+2026-06-30T15:06:04.9049284Z [1m[92m   Compiling[0m anstyle-parse v1.0.0
+2026-06-30T15:06:04.9102014Z [1m[92m   Compiling[0m crossbeam-deque v0.8.6
+2026-06-30T15:06:05.0343852Z [1m[92m   Compiling[0m http v0.2.12
+2026-06-30T15:06:05.0523099Z [1m[92m   Compiling[0m glob v0.3.3
+2026-06-30T15:06:05.1208623Z [1m[92m   Compiling[0m vsimd v0.8.0
+2026-06-30T15:06:05.3028633Z [1m[92m   Compiling[0m reqsign-core v3.0.1
+2026-06-30T15:06:05.3454715Z [1m[92m   Compiling[0m colorchoice v1.0.5
+2026-06-30T15:06:05.4179505Z [1m[92m   Compiling[0m is_terminal_polyfill v1.70.2
+2026-06-30T15:06:05.4638486Z [1m[92m   Compiling[0m crunchy v0.2.4
+2026-06-30T15:06:05.4724778Z [1m[92m   Compiling[0m anstyle-query v1.1.5
+2026-06-30T15:06:05.5239138Z [1m[92m   Compiling[0m prettyplease v0.2.37
+2026-06-30T15:06:05.5294360Z [1m[92m   Compiling[0m outref v0.5.2
+2026-06-30T15:06:05.5748898Z [1m[92m   Compiling[0m base64-simd v0.8.0
+2026-06-30T15:06:05.6040176Z [1m[92m   Compiling[0m anstream v1.0.0
+2026-06-30T15:06:05.6905765Z [1m[92m   Compiling[0m prost-types v0.14.4
+2026-06-30T15:06:05.8475956Z [1m[92m   Compiling[0m http-body v0.4.6
+2026-06-30T15:06:05.8955742Z [1m[92m   Compiling[0m bytes-utils v0.1.4
+2026-06-30T15:06:05.9258603Z [1m[92m   Compiling[0m ordered-float v5.3.0
+2026-06-30T15:06:06.0223708Z [1m[92m   Compiling[0m nom v8.0.0
+2026-06-30T15:06:06.0899941Z [1m[92m   Compiling[0m bigdecimal v0.4.10
+2026-06-30T15:06:06.1824228Z [1m[92m   Compiling[0m fast-float2 v0.2.3
+2026-06-30T15:06:06.1906696Z [1m[92m   Compiling[0m ethnum v1.5.3
+2026-06-30T15:06:06.2293504Z [1m[92m   Compiling[0m pin-utils v0.1.0
+2026-06-30T15:06:06.2824089Z [1m[92m   Compiling[0m aws-smithy-types v1.4.5
+2026-06-30T15:06:06.3418845Z [1m[92m   Compiling[0m rayon v1.12.0
+2026-06-30T15:06:07.1669262Z [1m[92m   Compiling[0m concurrent-queue v2.5.0
+2026-06-30T15:06:07.3074849Z [1m[92m   Compiling[0m parking v2.2.1
+2026-06-30T15:06:07.3392734Z [1m[92m   Compiling[0m multimap v0.10.1
+2026-06-30T15:06:07.4050892Z [1m[92m   Compiling[0m event-listener v5.4.1
+2026-06-30T15:06:07.5129230Z [1m[92m   Compiling[0m ident_case v1.0.1
+2026-06-30T15:06:07.5599238Z [1m[92m   Compiling[0m md-5 v0.11.0
+2026-06-30T15:06:07.6119730Z [1m[92m   Compiling[0m event-listener-strategy v0.5.4
+2026-06-30T15:06:07.6769261Z [1m[92m   Compiling[0m mea v0.6.4
+2026-06-30T15:06:07.6966842Z [1m[92m   Compiling[0m clap_lex v1.1.0
+2026-06-30T15:06:07.8426779Z [1m[92m   Compiling[0m portable-atomic v1.13.1
+2026-06-30T15:06:08.0997088Z [1m[92m   Compiling[0m clap_builder v4.6.0
+2026-06-30T15:06:08.2449375Z [1m[92m   Compiling[0m clap_derive v4.6.1
+2026-06-30T15:06:08.3889294Z [1m[92m   Compiling[0m aws-smithy-async v1.2.13
+2026-06-30T15:06:08.5539164Z [1m[92m   Compiling[0m prost-build v0.14.4
+2026-06-30T15:06:08.5949670Z [1m[92m   Compiling[0m rustversion v1.0.22
+2026-06-30T15:06:08.8069420Z [1m[92m   Compiling[0m aws-smithy-runtime-api v1.11.5
+2026-06-30T15:06:08.9893906Z [1m[92m   Compiling[0m jsonb v0.5.6
+2026-06-30T15:06:09.3169481Z [1m[92m   Compiling[0m async-lock v3.4.2
+2026-06-30T15:06:09.7146694Z [1m[92m   Compiling[0m snafu-derive v0.9.1
+2026-06-30T15:06:09.8169352Z [1m[92m   Compiling[0m tagptr v0.2.0
+2026-06-30T15:06:09.9201638Z [1m[92m   Compiling[0m tiny-keccak v2.0.2
+2026-06-30T15:06:09.9922547Z [1m[92m   Compiling[0m clap v4.6.1
+2026-06-30T15:06:10.0136321Z [1m[92m   Compiling[0m moka v0.12.15
+2026-06-30T15:06:10.3082767Z [1m[92m   Compiling[0m roaring v0.11.4
+2026-06-30T15:06:10.4469509Z [1m[92m   Compiling[0m lance-derive v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-derive)
+2026-06-30T15:06:10.6685357Z [1m[92m   Compiling[0m winnow v1.0.3
+2026-06-30T15:06:11.1844155Z [1m[92m   Compiling[0m toml_datetime v1.1.1+spec-1.1.0
+2026-06-30T15:06:11.3659513Z [1m[92m   Compiling[0m const-random-macro v0.1.16
+2026-06-30T15:06:11.5419159Z [1m[92m   Compiling[0m sharded-slab v0.1.7
+2026-06-30T15:06:11.5818625Z [1m[92m   Compiling[0m matchers v0.2.0
+2026-06-30T15:06:11.6537576Z [1m[92m   Compiling[0m snafu v0.9.1
+2026-06-30T15:06:11.6649501Z [1m[92m   Compiling[0m tracing-serde v0.2.0
+2026-06-30T15:06:11.7741645Z [1m[92m   Compiling[0m toml_parser v1.1.2+spec-1.1.0
+2026-06-30T15:06:11.8059513Z [1m[92m   Compiling[0m tracing-log v0.2.0
+2026-06-30T15:06:11.8907286Z [1m[92m   Compiling[0m thread_local v1.1.9
+2026-06-30T15:06:11.9464501Z [1m[92m   Compiling[0m nu-ansi-term v0.50.3
+2026-06-30T15:06:11.9569433Z [1m[92m   Compiling[0m const-random v0.1.18
+2026-06-30T15:06:11.9599008Z [1m[92m   Compiling[0m aws-smithy-eventstream v0.60.19
+2026-06-30T15:06:11.9959298Z [1m[92m   Compiling[0m option-ext v0.2.0
+2026-06-30T15:06:12.0349427Z [1m[92m   Compiling[0m dirs-sys v0.5.0
+2026-06-30T15:06:12.0419149Z [1m[92m   Compiling[0m dlv-list v0.5.2
+2026-06-30T15:06:12.0470789Z [1m[92m   Compiling[0m dtor-proc-macro v0.0.6
+2026-06-30T15:06:12.1884055Z [1m[92m   Compiling[0m toml_edit v0.25.12+spec-1.1.0
+2026-06-30T15:06:12.1970833Z [1m[92m   Compiling[0m tracing-subscriber v0.3.23
+2026-06-30T15:06:12.2030990Z [1m[92m   Compiling[0m aws-smithy-http v0.63.5
+2026-06-30T15:06:12.2078860Z [1m[92m   Compiling[0m typewit v1.15.2
+2026-06-30T15:06:12.2429725Z [1m[92m   Compiling[0m lance-arrow v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-arrow)
+2026-06-30T15:06:12.2624977Z [1m[92m   Compiling[0m dtor v0.1.1
+2026-06-30T15:06:12.3139201Z [1m[92m   Compiling[0m ordered-multimap v0.7.3
+2026-06-30T15:06:12.4379397Z [1m[92m   Compiling[0m dirs v6.0.0
+2026-06-30T15:06:12.5040958Z [1m[92m   Compiling[0m aws-credential-types v1.2.13
+2026-06-30T15:06:12.5326721Z [1m[92m   Compiling[0m const_panic v0.2.15
+2026-06-30T15:06:12.5885006Z [1m[92m   Compiling[0m reqsign-file-read-tokio v3.0.1
+2026-06-30T15:06:12.6457489Z [1m[92m   Compiling[0m bstr v1.12.1
+2026-06-30T15:06:12.6716072Z [1m[92m   Compiling[0m serde_repr v0.1.20
+2026-06-30T15:06:12.7999267Z [1m[92m   Compiling[0m proc-macro-crate v3.5.0
+2026-06-30T15:06:12.9459413Z [1m[92m   Compiling[0m git-version-macro v0.3.9
+2026-06-30T15:06:13.0849082Z [1m[92m   Compiling[0m aws-types v1.3.13
+2026-06-30T15:06:13.2101410Z [1m[92m   Compiling[0m os_str_bytes v6.6.1
+2026-06-30T15:06:13.2417844Z [1m[92m   Compiling[0m symlink v0.1.0
+2026-06-30T15:06:13.2573694Z [1m[92m   Compiling[0m ctor-proc-macro v0.0.7
+2026-06-30T15:06:13.2830221Z [1m[92m   Compiling[0m urlencoding v2.1.3
+2026-06-30T15:06:13.2904210Z [1m[92m   Compiling[0m konst_proc_macros v0.4.1
+2026-06-30T15:06:13.3049582Z [1m[92m   Compiling[0m git-version v0.3.9
+2026-06-30T15:06:13.3833752Z [1m[92m   Compiling[0m shellexpand v3.1.2
+2026-06-30T15:06:13.3909746Z [1m[92m   Compiling[0m rust-ini v0.21.3
+2026-06-30T15:06:13.3976640Z [1m[92m   Compiling[0m aws-smithy-observability v0.2.5
+2026-06-30T15:06:13.4064665Z [1m[92m   Compiling[0m ctor v0.6.3
+2026-06-30T15:06:13.5549723Z [1m[92m   Compiling[0m tracing-appender v0.2.5
+2026-06-30T15:06:13.5778584Z [1m[92m   Compiling[0m sysinfo v0.38.4
+2026-06-30T15:06:13.7390737Z [1m[92m   Compiling[0m konst v0.4.3
+2026-06-30T15:06:13.7531456Z [1m[92m   Compiling[0m whoami v2.1.2
+2026-06-30T15:06:13.7999289Z [1m[92m   Compiling[0m oneshot v0.1.13
+2026-06-30T15:06:13.9149313Z [1m[92m   Compiling[0m more-asserts v0.3.1
+2026-06-30T15:06:13.9779285Z [1m[92m   Compiling[0m colored v3.1.1
+2026-06-30T15:06:14.0531452Z [1m[92m   Compiling[0m const-str v1.1.0
+2026-06-30T15:06:14.1310984Z [1m[92m   Compiling[0m redb v3.1.3
+2026-06-30T15:06:14.2509253Z [1m[92m   Compiling[0m aws-sigv4 v1.4.1
+2026-06-30T15:06:14.2789282Z [1m[92m   Compiling[0m darling_core v0.23.0
+2026-06-30T15:06:14.4511552Z [1m[92m   Compiling[0m countio v0.3.0
+2026-06-30T15:06:14.5454056Z [1m[92m   Compiling[0m safe-transmute v0.11.3
+2026-06-30T15:06:14.6162824Z [1m[92m   Compiling[0m static_assertions v1.1.0
+2026-06-30T15:06:14.6554739Z [1m[92m   Compiling[0m heapify v0.2.0
+2026-06-30T15:06:14.7201896Z [1m[92m   Compiling[0m aws-smithy-json v0.62.4
+2026-06-30T15:06:14.7440270Z [1m[92m   Compiling[0m statrs v0.18.0
+2026-06-30T15:06:14.8129875Z [1m[92m   Compiling[0m tokio-retry v0.3.2
+2026-06-30T15:06:14.9248904Z [1m[92m   Compiling[0m hyper-timeout v0.5.2
+2026-06-30T15:06:14.9829303Z [1m[92m   Compiling[0m datafusion-common-runtime v53.1.0
+2026-06-30T15:06:15.0319797Z [1m[92m   Compiling[0m quick-xml v0.40.1
+2026-06-30T15:06:15.0510689Z [1m[92m   Compiling[0m memmap2 v0.9.10
+2026-06-30T15:06:15.1031011Z [1m[92m   Compiling[0m regex-lite v0.1.9
+2026-06-30T15:06:15.1199015Z [1m[92m   Compiling[0m cfg-if v0.1.10
+2026-06-30T15:06:15.1699151Z [1m[92m   Compiling[0m gearhash v0.1.3
+2026-06-30T15:06:15.2119174Z [1m[92m   Compiling[0m tonic v0.14.6
+2026-06-30T15:06:15.2879736Z [1m[92m   Compiling[0m crc32c v0.6.8
+2026-06-30T15:06:15.4528615Z [1m[92m   Compiling[0m pem v3.0.6
+2026-06-30T15:06:15.6879216Z [1m[92m   Compiling[0m bitflags v1.3.2
+2026-06-30T15:06:15.7062840Z [1m[92m   Compiling[0m heapless v0.8.0
+2026-06-30T15:06:15.7431541Z [1m[92m   Compiling[0m goosefs-sdk v0.1.5
+2026-06-30T15:06:15.8759401Z [1m[92m   Compiling[0m reqsign-azure-storage v3.0.1
+2026-06-30T15:06:15.9048383Z [1m[92m   Compiling[0m hash32 v0.3.1
+2026-06-30T15:06:15.9560616Z [1m[92m   Compiling[0m hostname v0.4.2
+2026-06-30T15:06:15.9909276Z [1m[92m   Compiling[0m xmlparser v0.13.6
+2026-06-30T15:06:16.3478952Z [1m[92m   Compiling[0m reqsign-aws-v4 v3.0.1
+2026-06-30T15:06:16.4568707Z [1m[92m   Compiling[0m aws-smithy-xml v0.60.14
+2026-06-30T15:06:16.7469294Z [1m[92m   Compiling[0m reqsign-aliyun-oss v3.1.0
+2026-06-30T15:06:17.1061423Z [1m[92m   Compiling[0m tonic-prost v0.14.6
+2026-06-30T15:06:17.1149444Z [1m[92m   Compiling[0m darling_macro v0.23.0
+2026-06-30T15:06:17.2099814Z [1m[92m   Compiling[0m reqsign-volcengine-tos v3.0.1
+2026-06-30T15:06:17.3332873Z [1m[92m   Compiling[0m darling v0.23.0
+2026-06-30T15:06:17.3809736Z [1m[92m   Compiling[0m serde_with_macros v3.21.0
+2026-06-30T15:06:17.4589416Z [1m[92m   Compiling[0m reqsign-google v3.0.1
+2026-06-30T15:06:17.7282261Z [1m[92m   Compiling[0m reqsign-tencent-cos v3.0.1
+2026-06-30T15:06:18.0620675Z [1m[92m   Compiling[0m backon v1.6.0
+2026-06-30T15:06:18.2169092Z [1m[92m   Compiling[0m async-recursion v1.1.1
+2026-06-30T15:06:18.2239093Z [1m[92m   Compiling[0m serde_with v3.21.0
+2026-06-30T15:06:18.2749153Z [1m[92m   Compiling[0m link-section v0.18.2
+2026-06-30T15:06:18.3136044Z [1m[92m   Compiling[0m linktime-proc-macro v0.2.0
+2026-06-30T15:06:18.3963955Z [1m[92m   Compiling[0m rstar v0.12.2
+2026-06-30T15:06:18.4758537Z [1m[92m   Compiling[0m aws-smithy-query v0.60.14
+2026-06-30T15:06:18.6275681Z [1m[92m   Compiling[0m io-uring v0.7.12
+2026-06-30T15:06:18.7259766Z [1m[92m   Compiling[0m stfu8 v0.2.7
+2026-06-30T15:06:18.7612144Z [1m[92m   Compiling[0m geo-types v0.7.19
+2026-06-30T15:06:18.7779301Z [1m[92m   Compiling[0m std_prelude v0.2.12
+2026-06-30T15:06:18.8659367Z [1m[92m   Compiling[0m ctor v1.0.7
+2026-06-30T15:06:18.8883196Z [1m[92m   Compiling[0m path_abs v0.5.1
+2026-06-30T15:06:19.1850378Z [1m[92m   Compiling[0m lz4-sys v1.11.1+lz4-1.10.0
+2026-06-30T15:06:19.2379686Z [1m[92m   Compiling[0m thiserror v1.0.69
+2026-06-30T15:06:19.3145119Z [1m[92m   Compiling[0m seq-macro v0.3.6
+2026-06-30T15:06:19.4059260Z [1m[92m   Compiling[0m thiserror-impl v1.0.69
+2026-06-30T15:06:19.4299371Z [1m[92m   Compiling[0m serde_derive_internals v0.29.1
+2026-06-30T15:06:19.4719075Z [1m[92m   Compiling[0m schemars v0.8.22
+2026-06-30T15:06:19.5764011Z [1m[92m   Compiling[0m unsafe-libyaml v0.2.11
+2026-06-30T15:06:19.6610047Z [1m[92m   Compiling[0m geo-traits v0.3.0
+2026-06-30T15:06:19.7043175Z [1m[92m   Compiling[0m strum_macros v0.26.4
+2026-06-30T15:06:19.9495271Z [1m[92m   Compiling[0m lance-encoding v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-encoding)
+2026-06-30T15:06:20.0812773Z [1m[92m   Compiling[0m dyn-clone v1.0.20
+2026-06-30T15:06:20.1549396Z [1m[92m   Compiling[0m lance-bitpacking v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/compression/bitpacking)
+2026-06-30T15:06:20.3349707Z [1m[92m   Compiling[0m schemars_derive v0.8.22
+2026-06-30T15:06:20.3735697Z [1m[92m   Compiling[0m num_enum_derive v0.7.6
+2026-06-30T15:06:20.4409204Z [1m[92m   Compiling[0m darling_core v0.20.11
+2026-06-30T15:06:20.5179432Z [1m[92m   Compiling[0m pbjson-build v0.8.0
+2026-06-30T15:06:21.0857483Z [1m[92m   Compiling[0m regress v0.10.5
+2026-06-30T15:06:21.1894528Z [1m[92m   Compiling[0m fsst v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/compression/fsst)
+2026-06-30T15:06:21.4089366Z [1m[92m   Compiling[0m strum v0.26.3
+2026-06-30T15:06:21.4621107Z [1m[92m   Compiling[0m hyperloglogplus v0.4.1
+2026-06-30T15:06:21.4748522Z [1m[92m   Compiling[0m ptr_meta_derive v0.3.1
+2026-06-30T15:06:21.6956457Z [1m[92m   Compiling[0m i_float v1.15.0
+2026-06-30T15:06:21.7844103Z [1m[92m   Compiling[0m xxhash-rust v0.8.15
+2026-06-30T15:06:21.8629209Z [1m[92m   Compiling[0m i_shape v1.14.0
+2026-06-30T15:06:22.0025429Z [1m[92m   Compiling[0m ptr_meta v0.3.1
+2026-06-30T15:06:22.0658538Z [1m[92m   Compiling[0m num_enum v0.7.6
+2026-06-30T15:06:22.1149291Z [1m[92m   Compiling[0m serde_tokenstream v0.2.3
+2026-06-30T15:06:22.1205187Z [1m[92m   Compiling[0m lance-file v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-file)
+2026-06-30T15:06:22.3482935Z [1m[92m   Compiling[0m itertools v0.11.0
+2026-06-30T15:06:22.6009449Z [1m[92m   Compiling[0m robust v1.2.0
+2026-06-30T15:06:22.8049610Z [1m[92m   Compiling[0m i_tree v0.16.0
+2026-06-30T15:06:22.8741970Z [1m[92m   Compiling[0m typify-impl v0.5.0
+2026-06-30T15:06:22.9822632Z [1m[92m   Compiling[0m darling_macro v0.20.11
+2026-06-30T15:06:23.0367093Z [1m[92m   Compiling[0m i_key_sort v0.6.0
+2026-06-30T15:06:23.1240457Z [1m[92m   Compiling[0m i_overlay v4.0.7
+2026-06-30T15:06:23.2039604Z [1m[92m   Compiling[0m darling v0.20.11
+2026-06-30T15:06:23.2479916Z [1m[92m   Compiling[0m spade v2.15.1
+2026-06-30T15:06:23.5319758Z [1m[92m   Compiling[0m earcutr v0.4.3
+2026-06-30T15:06:23.5485711Z [1m[92m   Compiling[0m wkb v0.9.2
+2026-06-30T15:06:23.7310521Z [1m[92m   Compiling[0m rancor v0.1.1
+2026-06-30T15:06:23.8500419Z [1m[92m   Compiling[0m geoarrow-schema v0.8.0
+2026-06-30T15:06:23.9039431Z [1m[92m   Compiling[0m wkt v0.14.0
+2026-06-30T15:06:24.3739247Z [1m[92m   Compiling[0m rand_distr v0.5.1
+2026-06-30T15:06:24.4379969Z [1m[92m   Compiling[0m rand_xoshiro v0.7.0
+2026-06-30T15:06:24.6091272Z [1m[92m   Compiling[0m bytecheck_derive v0.8.2
+2026-06-30T15:06:24.6829795Z [1m[92m   Compiling[0m geographiclib-rs v0.2.7
+2026-06-30T15:06:24.8969919Z [1m[92m   Compiling[0m float_next_after v1.0.0
+2026-06-30T15:06:24.9389218Z [1m[92m   Compiling[0m geo v0.31.0
+2026-06-30T15:06:24.9514845Z [1m[92m   Compiling[0m geoarrow-array v0.8.0
+2026-06-30T15:06:24.9523232Z [1m[92m   Compiling[0m derive_builder_core v0.20.2
+2026-06-30T15:06:25.1579236Z [1m[92m   Compiling[0m bytecheck v0.8.2
+2026-06-30T15:06:25.3629221Z [1m[92m   Compiling[0m pbjson-types v0.8.0
+2026-06-30T15:06:25.8349687Z [1m[92m   Compiling[0m serde_yaml v0.9.34+deprecated
+2026-06-30T15:06:25.8934371Z [1m[92m   Compiling[0m munge_macro v0.4.7
+2026-06-30T15:06:26.3649313Z [1m[92m   Compiling[0m phf_shared v0.13.1
+2026-06-30T15:06:26.6039862Z [1m[92m   Compiling[0m alloca v0.4.0
+2026-06-30T15:06:26.7057500Z [1m[92m   Compiling[0m icu_locale_data v2.2.0
+2026-06-30T15:06:26.8073006Z [1m[92m   Compiling[0m plotters-backend v0.3.7
+2026-06-30T15:06:26.9804622Z [1m[92m   Compiling[0m ciborium-io v0.2.2
+2026-06-30T15:06:27.0277271Z [1m[92m   Compiling[0m ciborium-ll v0.2.2
+2026-06-30T15:06:27.1801419Z [1m[92m   Compiling[0m plotters-svg v0.3.7
+2026-06-30T15:06:27.4489990Z [1m[92m   Compiling[0m typify-macro v0.5.0
+2026-06-30T15:06:27.5448642Z [1m[92m   Compiling[0m phf_generator v0.13.1
+2026-06-30T15:06:27.6638909Z [1m[92m   Compiling[0m munge v0.4.7
+2026-06-30T15:06:27.7161823Z [1m[92m   Compiling[0m derive_builder_macro v0.20.2
+2026-06-30T15:06:27.8131406Z [1m[92m   Compiling[0m lz4 v1.28.1
+2026-06-30T15:06:27.9362472Z [1m[92m   Compiling[0m rend v0.5.3
+2026-06-30T15:06:27.9868327Z [1m[92m   Compiling[0m lance-datagen v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-datagen)
+2026-06-30T15:06:28.2099594Z [1m[92m   Compiling[0m geoarrow-expr-geo v0.8.0
+2026-06-30T15:06:28.2529488Z [1m[92m   Compiling[0m geohash v0.13.2
+2026-06-30T15:06:28.3769722Z [1m[92m   Compiling[0m strum_macros v0.28.0
+2026-06-30T15:06:28.5140146Z [1m[92m   Compiling[0m pbjson v0.8.0
+2026-06-30T15:06:28.6108577Z [1m[92m   Compiling[0m rkyv_derive v0.8.16
+2026-06-30T15:06:28.6529591Z [1m[92m   Compiling[0m typify v0.5.0
+2026-06-30T15:06:28.7011063Z [1m[92m   Compiling[0m substrait v0.62.2
+2026-06-30T15:06:29.5608175Z [1m[92m   Compiling[0m rstest_macros v0.26.1
+2026-06-30T15:06:29.7229703Z [1m[92m   Compiling[0m itertools v0.13.0
+2026-06-30T15:06:29.7397252Z [1m[92m   Compiling[0m spin v0.10.0
+2026-06-30T15:06:29.8979666Z [1m[92m   Compiling[0m icu_segmenter_data v2.2.0
+2026-06-30T15:06:29.9888887Z [1m[92m   Compiling[0m cpp_demangle v0.4.5
+2026-06-30T15:06:30.3081906Z [1m[92m   Compiling[0m cast v0.3.0
+2026-06-30T15:06:30.3846353Z [1m[92m   Compiling[0m object v0.37.3
+2026-06-30T15:06:30.4149446Z [1m[92m   Compiling[0m tinyvec_macros v0.1.1
+2026-06-30T15:06:30.4503067Z [1m[92m   Compiling[0m tinyvec v1.11.0
+2026-06-30T15:06:30.4580052Z [1m[92m   Compiling[0m strum v0.28.0
+2026-06-30T15:06:30.8769370Z [1m[92m   Compiling[0m derive_builder v0.20.2
+2026-06-30T15:06:30.9388430Z [1m[92m   Compiling[0m phf_codegen v0.13.1
+2026-06-30T15:06:31.0869224Z [1m[92m   Compiling[0m plotters v0.3.7
+2026-06-30T15:06:31.2379170Z [1m[92m   Compiling[0m criterion-plot v0.8.2
+2026-06-30T15:06:31.3559221Z [1m[92m   Compiling[0m ciborium v0.2.2
+2026-06-30T15:06:31.6479308Z [1m[92m   Compiling[0m stop-words v0.10.0
+2026-06-30T15:06:31.8355305Z [1m[92m   Compiling[0m rkyv v0.8.16
+2026-06-30T15:06:31.8891895Z [1m[92m   Compiling[0m encoding_rs_io v0.1.7
+2026-06-30T15:06:32.0039465Z [1m[92m   Compiling[0m debugid v0.8.0
+2026-06-30T15:06:32.1469272Z [1m[92m   Compiling[0m tinytemplate v1.2.1
+2026-06-30T15:06:32.1869282Z [1m[92m   Compiling[0m equator-macro v0.4.2
+2026-06-30T15:06:32.7298217Z [1m[92m   Compiling[0m findshlibs v0.10.2
+2026-06-30T15:06:32.7709303Z [1m[92m   Compiling[0m page_size v0.6.0
+2026-06-30T15:06:32.8364771Z [1m[92m   Compiling[0m relative-path v1.9.3
+2026-06-30T15:06:32.8930033Z [1m[92m   Compiling[0m oorandom v11.1.5
+2026-06-30T15:06:32.9599274Z [1m[92m   Compiling[0m rustc-demangle v0.1.27
+2026-06-30T15:06:33.0142983Z [1m[92m   Compiling[0m daachorse v2.1.1
+2026-06-30T15:06:33.0866180Z [1m[92m   Compiling[0m gimli v0.32.3
+2026-06-30T15:06:33.3103462Z [1m[92m   Compiling[0m anes v0.1.6
+2026-06-30T15:06:33.5020211Z [1m[92m   Compiling[0m symbolic-demangle v12.18.3
+2026-06-30T15:06:33.5129309Z [1m[92m   Compiling[0m criterion v0.8.2
+2026-06-30T15:06:33.6135568Z [1m[92m   Compiling[0m phf v0.13.1
+2026-06-30T15:06:34.3762335Z [1m[92m   Compiling[0m lindera-dictionary v3.0.7
+2026-06-30T15:06:34.3780725Z [1m[92m   Compiling[0m equator v0.4.2
+2026-06-30T15:06:34.5842515Z [1m[92m   Compiling[0m symbolic-common v12.18.3
+2026-06-30T15:06:34.9193391Z [1m[92m   Compiling[0m icu_locale v2.2.0
+2026-06-30T15:06:35.6219091Z [1m[92m   Compiling[0m addr2line v0.25.1
+2026-06-30T15:06:35.9109970Z [1m[92m   Compiling[0m jieba-macros v0.10.1
+2026-06-30T15:06:35.9779814Z [1m[92m   Compiling[0m unicode-normalization v0.1.25
+2026-06-30T15:06:37.0271212Z [1m[92m   Compiling[0m serde_yaml_ng v0.10.0
+2026-06-30T15:06:37.5389861Z [1m[92m   Compiling[0m kanaria v0.2.0
+2026-06-30T15:06:37.8059828Z [1m[92m   Compiling[0m lance-table v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-table)
+2026-06-30T15:06:38.2650374Z [1m[92m   Compiling[0m lance-datafusion v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-datafusion)
+2026-06-30T15:06:38.2796595Z [1m[92m   Compiling[0m rgb v0.8.53
+2026-06-30T15:06:38.4439263Z [1m[92m   Compiling[0m num-format v0.4.4
+2026-06-30T15:06:38.6520175Z [1m[92m   Compiling[0m lance-linalg v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-linalg)
+2026-06-30T15:06:38.6894218Z [1m[92m   Compiling[0m is-terminal v0.4.17
+2026-06-30T15:06:38.7398870Z [1m[92m   Compiling[0m cedarwood v0.5.0
+2026-06-30T15:06:38.7463828Z [1m[92m   Compiling[0m quick-xml v0.26.0
+2026-06-30T15:06:38.8459889Z [1m[92m   Compiling[0m matrixmultiply v0.3.10
+2026-06-30T15:06:38.9379456Z [1m[92m   Compiling[0m pprof v0.15.0
+2026-06-30T15:06:38.9609763Z [1m[92m   Compiling[0m str_stack v0.1.1
+2026-06-30T15:06:38.9799652Z [1m[92m   Compiling[0m bytecount v0.6.9
+2026-06-30T15:06:39.0209782Z [1m[92m   Compiling[0m unicode-blocks v0.1.9
+2026-06-30T15:06:39.0549387Z [1m[92m   Compiling[0m radium v0.7.0
+2026-06-30T15:06:39.0902289Z [1m[92m   Compiling[0m futures-timer v3.0.4
+2026-06-30T15:06:39.1283806Z [1m[92m   Compiling[0m rustc-hash v2.1.2
+2026-06-30T15:06:39.1830914Z [1m[92m   Compiling[0m jieba-rs v0.10.1
+2026-06-30T15:06:39.2089820Z [1m[92m   Compiling[0m lindera v3.0.7
+2026-06-30T15:06:39.3049964Z [1m[92m   Compiling[0m rstest v0.26.1
+2026-06-30T15:06:39.3552014Z [1m[92m   Compiling[0m inferno v0.11.21
+2026-06-30T15:06:39.7526981Z [1m[92m   Compiling[0m backtrace v0.3.76
+2026-06-30T15:06:40.5959076Z [1m[92m   Compiling[0m icu_segmenter v2.2.0
+2026-06-30T15:06:40.8772641Z [1m[92m   Compiling[0m aligned-vec v0.6.4
+2026-06-30T15:06:40.9506148Z [1m[92m   Compiling[0m nix v0.26.4
+2026-06-30T15:06:41.0325112Z [1m[92m   Compiling[0m thread-tree v0.3.3
+2026-06-30T15:06:41.1145384Z [1m[92m   Compiling[0m lance-arrow-scalar v58.0.0 (/home/runner/work/lance/lance/rust/arrow-scalar)
+2026-06-30T15:06:41.2656727Z [1m[92m   Compiling[0m rust-stemmers v1.2.0
+2026-06-30T15:06:41.2859396Z [1m[92m   Compiling[0m rangemap v1.7.1
+2026-06-30T15:06:41.3742874Z [1m[92m   Compiling[0m libsais-rs v0.2.0
+2026-06-30T15:06:41.5136883Z [1m[92m   Compiling[0m rawpointer v0.2.1
+2026-06-30T15:06:41.5303458Z [1m[92m   Compiling[0m tap v1.0.1
+2026-06-30T15:06:41.5548870Z [1m[92m   Compiling[0m fst v0.4.7
+2026-06-30T15:06:41.6019127Z [1m[92m   Compiling[0m wyz v0.5.1
+2026-06-30T15:06:41.8905011Z [1m[92m   Compiling[0m lance-index v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-index)
+2026-06-30T15:06:41.9349808Z [1m[92m   Compiling[0m utf8-ranges v1.0.5
+2026-06-30T15:06:42.0519756Z [1m[92m   Compiling[0m funty v2.0.0
+2026-06-30T15:06:42.4459629Z [1m[92m   Compiling[0m lance-tokenizer v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-tokenizer)
+2026-06-30T15:06:42.6249696Z [1m[92m   Compiling[0m bitvec v1.1.1
+2026-06-30T15:06:42.8794864Z [1m[92m   Compiling[0m lance-arrow-stats v58.0.0 (/home/runner/work/lance/lance/rust/arrow-stats)
+2026-06-30T15:06:42.9749527Z [1m[92m   Compiling[0m arc-swap v1.9.1
+2026-06-30T15:06:43.1222470Z [1m[92m   Compiling[0m ndarray v0.16.1
+2026-06-30T15:06:43.1832853Z [1m[92m   Compiling[0m async-channel v2.5.0
+2026-06-30T15:06:43.3452357Z [1m[92m   Compiling[0m crossbeam-queue v0.3.12
+2026-06-30T15:06:43.4484249Z [1m[92m   Compiling[0m lance-testing v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-testing)
+2026-06-30T15:06:44.1292930Z [1m[92m   Compiling[0m lance v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance)
+2026-06-30T15:06:44.3575926Z [1m[92m   Compiling[0m env_filter v1.0.1
+2026-06-30T15:06:44.5779338Z [1m[92m   Compiling[0m test-log-core v0.2.21
+2026-06-30T15:06:44.5889853Z [1m[92m   Compiling[0m env_logger v0.11.10
+2026-06-30T15:06:44.6609895Z [1m[92m   Compiling[0m crossbeam-skiplist v0.1.3
+2026-06-30T15:06:44.7062492Z [1m[92m   Compiling[0m test-log-macros v0.2.21
+2026-06-30T15:06:44.8679953Z [1m[92m   Compiling[0m permutation v0.4.1
+2026-06-30T15:06:44.8749787Z [1m[92m   Compiling[0m async_cell v0.2.3
+2026-06-30T15:06:44.9049319Z [1m[92m   Compiling[0m test-log v0.2.21
+2026-06-30T15:06:44.9549229Z [1m[92m   Compiling[0m wait-timeout v0.2.1
+2026-06-30T15:06:45.0261010Z [1m[92m   Compiling[0m quick-error v1.2.3
+2026-06-30T15:06:45.0379373Z [1m[92m   Compiling[0m crc-catalog v2.5.0
+2026-06-30T15:06:45.0879542Z [1m[92m   Compiling[0m bit-vec v0.8.0
+2026-06-30T15:06:45.1044459Z [1m[92m   Compiling[0m mock_instant v0.6.1
+2026-06-30T15:06:45.1141126Z [1m[92m   Compiling[0m crc v3.3.0
+2026-06-30T15:06:45.1209647Z [1m[92m   Compiling[0m rusty-fork v0.3.1
+2026-06-30T15:06:45.2510082Z [1m[92m   Compiling[0m bit-set v0.8.0
+2026-06-30T15:06:45.2715486Z [1m[92m   Compiling[0m rand_xorshift v0.4.0
+2026-06-30T15:06:45.2903442Z [1m[92m   Compiling[0m yansi v1.0.1
+2026-06-30T15:06:45.3429544Z [1m[92m   Compiling[0m diff v0.1.13
+2026-06-30T15:06:45.3569829Z [1m[92m   Compiling[0m unarray v0.1.4
+2026-06-30T15:06:45.3799670Z [1m[92m   Compiling[0m crc-fast v1.9.0
+2026-06-30T15:06:45.4263022Z [1m[92m   Compiling[0m proptest v1.11.0
+2026-06-30T15:06:45.5351349Z [1m[92m   Compiling[0m lzma-sys v0.1.20
+2026-06-30T15:06:45.5942874Z [1m[92m   Compiling[0m pretty_assertions v1.4.1
+2026-06-30T15:06:45.7356581Z [1m[92m   Compiling[0m serial_test_derive v3.5.0
+2026-06-30T15:06:45.7427894Z [1m[92m   Compiling[0m sha1 v0.10.6
+2026-06-30T15:06:45.8969312Z [1m[92m   Compiling[0m ordered-float v2.10.1
+2026-06-30T15:06:45.9542575Z [1m[92m   Compiling[0m integer-encoding v3.0.4
+2026-06-30T15:06:46.0739703Z [1m[92m   Compiling[0m thrift v0.17.0
+2026-06-30T15:06:46.2072559Z [1m[92m   Compiling[0m serial_test v3.5.0
+2026-06-30T15:06:46.4378031Z [1m[92m   Compiling[0m lru v0.16.4
+2026-06-30T15:06:46.5743005Z [1m[92m   Compiling[0m predicates-core v1.0.10
+2026-06-30T15:06:46.6619185Z [1m[92m   Compiling[0m mockall_derive v0.14.0
+2026-06-30T15:06:46.6869065Z [1m[92m   Compiling[0m parquet v58.3.0
+2026-06-30T15:06:46.7644082Z [1m[92m   Compiling[0m tracing-chrome v0.7.2
+2026-06-30T15:06:46.9679313Z [1m[92m   Compiling[0m tracking-allocator v0.4.0
+2026-06-30T15:06:47.1323337Z [1m[92m   Compiling[0m lance-test-macros v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-test-macros)
+2026-06-30T15:06:47.3562505Z [1m[92m   Compiling[0m all_asserts v2.3.4
+2026-06-30T15:06:47.4029376Z [1m[92m   Compiling[0m termtree v0.5.1
+2026-06-30T15:06:47.4960638Z [1m[92m   Compiling[0m mockall v0.14.0
+2026-06-30T15:06:47.6120071Z [1m[92m   Compiling[0m predicates-tree v1.0.13
+2026-06-30T15:06:47.9109321Z [1m[92m   Compiling[0m predicates v3.1.4
+2026-06-30T15:06:48.2852153Z [1m[92m   Compiling[0m axum-core v0.4.5
+2026-06-30T15:06:48.6284633Z [1m[92m   Compiling[0m aws-smithy-checksums v0.64.5
+2026-06-30T15:06:49.0789513Z [1m[92m   Compiling[0m serde_path_to_error v0.1.20
+2026-06-30T15:06:49.1055671Z [1m[92m   Compiling[0m fragile v2.1.0
+2026-06-30T15:06:49.2919887Z [1m[92m   Compiling[0m downcast v0.11.0
+2026-06-30T15:06:49.3769094Z [1m[92m   Compiling[0m matchit v0.7.3
+2026-06-30T15:06:49.4060746Z [1m[92m   Compiling[0m tracing-mock v0.1.0-beta.3
+2026-06-30T15:06:49.5430698Z [1m[92m   Compiling[0m tower-http v0.5.2
+2026-06-30T15:06:49.7834493Z [1m[92m   Compiling[0m quick-xml v0.38.4
+2026-06-30T15:06:50.4227951Z [1m[92m   Compiling[0m axum v0.7.9
+2026-06-30T15:06:50.4499264Z [1m[92m   Compiling[0m deadpool-runtime v0.1.4
+2026-06-30T15:06:50.5159441Z [1m[92m   Compiling[0m deadpool v0.12.3
+2026-06-30T15:06:50.5629845Z [1m[92m   Compiling[0m assert-json-diff v2.0.2
+2026-06-30T15:06:50.7979477Z [1m[92m   Compiling[0m wiremock v0.6.5
+2026-06-30T15:06:50.8092605Z [1m[92m   Compiling[0m bitpacking v0.9.3
+2026-06-30T15:07:05.5554196Z [1m[92m   Compiling[0m rustls-webpki v0.103.13
+2026-06-30T15:07:08.6681529Z [1m[92m   Compiling[0m tokio-rustls v0.26.4
+2026-06-30T15:07:08.6683228Z [1m[92m   Compiling[0m rustls-platform-verifier v0.7.0
+2026-06-30T15:07:08.8409492Z [1m[92m   Compiling[0m hyper-rustls v0.27.9
+2026-06-30T15:07:09.0219925Z [1m[92m   Compiling[0m reqwest v0.12.28
+2026-06-30T15:07:09.0639792Z [1m[92m   Compiling[0m reqwest v0.13.4
+2026-06-30T15:07:09.0769887Z [1m[92m   Compiling[0m aws-smithy-http-client v1.1.11
+2026-06-30T15:07:09.9700082Z [1m[92m   Compiling[0m aws-smithy-runtime v1.10.2
+2026-06-30T15:07:10.1619168Z [1m[92m   Compiling[0m opendal-core v0.57.0
+2026-06-30T15:07:10.1668496Z [1m[92m   Compiling[0m xet-runtime v1.5.2
+2026-06-30T15:07:10.8859319Z [1m[92m   Compiling[0m object_store v0.13.2
+2026-06-30T15:07:10.9859303Z [1m[92m   Compiling[0m reqwest-middleware v0.5.2
+2026-06-30T15:07:12.2930331Z [1m[92m   Compiling[0m lance-namespace-reqwest-client v0.8.6
+2026-06-30T15:07:12.8695335Z [1m[92m   Compiling[0m aws-runtime v1.7.1
+2026-06-30T15:07:14.3066699Z [1m[92m   Compiling[0m xet-core-structures v1.5.2
+2026-06-30T15:07:14.3326550Z [1m[92m   Compiling[0m opendal-service-azure-common v0.57.0
+2026-06-30T15:07:14.4259195Z [1m[92m   Compiling[0m opendal-layer-concurrent-limit v0.57.0
+2026-06-30T15:07:14.5600505Z [1m[92m   Compiling[0m opendal-service-azdls v0.57.0
+2026-06-30T15:07:14.6818609Z [1m[92m   Compiling[0m opendal-service-azblob v0.57.0
+2026-06-30T15:07:14.7929172Z [1m[92m   Compiling[0m opendal-service-s3 v0.57.0
+2026-06-30T15:07:16.3883906Z [1m[92m   Compiling[0m opendal-layer-retry v0.57.0
+2026-06-30T15:07:16.7663001Z [1m[92m   Compiling[0m xet-client v1.5.2
+2026-06-30T15:07:17.1969310Z [1m[92m   Compiling[0m opendal-service-gcs v0.57.0
+2026-06-30T15:07:17.8389133Z [1m[92m   Compiling[0m opendal-service-oss v0.57.0
+2026-06-30T15:07:18.1352671Z [1m[92m   Compiling[0m datafusion-common v53.1.0
+2026-06-30T15:07:19.7129369Z [1m[92m   Compiling[0m opendal-layer-logging v0.57.0
+2026-06-30T15:07:19.9919461Z [1m[92m   Compiling[0m opendal-service-goosefs v0.57.0
+2026-06-30T15:07:20.5669493Z [1m[92m   Compiling[0m opendal-service-cos v0.57.0
+2026-06-30T15:07:22.6309182Z [1m[92m   Compiling[0m datafusion-expr-common v53.1.0
+2026-06-30T15:07:22.7444610Z [1m[92m   Compiling[0m opendal-service-tos v0.57.0
+2026-06-30T15:07:23.0219599Z [1m[92m   Compiling[0m opendal-layer-timeout v0.57.0
+2026-06-30T15:07:23.2829292Z [1m[92m   Compiling[0m aws-sdk-sso v1.95.0
+2026-06-30T15:07:23.4589186Z [1m[92m   Compiling[0m aws-sdk-ssooidc v1.97.0
+2026-06-30T15:07:24.3146819Z [1m[92m   Compiling[0m datafusion-physical-expr-common v53.1.0
+2026-06-30T15:07:24.6509295Z [1m[92m   Compiling[0m xet-data v1.5.2
+2026-06-30T15:07:25.4349537Z [1m[92m   Compiling[0m datafusion-functions-aggregate-common v53.1.0
+2026-06-30T15:07:25.4854829Z [1m[92m   Compiling[0m datafusion-functions-window-common v53.1.0
+2026-06-30T15:07:25.6739191Z [1m[92m   Compiling[0m aws-sdk-sts v1.99.0
+2026-06-30T15:07:25.7292171Z [1m[92m   Compiling[0m aws-sdk-dynamodb v1.107.0
+2026-06-30T15:07:26.1819273Z [1m[92m   Compiling[0m aws-sdk-s3 v1.124.0
+2026-06-30T15:07:26.8149069Z [1m[92m   Compiling[0m datafusion-expr v53.1.0
+2026-06-30T15:07:27.8499425Z [1m[92m   Compiling[0m aws-config v1.8.14
+2026-06-30T15:07:28.7559240Z [1m[92m   Compiling[0m hf-xet v1.5.2
+2026-06-30T15:07:31.0937242Z [1m[92m   Compiling[0m opendal-service-hf v0.57.0
+2026-06-30T15:07:31.5299132Z [1m[92m   Compiling[0m datafusion-physical-expr v53.1.0
+2026-06-30T15:07:32.7656437Z [1m[92m   Compiling[0m datafusion-execution v53.1.0
+2026-06-30T15:07:33.0878902Z [1m[92m   Compiling[0m opendal v0.57.0
+2026-06-30T15:07:33.3029160Z [1m[92m   Compiling[0m object_store_opendal v0.57.0
+2026-06-30T15:07:34.0839285Z [1m[92m   Compiling[0m datafusion-functions v53.1.0
+2026-06-30T15:07:35.6610102Z [1m[92m   Compiling[0m datafusion-functions-aggregate v53.1.0
+2026-06-30T15:07:35.6648820Z [1m[92m   Compiling[0m datafusion-optimizer v53.1.0
+2026-06-30T15:07:35.6668692Z [1m[92m   Compiling[0m datafusion-functions-window v53.1.0
+2026-06-30T15:07:40.8849105Z [1m[92m   Compiling[0m datafusion-functions-nested v53.1.0
+2026-06-30T15:07:43.2579528Z [1m[92m   Compiling[0m datafusion-physical-plan v53.1.0
+2026-06-30T15:07:44.6250490Z [1m[92m   Compiling[0m datafusion-sql v53.1.0
+2026-06-30T15:07:45.1561980Z [1m[92m   Compiling[0m datafusion-physical-expr-adapter v53.1.0
+2026-06-30T15:07:48.0489484Z [1m[92m   Compiling[0m lance-core v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-core)
+2026-06-30T15:07:51.3539108Z [1m[92m   Compiling[0m datafusion-session v53.1.0
+2026-06-30T15:07:51.4109581Z [1m[92m   Compiling[0m lance-namespace v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-namespace)
+2026-06-30T15:07:51.6649356Z [1m[92m   Compiling[0m datafusion-datasource v53.1.0
+2026-06-30T15:07:52.2299531Z [1m[92m   Compiling[0m lance-io v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-io)
+2026-06-30T15:07:53.2620035Z [1m[92m   Compiling[0m lance-select v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-select)
+2026-06-30T15:07:54.0286011Z [1m[92m   Compiling[0m datafusion-catalog v53.1.0
+2026-06-30T15:07:54.5119825Z [1m[92m   Compiling[0m datafusion-pruning v53.1.0
+2026-06-30T15:07:55.2179584Z [1m[92m   Compiling[0m datafusion-physical-optimizer v53.1.0
+2026-06-30T15:07:55.2277291Z [1m[92m   Compiling[0m datafusion-datasource-json v53.1.0
+2026-06-30T15:07:56.4189342Z [1m[92m   Compiling[0m datafusion-datasource-arrow v53.1.0
+2026-06-30T15:07:57.7835922Z [1m[92m   Compiling[0m datafusion-datasource-csv v53.1.0
+2026-06-30T15:08:02.7668271Z [1m[92m   Compiling[0m lance-tools v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-tools)
+2026-06-30T15:08:30.2861896Z [1m[92m   Compiling[0m datafusion-functions-table v53.1.0
+2026-06-30T15:08:30.2862730Z [1m[92m   Compiling[0m datafusion-catalog-listing v53.1.0
+2026-06-30T15:08:38.9532264Z [1m[92m   Compiling[0m datafusion v53.1.0
+2026-06-30T15:09:06.9865371Z [1m[92m   Compiling[0m geodatafusion v0.4.0
+2026-06-30T15:09:06.9866607Z [1m[92m   Compiling[0m datafusion-substrait v53.1.0
+2026-06-30T15:09:08.2635098Z [1m[92m   Compiling[0m lance-geo v9.0.0-beta.10 (/home/runner/work/lance/lance/rust/lance-geo)
+2026-06-30T15:09:25.1610892Z [1m[91merror: internal compiler error[0m[1m: /rustc-dev/096694416a41840709140eb0fd0ca193d1a3e6ba/compiler/rustc_trait_selection/src/traits/select/mod.rs:775:21: Obligation Obligation(predicate=Binder { value: DynCompatible(DefId(0:12669 ~ lance_index[d62f]::scalar::IndexReader)), bound_vars: [] }, depth=2) should have been handled by fulfillment already.[0m
+2026-06-30T15:09:25.1613276Z 
+2026-06-30T15:09:25.1613281Z 
+2026-06-30T15:09:25.1613925Z thread 'rustc' (18389) panicked at /rustc-dev/096694416a41840709140eb0fd0ca193d1a3e6ba/compiler/rustc_trait_selection/src/traits/select/mod.rs:775:21:
+2026-06-30T15:09:25.1614798Z Box<dyn Any>
+2026-06-30T15:09:25.1615050Z stack backtrace:
+2026-06-30T15:09:25.1664868Z    0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+2026-06-30T15:09:25.1666019Z    1: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+2026-06-30T15:09:25.1667231Z    2: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+2026-06-30T15:09:25.1668747Z    3: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+2026-06-30T15:09:25.1670874Z    4: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+2026-06-30T15:09:25.1672371Z    5: rustc_middle::util::bug::bug_fmt
+2026-06-30T15:09:25.1673188Z    6: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+2026-06-30T15:09:25.1675016Z    7: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicates_recursively::<thin_vec::ThinVec<rustc_infer::traits::Obligation<rustc_middle::ty::predicate::Predicate>>>
+2026-06-30T15:09:25.1676320Z    8: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+2026-06-30T15:09:25.1677517Z    9: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicates_recursively::<thin_vec::ThinVec<rustc_infer::traits::Obligation<rustc_middle::ty::predicate::Predicate>>>
+2026-06-30T15:09:25.1679000Z   10: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_root_obligation
+2026-06-30T15:09:25.1679609Z   11: rustc_traits::evaluate_obligation::evaluate_obligation
+2026-06-30T15:09:25.1680015Z       [... omitted 1 frame ...]
+2026-06-30T15:09:25.1680738Z   12: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+2026-06-30T15:09:25.1681963Z   13: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+2026-06-30T15:09:25.1683550Z   14: <rustc_data_structures::obligation_forest::ObligationForest<rustc_trait_selection::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection::traits::fulfill::FulfillProcessor>
+2026-06-30T15:09:25.1685092Z   15: <rustc_trait_selection::traits::fulfill::FulfillmentContext<rustc_trait_selection::traits::FulfillmentError> as rustc_infer::traits::engine::TraitEngine<rustc_trait_selection::traits::FulfillmentError>>::evaluate_obligations_error_on_ambiguity
+2026-06-30T15:09:25.1686092Z   16: rustc_hir_analysis::check::check::check_opaque
+2026-06-30T15:09:25.1686438Z   17: rustc_hir_analysis::check::check::check_item_type
+2026-06-30T15:09:25.1686791Z   18: rustc_hir_analysis::check::wfcheck::check_well_formed
+2026-06-30T15:09:25.1687105Z       [... omitted 1 frame ...]
+2026-06-30T15:09:25.1687392Z   19: rustc_hir_analysis::check::wfcheck::check_type_wf
+2026-06-30T15:09:25.1687940Z       [... omitted 1 frame ...]
+2026-06-30T15:09:25.1688213Z   20: rustc_hir_analysis::check_crate
+2026-06-30T15:09:25.1688495Z   21: rustc_interface::passes::analysis
+2026-06-30T15:09:25.1689128Z   22: rustc_query_impl::execution::try_execute_query::<rustc_middle::query::caches::SingleCache<rustc_middle::query::erase::ErasedData<[u8; 0]>>, false>
+2026-06-30T15:09:25.1689958Z   23: rustc_interface::interface::run_compiler::<(), rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+2026-06-30T15:09:25.1690582Z note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+2026-06-30T15:09:25.1690912Z 
+2026-06-30T15:09:25.1694813Z note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+2026-06-30T15:09:25.1695841Z 
+2026-06-30T15:09:25.1696042Z note: please make sure that you have updated to the latest nightly
+2026-06-30T15:09:25.1696490Z 
+2026-06-30T15:09:25.1697120Z note: please attach the file at `/home/runner/work/lance/lance/rustc-ice-2026-06-30T15_09_21-18387.txt` to your bug report
+2026-06-30T15:09:25.1698137Z 
+2026-06-30T15:09:25.1698367Z note: rustc 1.98.0-nightly (096694416 2026-06-29) running on x86_64-unknown-linux-gnu
+2026-06-30T15:09:25.1698695Z 
+2026-06-30T15:09:25.1699032Z note: compiler flags: --crate-type lib -C embed-bitcode=no -C debuginfo=line-tables-only -C instrument-coverage
+2026-06-30T15:09:25.1699446Z 
+2026-06-30T15:09:25.1699615Z note: some of the compiler flags provided by cargo are hidden
+2026-06-30T15:09:25.1699863Z 
+2026-06-30T15:09:25.1699959Z query stack during panic:
+2026-06-30T15:09:25.1701313Z #0 [evaluate_obligation] evaluating trait selection obligation `<{async fn body of scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader()} as core::future::future::Future>::Output == core::result::Result<scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader::{opaque#0}::{opaque#0}, lance_core::error::Error>`
+2026-06-30T15:09:25.1703084Z #1 [check_well_formed] checking that `scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader::{opaque#0}` is well-formed
+2026-06-30T15:09:25.1703770Z #2 [check_type_wf] checking that types are well-formed
+2026-06-30T15:09:25.1704149Z #3 [analysis] running analysis passes on crate `lance_index`
+2026-06-30T15:09:25.1704481Z end of query stack
+2026-06-30T15:09:25.2342680Z error: process didn't exit successfully: `/home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc --crate-name lance_index --edition=2024 rust/lance-index/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=line-tables-only '--deny=clippy::style' '--deny=clippy::cargo' '--deny=clippy::all' '--deny=clippy::use_self' --allow=unsafe_op_in_unsafe_fn --warn=unexpected_cfgs '--deny=clippy::trait_duplication_in_bounds' '--deny=clippy::string_lit_as_bytes' '--deny=clippy::string_add_assign' '--deny=clippy::string_add' '--allow=clippy::single_range_in_vec_init' '--deny=clippy::redundant_pub_crate' '--deny=clippy::redundant_clone' '--deny=clippy::print_stdout' '--deny=clippy::print_stderr' '--allow=clippy::multiple-crate-versions' '--deny=clippy::manual_let_else' '--deny=clippy::large_futures' '--deny=clippy::fallible_impl_from' '--deny=clippy::disallowed_macros' '--deny=clippy::dbg_macro' --check-cfg 'cfg(coverage,coverage_nightly)' --cfg 'feature="geo"' --cfg 'feature="jieba-rs"' --cfg 'feature="lindera"' --cfg 'feature="tokenizer-jieba"' --cfg 'feature="tokenizer-lindera"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("geo", "jieba-rs", "lindera", "protoc", "tokenizer-jieba", "tokenizer-lindera"))' -C metadata=19ba67f2bc37589b -C extra-filename=-e3c2841447b899e6 --out-dir /home/runner/work/lance/lance/target/llvm-cov-target/ci/deps -L dependency=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps --extern arc_swap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarc_swap-64c080d284126c4d.rmeta --extern arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow-f66d8237bfa10198.rmeta --extern arrow_arith=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_arith-2ec5050fdbb0d5cf.rmeta --extern arrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_array-7198b7e53cd3fc38.rmeta --extern arrow_ord=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_ord-4233844202018f91.rmeta --extern arrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_schema-6d116183b3788689.rmeta --extern arrow_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_select-fb4001036ec9b1e1.rmeta --extern async_channel=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_channel-900b5ff242c3dc98.rmeta --extern async_recursion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_recursion-4d6682aedda67b53.so --extern async_trait=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_trait-e55a14bc7a3b363f.so --extern bitvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbitvec-c514e150453cc3ca.rmeta --extern bytes=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbytes-334a83b8264a5bdb.rmeta --extern chrono=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libchrono-d11bd27bac52a096.rmeta --extern crossbeam_queue=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcrossbeam_queue-44a679babaa5c5ca.rmeta --extern datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion-373d0d04b0b579d1.rmeta --extern datafusion_common=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_common-3b89d32602d6d671.rmeta --extern datafusion_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_expr-d22e533e34f747ef.rmeta --extern datafusion_physical_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_physical_expr-7cccd4d8644c0ac9.rmeta --extern dirs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdirs-14c8317814fab0c8.rmeta --extern fst=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfst-f80abebf0eec3bf7.rmeta --extern futures=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfutures-37df6058639861a5.rmeta --extern geo_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_types-f315b0d76e8c153f.rmeta --extern geoarrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_array-bf459154ca0922a0.rmeta --extern geoarrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_schema-4602e6e67b4c8e6f.rmeta --extern half=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libhalf-3d8be219fddf1d2e.rmeta --extern itertools=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libitertools-746b80c355820462.rmeta --extern jieba_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjieba_rs-5333fac85de01984.rmeta --extern jsonb=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjsonb-09343e4e19816b62.rmeta --extern lance_arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow.rlib --extern lance_arrow_stats=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow_stats-bef00b9653ea4630.rmeta --extern lance_bitpacking=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_bitpacking-7154d84e15a02b43.rmeta --extern lance_core=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_core-2dfb8280a1164134.rmeta --extern lance_datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datafusion-6ff57ffa2fb8c6eb.rmeta --extern lance_datagen=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datagen-5b53740b284f5a62.rmeta --extern lance_encoding=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_encoding-f868ac1a6132d657.rmeta --extern lance_file=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_file-a4f4fcf74ece15b8.rmeta --extern lance_geo=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_geo-e3a6e0e9ce0ee19c.rmeta --extern lance_io=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_io-89e03941b6dc67e2.rmeta --extern lance_linalg=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_linalg-7bd1bcfcf0f1084d.rmeta --extern lance_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_select-db1af736fb16a1d4.rmeta --extern lance_table=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_table-37aa1054f921f53f.rmeta --extern lance_tokenizer=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_tokenizer-a2d6986eec8bf57b.rmeta --extern libsais_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblibsais_rs-bd676fc6a389da44.rmeta --extern log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblog-b0e3b98191c156ac.rmeta --extern ndarray=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libndarray-021e0ad51fe61d12.rmeta --extern num_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libnum_traits-682925218b6d0021.rmeta --extern object_store=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libobject_store-bb562c66c1c430b0.rmeta --extern prost=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost-18e7fc88a2481b2d.rmeta --extern prost_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost_types-9fbcbd121a4005a6.rmeta --extern rand=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand-8f904abb592c8fa4.rmeta --extern rand_distr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand_distr-1e1a2553bf725701.rmeta --extern rangemap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librangemap-6c0e705e21dc5f7b.rmeta --extern rayon=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librayon-42fb90409f9aa431.rmeta --extern regex_syntax=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libregex_syntax-770936a8a17ed5c9.rmeta --extern roaring=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libroaring-d2ef32bb59f1e5d9.rmeta --extern serde=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde-9da1b57cdcf2d144.rmeta --extern serde_json=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde_json-e5115b9926ce975d.rmeta --extern smallvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libsmallvec-af33e59f05c6fb7a.rmeta --extern tempfile=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtempfile-25ff4c822a9af780.rmeta --extern tokio=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtokio-aaafe80e539ee23a.rmeta --extern tracing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtracing-2ab9b98b9a2289ee.rmeta --extern uuid=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libuuid-0fb12e7267082cb2.rmeta -D warnings -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/zstd-sys-4dca0f0d659f2e46/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/aws-lc-sys-e47b7cb59edb96a9/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/ring-9323901be445aebe/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lz4-sys-aa8d42f55c47493d/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out --cfg 'feature="nightly"' -C instrument-coverage --cfg=coverage --cfg=coverage_nightly` (exit status: 101)
+2026-06-30T15:09:25.2379493Z [1m[91merror[0m: could not compile `lance-index` (lib)
+2026-06-30T15:09:25.2379735Z 
+2026-06-30T15:09:25.2379824Z Caused by:
+2026-06-30T15:09:25.2416014Z   process didn't exit successfully: `/home/runner/.cargo/bin/cargo-llvm-cov /home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc --crate-name lance_index --edition=2024 rust/lance-index/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=line-tables-only '--deny=clippy::style' '--deny=clippy::cargo' '--deny=clippy::all' '--deny=clippy::use_self' --allow=unsafe_op_in_unsafe_fn --warn=unexpected_cfgs '--deny=clippy::trait_duplication_in_bounds' '--deny=clippy::string_lit_as_bytes' '--deny=clippy::string_add_assign' '--deny=clippy::string_add' '--allow=clippy::single_range_in_vec_init' '--deny=clippy::redundant_pub_crate' '--deny=clippy::redundant_clone' '--deny=clippy::print_stdout' '--deny=clippy::print_stderr' '--allow=clippy::multiple-crate-versions' '--deny=clippy::manual_let_else' '--deny=clippy::large_futures' '--deny=clippy::fallible_impl_from' '--deny=clippy::disallowed_macros' '--deny=clippy::dbg_macro' --check-cfg 'cfg(coverage,coverage_nightly)' --cfg 'feature="geo"' --cfg 'feature="jieba-rs"' --cfg 'feature="lindera"' --cfg 'feature="tokenizer-jieba"' --cfg 'feature="tokenizer-lindera"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("geo", "jieba-rs", "lindera", "protoc", "tokenizer-jieba", "tokenizer-lindera"))' -C metadata=19ba67f2bc37589b -C extra-filename=-e3c2841447b899e6 --out-dir /home/runner/work/lance/lance/target/llvm-cov-target/ci/deps -L dependency=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps --extern arc_swap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarc_swap-64c080d284126c4d.rmeta --extern arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow-f66d8237bfa10198.rmeta --extern arrow_arith=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_arith-2ec5050fdbb0d5cf.rmeta --extern arrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_array-7198b7e53cd3fc38.rmeta --extern arrow_ord=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_ord-4233844202018f91.rmeta --extern arrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_schema-6d116183b3788689.rmeta --extern arrow_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_select-fb4001036ec9b1e1.rmeta --extern async_channel=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_channel-900b5ff242c3dc98.rmeta --extern async_recursion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_recursion-4d6682aedda67b53.so --extern async_trait=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_trait-e55a14bc7a3b363f.so --extern bitvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbitvec-c514e150453cc3ca.rmeta --extern bytes=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbytes-334a83b8264a5bdb.rmeta --extern chrono=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libchrono-d11bd27bac52a096.rmeta --extern crossbeam_queue=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcrossbeam_queue-44a679babaa5c5ca.rmeta --extern datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion-373d0d04b0b579d1.rmeta --extern datafusion_common=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_common-3b89d32602d6d671.rmeta --extern datafusion_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_expr-d22e533e34f747ef.rmeta --extern datafusion_physical_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_physical_expr-7cccd4d8644c0ac9.rmeta --extern dirs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdirs-14c8317814fab0c8.rmeta --extern fst=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfst-f80abebf0eec3bf7.rmeta --extern futures=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfutures-37df6058639861a5.rmeta --extern geo_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_types-f315b0d76e8c153f.rmeta --extern geoarrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_array-bf459154ca0922a0.rmeta --extern geoarrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_schema-4602e6e67b4c8e6f.rmeta --extern half=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libhalf-3d8be219fddf1d2e.rmeta --extern itertools=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libitertools-746b80c355820462.rmeta --extern jieba_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjieba_rs-5333fac85de01984.rmeta --extern jsonb=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjsonb-09343e4e19816b62.rmeta --extern lance_arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow.rlib --extern lance_arrow_stats=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow_stats-bef00b9653ea4630.rmeta --extern lance_bitpacking=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_bitpacking-7154d84e15a02b43.rmeta --extern lance_core=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_core-2dfb8280a1164134.rmeta --extern lance_datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datafusion-6ff57ffa2fb8c6eb.rmeta --extern lance_datagen=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datagen-5b53740b284f5a62.rmeta --extern lance_encoding=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_encoding-f868ac1a6132d657.rmeta --extern lance_file=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_file-a4f4fcf74ece15b8.rmeta --extern lance_geo=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_geo-e3a6e0e9ce0ee19c.rmeta --extern lance_io=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_io-89e03941b6dc67e2.rmeta --extern lance_linalg=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_linalg-7bd1bcfcf0f1084d.rmeta --extern lance_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_select-db1af736fb16a1d4.rmeta --extern lance_table=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_table-37aa1054f921f53f.rmeta --extern lance_tokenizer=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_tokenizer-a2d6986eec8bf57b.rmeta --extern libsais_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblibsais_rs-bd676fc6a389da44.rmeta --extern log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblog-b0e3b98191c156ac.rmeta --extern ndarray=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libndarray-021e0ad51fe61d12.rmeta --extern num_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libnum_traits-682925218b6d0021.rmeta --extern object_store=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libobject_store-bb562c66c1c430b0.rmeta --extern prost=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost-18e7fc88a2481b2d.rmeta --extern prost_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost_types-9fbcbd121a4005a6.rmeta --extern rand=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand-8f904abb592c8fa4.rmeta --extern rand_distr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand_distr-1e1a2553bf725701.rmeta --extern rangemap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librangemap-6c0e705e21dc5f7b.rmeta --extern rayon=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librayon-42fb90409f9aa431.rmeta --extern regex_syntax=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libregex_syntax-770936a8a17ed5c9.rmeta --extern roaring=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libroaring-d2ef32bb59f1e5d9.rmeta --extern serde=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde-9da1b57cdcf2d144.rmeta --extern serde_json=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde_json-e5115b9926ce975d.rmeta --extern smallvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libsmallvec-af33e59f05c6fb7a.rmeta --extern tempfile=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtempfile-25ff4c822a9af780.rmeta --extern tokio=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtokio-aaafe80e539ee23a.rmeta --extern tracing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtracing-2ab9b98b9a2289ee.rmeta --extern uuid=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libuuid-0fb12e7267082cb2.rmeta -D warnings -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/zstd-sys-4dca0f0d659f2e46/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/aws-lc-sys-e47b7cb59edb96a9/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/ring-9323901be445aebe/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lz4-sys-aa8d42f55c47493d/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out --cfg 'feature="nightly"'` (exit status: 101)
+2026-06-30T15:09:25.2452297Z [1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+2026-06-30T15:09:26.4793997Z [1m[91merror: internal compiler error[0m[1m: /rustc-dev/096694416a41840709140eb0fd0ca193d1a3e6ba/compiler/rustc_trait_selection/src/traits/select/mod.rs:775:21: Obligation Obligation(predicate=Binder { value: DynCompatible(DefId(0:16996 ~ lance_index[8b4b]::scalar::IndexReader)), bound_vars: [] }, depth=2) should have been handled by fulfillment already.[0m
+2026-06-30T15:09:26.4796035Z 
+2026-06-30T15:09:26.4796050Z 
+2026-06-30T15:09:26.4796834Z thread 'rustc' (18411) panicked at /rustc-dev/096694416a41840709140eb0fd0ca193d1a3e6ba/compiler/rustc_trait_selection/src/traits/select/mod.rs:775:21:
+2026-06-30T15:09:26.4797901Z Box<dyn Any>
+2026-06-30T15:09:26.4798156Z stack backtrace:
+2026-06-30T15:09:26.4856926Z    0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+2026-06-30T15:09:26.4858586Z    1: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+2026-06-30T15:09:26.4860277Z    2: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>::{closure#0}
+2026-06-30T15:09:26.4861753Z    3: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}
+2026-06-30T15:09:26.4863671Z    4: rustc_middle::ty::context::tls::with_context_opt::<rustc_middle::ty::context::tls::with_opt<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+2026-06-30T15:09:26.4864914Z    5: rustc_middle::util::bug::bug_fmt
+2026-06-30T15:09:26.4865600Z    6: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+2026-06-30T15:09:26.4867179Z    7: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicates_recursively::<thin_vec::ThinVec<rustc_infer::traits::Obligation<rustc_middle::ty::predicate::Predicate>>>
+2026-06-30T15:09:26.4868973Z    8: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicate_recursively
+2026-06-30T15:09:26.4870401Z    9: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_predicates_recursively::<thin_vec::ThinVec<rustc_infer::traits::Obligation<rustc_middle::ty::predicate::Predicate>>>
+2026-06-30T15:09:26.4871775Z   10: <rustc_trait_selection::traits::select::SelectionContext>::evaluate_root_obligation
+2026-06-30T15:09:26.4872494Z   11: rustc_traits::evaluate_obligation::evaluate_obligation
+2026-06-30T15:09:26.4872974Z       [... omitted 1 frame ...]
+2026-06-30T15:09:26.4873844Z   12: <rustc_infer::infer::InferCtxt as rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt>::evaluate_obligation_no_overflow
+2026-06-30T15:09:26.4875297Z   13: <rustc_trait_selection::traits::fulfill::FulfillProcessor as rustc_data_structures::obligation_forest::ObligationProcessor>::process_obligation
+2026-06-30T15:09:26.4877173Z   14: <rustc_data_structures::obligation_forest::ObligationForest<rustc_trait_selection::traits::fulfill::PendingPredicateObligation>>::process_obligations::<rustc_trait_selection::traits::fulfill::FulfillProcessor>
+2026-06-30T15:09:26.4878960Z   15: <rustc_trait_selection::traits::fulfill::FulfillmentContext<rustc_trait_selection::traits::FulfillmentError> as rustc_infer::traits::engine::TraitEngine<rustc_trait_selection::traits::FulfillmentError>>::evaluate_obligations_error_on_ambiguity
+2026-06-30T15:09:26.4880019Z   16: rustc_hir_analysis::check::check::check_opaque
+2026-06-30T15:09:26.4880377Z   17: rustc_hir_analysis::check::check::check_item_type
+2026-06-30T15:09:26.4880751Z   18: rustc_hir_analysis::check::wfcheck::check_well_formed
+2026-06-30T15:09:26.4881077Z       [... omitted 1 frame ...]
+2026-06-30T15:09:26.4881364Z   19: rustc_hir_analysis::check::wfcheck::check_type_wf
+2026-06-30T15:09:26.4881668Z       [... omitted 1 frame ...]
+2026-06-30T15:09:26.4881921Z   20: rustc_hir_analysis::check_crate
+2026-06-30T15:09:26.4882212Z   21: rustc_interface::passes::analysis
+2026-06-30T15:09:26.4882851Z   22: rustc_query_impl::execution::try_execute_query::<rustc_middle::query::caches::SingleCache<rustc_middle::query::erase::ErasedData<[u8; 0]>>, false>
+2026-06-30T15:09:26.4883708Z   23: rustc_interface::interface::run_compiler::<(), rustc_driver_impl::run_compiler::{closure#0}>::{closure#1}
+2026-06-30T15:09:26.4884552Z note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+2026-06-30T15:09:26.4885083Z 
+2026-06-30T15:09:26.4885873Z note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+2026-06-30T15:09:26.4886612Z 
+2026-06-30T15:09:26.4886809Z note: please make sure that you have updated to the latest nightly
+2026-06-30T15:09:26.4887099Z 
+2026-06-30T15:09:26.4887462Z note: please attach the file at `/home/runner/work/lance/lance/rustc-ice-2026-06-30T15_09_22-18409.txt` to your bug report
+2026-06-30T15:09:26.4888429Z 
+2026-06-30T15:09:26.4888788Z note: rustc 1.98.0-nightly (096694416 2026-06-29) running on x86_64-unknown-linux-gnu
+2026-06-30T15:09:26.4889114Z 
+2026-06-30T15:09:26.4889399Z note: compiler flags: -C embed-bitcode=no -C debuginfo=line-tables-only -C instrument-coverage
+2026-06-30T15:09:26.4889772Z 
+2026-06-30T15:09:26.4889935Z note: some of the compiler flags provided by cargo are hidden
+2026-06-30T15:09:26.4890190Z 
+2026-06-30T15:09:26.4890292Z query stack during panic:
+2026-06-30T15:09:26.4892030Z #0 [evaluate_obligation] evaluating trait selection obligation `<{async fn body of scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader()} as core::future::future::Future>::Output == core::result::Result<scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader::{opaque#0}::{opaque#0}, lance_core::error::Error>`
+2026-06-30T15:09:26.4893884Z #1 [check_well_formed] checking that `scalar::ngram::<impl at rust/lance-index/src/scalar/ngram.rs:722:1: 722:23>::stream_spill_reader::{opaque#0}` is well-formed
+2026-06-30T15:09:26.4894743Z #2 [check_type_wf] checking that types are well-formed
+2026-06-30T15:09:26.4895120Z #3 [analysis] running analysis passes on crate `lance_index`
+2026-06-30T15:09:26.4895455Z end of query stack
+2026-06-30T15:09:26.5616758Z error: process didn't exit successfully: `/home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc --crate-name lance_index --edition=2024 rust/lance-index/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=line-tables-only '--deny=clippy::style' '--deny=clippy::cargo' '--deny=clippy::all' '--deny=clippy::use_self' --allow=unsafe_op_in_unsafe_fn --warn=unexpected_cfgs '--deny=clippy::trait_duplication_in_bounds' '--deny=clippy::string_lit_as_bytes' '--deny=clippy::string_add_assign' '--deny=clippy::string_add' '--allow=clippy::single_range_in_vec_init' '--deny=clippy::redundant_pub_crate' '--deny=clippy::redundant_clone' '--deny=clippy::print_stdout' '--deny=clippy::print_stderr' '--allow=clippy::multiple-crate-versions' '--deny=clippy::manual_let_else' '--deny=clippy::large_futures' '--deny=clippy::fallible_impl_from' '--deny=clippy::disallowed_macros' '--deny=clippy::dbg_macro' --check-cfg 'cfg(coverage,coverage_nightly)' --test --cfg 'feature="geo"' --cfg 'feature="jieba-rs"' --cfg 'feature="lindera"' --cfg 'feature="tokenizer-jieba"' --cfg 'feature="tokenizer-lindera"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("geo", "jieba-rs", "lindera", "protoc", "tokenizer-jieba", "tokenizer-lindera"))' -C metadata=4373664ac0b13d28 -C extra-filename=-27b61b39e94f93e2 --out-dir /home/runner/work/lance/lance/target/llvm-cov-target/ci/deps -L dependency=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps --extern approx=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libapprox-9823c59e0efb68fd.rlib --extern arc_swap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarc_swap-64c080d284126c4d.rlib --extern arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow-f66d8237bfa10198.rlib --extern arrow_arith=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_arith-2ec5050fdbb0d5cf.rlib --extern arrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_array-7198b7e53cd3fc38.rlib --extern arrow_ord=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_ord-4233844202018f91.rlib --extern arrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_schema-6d116183b3788689.rlib --extern arrow_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_select-fb4001036ec9b1e1.rlib --extern async_channel=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_channel-900b5ff242c3dc98.rlib --extern async_recursion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_recursion-4d6682aedda67b53.so --extern async_trait=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_trait-e55a14bc7a3b363f.so --extern bitvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbitvec-c514e150453cc3ca.rlib --extern bytes=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbytes-334a83b8264a5bdb.rlib --extern chrono=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libchrono-d11bd27bac52a096.rlib --extern criterion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcriterion-590b06590a6b2272.rlib --extern crossbeam_queue=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcrossbeam_queue-44a679babaa5c5ca.rlib --extern datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion-373d0d04b0b579d1.rlib --extern datafusion_common=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_common-3b89d32602d6d671.rlib --extern datafusion_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_expr-d22e533e34f747ef.rlib --extern datafusion_physical_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_physical_expr-7cccd4d8644c0ac9.rlib --extern dirs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdirs-14c8317814fab0c8.rlib --extern env_logger=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libenv_logger-38bd02b8cfec08e9.rlib --extern fst=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfst-f80abebf0eec3bf7.rlib --extern futures=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfutures-37df6058639861a5.rlib --extern geo_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_traits-58d2d9ef0d100809.rlib --extern geo_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_types-f315b0d76e8c153f.rlib --extern geoarrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_array-bf459154ca0922a0.rlib --extern geoarrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_schema-4602e6e67b4c8e6f.rlib --extern half=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libhalf-3d8be219fddf1d2e.rlib --extern itertools=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libitertools-746b80c355820462.rlib --extern jieba_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjieba_rs-5333fac85de01984.rlib --extern jsonb=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjsonb-09343e4e19816b62.rlib --extern lance_arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow.rlib --extern lance_arrow_stats=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow_stats-bef00b9653ea4630.rlib --extern lance_bitpacking=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_bitpacking-7154d84e15a02b43.rlib --extern lance_core=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_core-2dfb8280a1164134.rlib --extern lance_datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datafusion-6ff57ffa2fb8c6eb.rlib --extern lance_datagen=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datagen-5b53740b284f5a62.rlib --extern lance_encoding=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_encoding-f868ac1a6132d657.rlib --extern lance_file=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_file-a4f4fcf74ece15b8.rlib --extern lance_geo=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_geo-e3a6e0e9ce0ee19c.rlib --extern lance_io=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_io-89e03941b6dc67e2.rlib --extern lance_linalg=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_linalg-7bd1bcfcf0f1084d.rlib --extern lance_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_select-db1af736fb16a1d4.rlib --extern lance_table=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_table-37aa1054f921f53f.rlib --extern lance_testing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_testing-56d64f1ad576c34a.rlib --extern lance_tokenizer=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_tokenizer-a2d6986eec8bf57b.rlib --extern libsais_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblibsais_rs-bd676fc6a389da44.rlib --extern log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblog-b0e3b98191c156ac.rlib --extern ndarray=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libndarray-021e0ad51fe61d12.rlib --extern num_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libnum_traits-682925218b6d0021.rlib --extern object_store=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libobject_store-bb562c66c1c430b0.rlib --extern prost=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost-18e7fc88a2481b2d.rlib --extern prost_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost_types-9fbcbd121a4005a6.rlib --extern rand=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand-8f904abb592c8fa4.rlib --extern rand_distr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand_distr-1e1a2553bf725701.rlib --extern rangemap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librangemap-6c0e705e21dc5f7b.rlib --extern rayon=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librayon-42fb90409f9aa431.rlib --extern regex_syntax=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libregex_syntax-770936a8a17ed5c9.rlib --extern roaring=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libroaring-d2ef32bb59f1e5d9.rlib --extern rstest=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librstest-0bff66c68bbebbb4.rlib --extern serde=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde-9da1b57cdcf2d144.rlib --extern serde_json=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde_json-e5115b9926ce975d.rlib --extern smallvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libsmallvec-af33e59f05c6fb7a.rlib --extern tempfile=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtempfile-25ff4c822a9af780.rlib --extern test_log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtest_log-b1aa74d9c5a310bb.rlib --extern tokio=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtokio-aaafe80e539ee23a.rlib --extern tracing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtracing-2ab9b98b9a2289ee.rlib --extern uuid=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libuuid-0fb12e7267082cb2.rlib -D warnings -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/zstd-sys-4dca0f0d659f2e46/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/alloca-ba364ebf4883a531/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/aws-lc-sys-e47b7cb59edb96a9/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/ring-9323901be445aebe/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lz4-sys-aa8d42f55c47493d/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out --cfg 'feature="nightly"' -C instrument-coverage --cfg=coverage --cfg=coverage_nightly` (exit status: 101)
+2026-06-30T15:09:26.5656059Z [1m[91merror[0m: could not compile `lance-index` (lib test)
+2026-06-30T15:09:26.5656326Z 
+2026-06-30T15:09:26.5656415Z Caused by:
+2026-06-30T15:09:26.5696164Z   process didn't exit successfully: `/home/runner/.cargo/bin/cargo-llvm-cov /home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustc --crate-name lance_index --edition=2024 rust/lance-index/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=line-tables-only '--deny=clippy::style' '--deny=clippy::cargo' '--deny=clippy::all' '--deny=clippy::use_self' --allow=unsafe_op_in_unsafe_fn --warn=unexpected_cfgs '--deny=clippy::trait_duplication_in_bounds' '--deny=clippy::string_lit_as_bytes' '--deny=clippy::string_add_assign' '--deny=clippy::string_add' '--allow=clippy::single_range_in_vec_init' '--deny=clippy::redundant_pub_crate' '--deny=clippy::redundant_clone' '--deny=clippy::print_stdout' '--deny=clippy::print_stderr' '--allow=clippy::multiple-crate-versions' '--deny=clippy::manual_let_else' '--deny=clippy::large_futures' '--deny=clippy::fallible_impl_from' '--deny=clippy::disallowed_macros' '--deny=clippy::dbg_macro' --check-cfg 'cfg(coverage,coverage_nightly)' --test --cfg 'feature="geo"' --cfg 'feature="jieba-rs"' --cfg 'feature="lindera"' --cfg 'feature="tokenizer-jieba"' --cfg 'feature="tokenizer-lindera"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("geo", "jieba-rs", "lindera", "protoc", "tokenizer-jieba", "tokenizer-lindera"))' -C metadata=4373664ac0b13d28 -C extra-filename=-27b61b39e94f93e2 --out-dir /home/runner/work/lance/lance/target/llvm-cov-target/ci/deps -L dependency=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps --extern approx=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libapprox-9823c59e0efb68fd.rlib --extern arc_swap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarc_swap-64c080d284126c4d.rlib --extern arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow-f66d8237bfa10198.rlib --extern arrow_arith=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_arith-2ec5050fdbb0d5cf.rlib --extern arrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_array-7198b7e53cd3fc38.rlib --extern arrow_ord=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_ord-4233844202018f91.rlib --extern arrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_schema-6d116183b3788689.rlib --extern arrow_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libarrow_select-fb4001036ec9b1e1.rlib --extern async_channel=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_channel-900b5ff242c3dc98.rlib --extern async_recursion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_recursion-4d6682aedda67b53.so --extern async_trait=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libasync_trait-e55a14bc7a3b363f.so --extern bitvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbitvec-c514e150453cc3ca.rlib --extern bytes=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libbytes-334a83b8264a5bdb.rlib --extern chrono=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libchrono-d11bd27bac52a096.rlib --extern criterion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcriterion-590b06590a6b2272.rlib --extern crossbeam_queue=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libcrossbeam_queue-44a679babaa5c5ca.rlib --extern datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion-373d0d04b0b579d1.rlib --extern datafusion_common=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_common-3b89d32602d6d671.rlib --extern datafusion_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_expr-d22e533e34f747ef.rlib --extern datafusion_physical_expr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdatafusion_physical_expr-7cccd4d8644c0ac9.rlib --extern dirs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libdirs-14c8317814fab0c8.rlib --extern env_logger=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libenv_logger-38bd02b8cfec08e9.rlib --extern fst=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfst-f80abebf0eec3bf7.rlib --extern futures=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libfutures-37df6058639861a5.rlib --extern geo_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_traits-58d2d9ef0d100809.rlib --extern geo_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeo_types-f315b0d76e8c153f.rlib --extern geoarrow_array=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_array-bf459154ca0922a0.rlib --extern geoarrow_schema=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libgeoarrow_schema-4602e6e67b4c8e6f.rlib --extern half=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libhalf-3d8be219fddf1d2e.rlib --extern itertools=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libitertools-746b80c355820462.rlib --extern jieba_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjieba_rs-5333fac85de01984.rlib --extern jsonb=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libjsonb-09343e4e19816b62.rlib --extern lance_arrow=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow.rlib --extern lance_arrow_stats=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_arrow_stats-bef00b9653ea4630.rlib --extern lance_bitpacking=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_bitpacking-7154d84e15a02b43.rlib --extern lance_core=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_core-2dfb8280a1164134.rlib --extern lance_datafusion=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datafusion-6ff57ffa2fb8c6eb.rlib --extern lance_datagen=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_datagen-5b53740b284f5a62.rlib --extern lance_encoding=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_encoding-f868ac1a6132d657.rlib --extern lance_file=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_file-a4f4fcf74ece15b8.rlib --extern lance_geo=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_geo-e3a6e0e9ce0ee19c.rlib --extern lance_io=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_io-89e03941b6dc67e2.rlib --extern lance_linalg=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_linalg-7bd1bcfcf0f1084d.rlib --extern lance_select=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_select-db1af736fb16a1d4.rlib --extern lance_table=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_table-37aa1054f921f53f.rlib --extern lance_testing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_testing-56d64f1ad576c34a.rlib --extern lance_tokenizer=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblance_tokenizer-a2d6986eec8bf57b.rlib --extern libsais_rs=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblibsais_rs-bd676fc6a389da44.rlib --extern log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/liblog-b0e3b98191c156ac.rlib --extern ndarray=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libndarray-021e0ad51fe61d12.rlib --extern num_traits=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libnum_traits-682925218b6d0021.rlib --extern object_store=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libobject_store-bb562c66c1c430b0.rlib --extern prost=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost-18e7fc88a2481b2d.rlib --extern prost_types=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libprost_types-9fbcbd121a4005a6.rlib --extern rand=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand-8f904abb592c8fa4.rlib --extern rand_distr=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librand_distr-1e1a2553bf725701.rlib --extern rangemap=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librangemap-6c0e705e21dc5f7b.rlib --extern rayon=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librayon-42fb90409f9aa431.rlib --extern regex_syntax=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libregex_syntax-770936a8a17ed5c9.rlib --extern roaring=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libroaring-d2ef32bb59f1e5d9.rlib --extern rstest=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/librstest-0bff66c68bbebbb4.rlib --extern serde=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde-9da1b57cdcf2d144.rlib --extern serde_json=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libserde_json-e5115b9926ce975d.rlib --extern smallvec=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libsmallvec-af33e59f05c6fb7a.rlib --extern tempfile=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtempfile-25ff4c822a9af780.rlib --extern test_log=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtest_log-b1aa74d9c5a310bb.rlib --extern tokio=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtokio-aaafe80e539ee23a.rlib --extern tracing=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libtracing-2ab9b98b9a2289ee.rlib --extern uuid=/home/runner/work/lance/lance/target/llvm-cov-target/ci/deps/libuuid-0fb12e7267082cb2.rlib -D warnings -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/zstd-sys-4dca0f0d659f2e46/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/alloca-ba364ebf4883a531/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/aws-lc-sys-e47b7cb59edb96a9/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/ring-9323901be445aebe/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/blake3-89e145d51443bf02/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/sha2-asm-5269130ea2fa7902/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lz4-sys-aa8d42f55c47493d/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out -L native=/home/runner/work/lance/lance/target/llvm-cov-target/ci/build/lance-linalg-a95caf082a642502/out --cfg 'feature="nightly"'` (exit status: 101)
+2026-06-30T15:09:26.6253080Z error: process didn't exit successfully: `/home/runner/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo test --tests --profile ci --manifest-path /home/runner/work/lance/lance/Cargo.toml --target-dir /home/runner/work/lance/lance/target/llvm-cov-target --locked --workspace --features aws,azure,bitpacking,cli,credential-vendor-aws,credential-vendor-azure,credential-vendor-gcp,datafusion,default,dir-aws,dir-azure,dir-gcp,dir-goosefs,dir-huggingface,dir-oss,dynamodb,dynamodb_tests,fp16kernels,gcp,gcs-test,geo,goosefs,goosefs-test,huggingface,jieba-rs,lindera,lz4,oss,rest,rest-adapter,substrait,tencent,test-util,tokenizer-jieba,tokenizer-lindera,tos,tos-test,zstd` (exit status: 101)
+2026-06-30T15:09:26.6269774Z ##[error]Process completed with exit code 101.
+2026-06-30T15:09:26.6397029Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-06-30T15:09:26.6398596Z Post job cleanup.
+2026-06-30T15:09:26.7208524Z [command]/usr/bin/git version
+2026-06-30T15:09:26.7242987Z git version 2.54.0
+2026-06-30T15:09:26.7277194Z Temporarily overriding HOME='/home/runner/work/_temp/82d048e8-4aac-4f1a-8da0-be95e467429b' before making global git config changes
+2026-06-30T15:09:26.7278259Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-30T15:09:26.7282158Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/lance/lance
+2026-06-30T15:09:26.7315388Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-30T15:09:26.7346763Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-30T15:09:26.7574624Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-30T15:09:26.7599849Z http.https://github.com/.extraheader
+2026-06-30T15:09:26.7609068Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-06-30T15:09:26.7638197Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-30T15:09:26.7856054Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-30T15:09:26.7885169Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-30T15:09:26.8238757Z Cleaning up orphan processes
+2026-06-30T15:09:26.8625478Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5, Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

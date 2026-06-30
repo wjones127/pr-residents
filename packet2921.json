@@ -1,0 +1,84 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 2921,
+    "title": "feat: support add_columns with embedding function",
+    "url": "https://github.com/lancedb/lancedb/pull/2921",
+    "head": "791e00315113c513c622e2fe0d0abbad51c0e283",
+    "author": "zhangyue19921010",
+    "author_status": "first_time",
+    "body": "Closes: https://github.com/lancedb/lancedb/issues/2920\r\n\r\nWrap python embedding function as BatchUDF",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "high",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "L",
+    "additions": 259,
+    "deletions": 5,
+    "files": 5
+  },
+  "escalation": {
+    "forced": true,
+    "rule_ids": [
+      "public-api"
+    ],
+    "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+  },
+  "merge_state": {
+    "ci": "red",
+    "mergeable": false
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "python/python/lancedb/_lancedb.pyi",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 0,
+        "patch": "@@ -170,6 +170,12 @@ class Table:\n     async def delete(self, filter: str) -> DeleteResult: ...\n     async def add_columns(self, columns: list[tuple[str, str]]) -> AddColumnsResult: ...\n     async def add_columns_with_schema(self, schema: pa.Schema) -> AddColumnsResult: ...\n+    async def add_columns_with_embedding_function(\n+        self, config: Any\n+    ) -> AddColumnsResult: ...\n+    async def update_schema_metadata(\n+        self, schema_metadata: List[Tuple[str, str]]\n+    ) -> None: ...\n     async def alter_columns(\n         self, columns: list[dict[str, Any]]\n     ) -> AlterColumnsResult: ...",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/lancedb/table.py",
+        "status": "modified",
+        "additions": 90,
+        "deletions": 3,
+        "patch": "@@ -534,6 +534,34 @@ def gen():\n     return pa.RecordBatchReader.from_batches(schema, gen())\n \n \n+class EmbeddingUdfConfig:\n+    __slots__ = (\"source_column\", \"vector_column\", \"ndims\", \"handler\")\n+\n+    def __init__(self, source_column: str, vector_column: str, ndims: int, handler):\n+        self.source_column = source_column\n+        self.vector_column = vector_column\n+        self.ndims = ndims\n+        self.handler = handler\n+\n+\n+def make_embedding_udf_handler(\n+    function, ndims: int, vector_column: str, source_column: str\n+):\n+    dtype = pa.list_(pa.float32(), ndims)\n+    schema = pa.schema([pa.field(vector_column, dtype, nullable=True)])\n+\n+    def handler(batch):\n+        source_idx = batch.schema.get_field_index(source_column)\n+        if source_idx < 0:\n+            raise ValueError(f\"Missing source column '{source_column}' in batch\")\n+        source = batch.column(source_idx)\n+        embedded = function.compute_source_embeddings_with_retry(source)\n+        vector_array = pa.array(embedded, type=dtype)\n+        return pa.RecordBatch.from_arrays([vector_array], schema=schema)\n+\n+    return handler\n+\n+\n def _table_path(base: str, table_name: str) -> str:\n     \"\"\"\n     Get a table path that can be used in PyArrow FS.\n@@ -1549,7 +1577,12 @@ def index_stats(self, index_name: str) -> Optional[IndexStatistics]:\n \n     @abstractmethod\n     def add_columns(\n-        self, transforms: Dict[str, str] | pa.Field | List[pa.Field] | pa.Schema\n+        self,\n+        transforms: Dict[str, str]\n+        | pa.Field\n+        | List[pa.Field]\n+        | pa.Schema\n+        | EmbeddingFunctionConfig,\n     ):\n         \"\"\"\n         Add new columns with defined values.\n@@ -3006,7 +3039,12 @@ def index_stats(self, index_name: str) -> Optional[IndexStatistics]:\n         return LOOP.run(self._table.index_stats(index_name))\n \n     def add_columns(\n-        self, transforms: Dict[str, str] | pa.field | List[pa.field] | pa.Schema\n+        self,\n+        transforms: Dict[str, str]\n+        | pa.field\n+        | List[pa.field]\n+        | pa.Schema\n+        | EmbeddingFunctionConfig,\n     ) -> AddColumnsResult:\n         return LOOP.run(self._table.add_columns(transforms))\n \n@@ -4197,7 +4235,12 @@ async def update(\n         return await self._inner.update(updates_sql, where)\n \n     async def add_columns(\n-        self, transforms: dict[str, str] | pa.field | List[pa.field] | pa.Schema\n+        self,\n+        transforms: dict[str, str]\n+        | pa.field\n+        | List[pa.field]\n+        | pa.Schema\n+        | EmbeddingFunctionConfig,\n     ) -> AddColumnsResult:\n         \"\"\"\n         Add new columns with defined values.\n@@ -4225,9 +4268,53 @@ async def add_columns(\n             transforms = pa.schema(transforms)\n         if isinstance(transforms, pa.Schema):\n             return await self._inner.add_columns_with_schema(transforms)\n+        elif isinstance(transforms, EmbeddingFunctionConfig):\n+            await self.update_embedding_function_metadata(transforms)\n+            ndims = transforms.function.ndims()\n+            handler = make_embedding_udf_handler(\n+                transforms.function,\n+                ndims,\n+                transforms.vector_column,\n+                transforms.source_column,\n+            )\n+            udf_conf = EmbeddingUdfConfig(\n+                source_column=transforms.source_column,\n+                vector_column=transforms.vector_column,\n+                ndims=ndims,\n+                handler=handler,\n+            )\n+            result = await self._inner.add_columns_with_embedding_function(udf_conf)\n+\n+            return result\n         else:\n             return await self._inner.add_columns(list(transforms.items()))\n \n+    async def update_embedding_function_metadata(\n+        self, config: EmbeddingFunctionConfig\n+    ) -> None:\n+        registry = EmbeddingFunctionRegistry.get_instance()\n+        schema = await self.schema()\n+        existing = registry.parse_functions(schema.metadata)\n+        if config.vector_column in existing:\n+            raise ValueError(\n+                \"Embedding function metadata already exists for vector column \"\n+                f\"'{config.vector_column}'. Modifying existing embedding functions \"\n+                \"is not supported.\"\n+            )\n+        schema_metadata = registry.get_table_metadata(\n+            list(existing.values()) + [config]\n+        )\n+        if not schema_metadata:\n+            return\n+        schema_metadata_pairs = [\n+            (\n+                k.decode(\"utf-8\") if isinstance(k, bytes) else str(k),\n+                v.decode(\"utf-8\") if isinstance(v, bytes) else str(v),\n+            )\n+            for k, v in schema_metadata.items()\n+        ]\n+        await self._inner.update_schema_metadata(schema_metadata_pairs)\n+\n     async def alter_columns(\n         self, *alterations: Iterable[dict[str, Any]]\n     ) -> AlterColumnsResult:",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_table.py",
+        "status": "modified",
+        "additions": 39,
+        "deletions": 0,
+        "patch": "@@ -1678,6 +1678,45 @@ def test_add_columns(mem_db: DBConnection):\n     assert table.schema.field(\"null_int\").type == pa.int64()\n \n \n+@pytest.mark.slow\n+def test_add_columns_embedding_function_config_sentence_transformers(\n+    tmp_db: DBConnection,\n+):\n+    pytest.importorskip(\"sentence_transformers\")\n+\n+    data = pa.table({\"text\": [\"hello world\", \"goodbye world\"]})\n+    table = tmp_db.create_table(\"my_table\", data=data)\n+\n+    assert \"vector\" not in table.schema.names\n+\n+    registry = EmbeddingFunctionRegistry.get_instance()\n+    func = registry.get(\"sentence-transformers\").create(max_retries=0)\n+    conf = EmbeddingFunctionConfig(\n+        source_column=\"text\",\n+        vector_column=\"vector\",\n+        function=func,\n+    )\n+    table.add_columns(conf)\n+\n+    assert \"vector\" in table.schema.names\n+\n+    expected_vectors = func.compute_source_embeddings([\"hello world\", \"goodbye world\"])\n+    actual_vectors = table.to_arrow()[\"vector\"].to_pylist()\n+    assert all(\n+        np.allclose(np.array(actual), np.array(expected))\n+        for actual, expected in zip(actual_vectors, expected_vectors)\n+    )\n+\n+    parsed = registry.parse_functions(table.schema.metadata)\n+    assert parsed[\"vector\"].source_column == \"text\"\n+\n+    query_str = \"hello world\"\n+    query_vector = func.compute_query_embeddings(query_str)[0]\n+    expected = table.search(query_vector).limit(1).to_arrow()\n+    actual = table.search(query_str).limit(1).to_arrow()\n+    assert actual == expected\n+\n+\n @pytest.mark.asyncio\n async def test_add_columns_async(mem_db_async: AsyncConnection):\n     data = pa.table({\"id\": [0, 1]})",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/src/table.rs",
+        "status": "modified",
+        "additions": 102,
+        "deletions": 0,
+        "patch": "@@ -2,12 +2,16 @@\n // SPDX-FileCopyrightText: Copyright The LanceDB Authors\n use std::{collections::HashMap, sync::Arc};\n \n+/// A function that maps a RecordBatch to another RecordBatch with error handling\n+type RecordBatchMapper = Box<dyn Fn(&RecordBatch) -> lance_core::Result<RecordBatch> + Send + Sync>;\n+\n use crate::{\n     connection::Connection,\n     error::PythonErrorExt,\n     index::{extract_index_params, IndexConfig},\n     query::{Query, TakeQuery},\n };\n+use arrow::record_batch::RecordBatch;\n use arrow::{\n     datatypes::{DataType, Schema},\n     ffi_stream::ArrowArrayStreamReader,\n@@ -744,6 +748,81 @@ impl Table {\n         })\n     }\n \n+    pub fn add_columns_with_embedding_function<'a>(\n+        self_: PyRef<'a, Self>,\n+        conf: Bound<'a, PyAny>,\n+    ) -> PyResult<Bound<'a, PyAny>> {\n+        let inner = self_.inner_ref()?.clone();\n+        let conf = conf.unbind();\n+\n+        future_into_py(self_.py(), async move {\n+            let conf: EmbeddingFunctionConfig = Python::with_gil(|py| conf.bind(py).extract())?;\n+            let source_column = conf.source_column;\n+            let vector_column = conf.vector_column;\n+            let ndims = conf.ndims;\n+            let handler = conf.handler;\n+\n+            let ndims_i32 = i32::try_from(ndims)\n+                .map_err(|_| PyValueError::new_err(\"ndims exceeds i32::MAX\"))?;\n+            let vector_data_type = DataType::FixedSizeList(\n+                Arc::new(arrow::datatypes::Field::new(\n+                    \"item\",\n+                    DataType::Float32,\n+                    true,\n+                )),\n+                ndims_i32,\n+            );\n+            let vector_field =\n+                arrow::datatypes::Field::new(vector_column.clone(), vector_data_type, true);\n+\n+            let output_schema = Arc::new(Schema::new(vec![vector_field.clone()]));\n+\n+            let mapper: RecordBatchMapper = Box::new(move |batch: &RecordBatch| {\n+                let out_batch = Python::with_gil(|py| {\n+                    let batch_py = batch.to_pyarrow(py)?;\n+                    let batch_py = handler.bind(py).call1((batch_py,))?;\n+                    let out_batch = RecordBatch::from_pyarrow_bound(&batch_py)?;\n+                    Ok::<_, pyo3::PyErr>(out_batch)\n+                })\n+                .map_err(|_| lance_core::Error::InvalidInput {\n+                    source: \"computing embedding failed\".into(),\n+                    location: snafu::location!(),\n+                })?;\n+                Ok(out_batch)\n+            });\n+\n+            let result = inner\n+                .add_columns_with_mapper(mapper, output_schema, None, Some(vec![source_column]))\n+                .await\n+                .infer_error()?;\n+            Ok(AddColumnsResult::from(result))\n+        })\n+    }\n+\n+    pub fn update_schema_metadata<'a>(\n+        self_: PyRef<'a, Self>,\n+        schema_metadata_pairs: Vec<(String, String)>,\n+    ) -> PyResult<Bound<'a, PyAny>> {\n+        let inner = self_.inner_ref()?.clone();\n+\n+        future_into_py(self_.py(), async move {\n+            let dataset = inner\n+                .dataset()\n+                .ok_or_else(|| PyValueError::new_err(\"This cannot be run on a remote table\"))?;\n+            let mut dataset = dataset.get_mut().await.infer_error()?;\n+\n+            let mut manifest = (*dataset.manifest).clone();\n+            let metadata: HashMap<String, String> = schema_metadata_pairs.into_iter().collect();\n+            let new_schema = lance_core::datatypes::Schema {\n+                fields: manifest.schema.fields.clone(),\n+                metadata,\n+            };\n+            manifest.schema = new_schema;\n+            dataset.manifest = Arc::new(manifest);\n+            Ok(())\n+        })\n+    }\n+\n     pub fn alter_columns<'a>(\n         self_: PyRef<'a, Self>,\n         alterations: Vec<Bound<PyDict>>,\n@@ -829,6 +908,29 @@ impl Table {\n     }\n }\n \n+struct EmbeddingFunctionConfig {\n+    source_column: String,\n+    vector_column: String,\n+    ndims: usize,\n+    handler: pyo3::Py<PyAny>,\n+}\n+\n+impl<'py> FromPyObject<'py> for EmbeddingFunctionConfig {\n+    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {\n+        let source_column: String = ob.getattr(\"source_column\")?.extract()?;\n+        let vector_column: String = ob.getattr(\"vector_column\")?.extract()?;\n+        let handler: pyo3::Py<PyAny> = ob.getattr(\"handler\")?.unbind();\n+        let ndims: usize = ob.getattr(\"ndims\")?.extract()?;\n+\n+        Ok(Self {\n+            source_column,\n+            vector_column,\n+            ndims,\n+            handler,\n+        })\n+    }\n+}\n+\n #[derive(FromPyObject)]\n pub enum LanceVersion {\n     Version(u64),",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lancedb/src/table.rs",
+        "status": "modified",
+        "additions": 22,
+        "deletions": 2,
+        "patch": "@@ -5,7 +5,7 @@\n \n use arrow::array::{AsArray, FixedSizeListBuilder, Float32Builder};\n use arrow::datatypes::{Float32Type, UInt8Type};\n-use arrow_array::{RecordBatchIterator, RecordBatchReader};\n+use arrow_array::{RecordBatch, RecordBatchIterator, RecordBatchReader};\n use arrow_schema::{DataType, Field, Schema, SchemaRef};\n use async_trait::async_trait;\n use datafusion_expr::Expr;\n@@ -24,7 +24,8 @@ pub use lance::dataset::NewColumnTransform;\n pub use lance::dataset::ReadParams;\n pub use lance::dataset::Version;\n use lance::dataset::{\n-    InsertBuilder, UpdateBuilder as LanceUpdateBuilder, WhenMatched, WriteMode, WriteParams,\n+    BatchUDF, InsertBuilder, UDFCheckpointStore, UpdateBuilder as LanceUpdateBuilder, WhenMatched,\n+    WriteMode, WriteParams,\n };\n use lance::dataset::{MergeInsertBuilder as LanceMergeInsertBuilder, WhenNotMatchedBySource};\n use lance::index::vector::utils::infer_vector_dim;\n@@ -77,6 +78,8 @@ use crate::utils::{\n use self::dataset::DatasetConsistencyWrapper;\n use self::merge::MergeInsertBuilder;\n \n+type RecordBatchMapper = Box<dyn Fn(&RecordBatch) -> lance::Result<RecordBatch> + Send + Sync>;\n+\n pub mod datafusion;\n pub(crate) mod dataset;\n pub mod merge;\n@@ -1226,6 +1229,23 @@ impl Table {\n         self.inner.add_columns(transforms, read_columns).await\n     }\n \n+    /// Add new columns to the table, providing values to fill in.\n+    pub async fn add_columns_with_mapper(\n+        &self,\n+        mapper: RecordBatchMapper,\n+        output_schema: Arc<Schema>,\n+        result_checkpoint: Option<Arc<dyn UDFCheckpointStore>>,\n+        read_columns: Option<Vec<String>>,\n+    ) -> Result<AddColumnsResult> {\n+        let batch_udf = BatchUDF {\n+            mapper,\n+            output_schema,\n+            result_checkpoint,\n+        };\n+        let transform = NewColumnTransform::BatchUDF(batch_udf);\n+        self.inner.add_columns(transform, read_columns).await\n+    }\n+\n     /// Change a column's name or nullability.\n     pub async fn alter_columns(\n         &self,",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 5,
+    "shown_files": 5
+  },
+  "lane_note": null
+}
