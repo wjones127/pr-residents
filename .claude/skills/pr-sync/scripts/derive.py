@@ -30,6 +30,19 @@ _CI_MAP = {
 }
 
 
+def merge_state_from_detail(detail: dict) -> dict:
+    """CI rollup + mergeability from a PR detail, as {"ci", "mergeable"}. Reads
+    the latest commit's statusCheckRollup and the PR's mergeable flag — the same
+    shape build_record stores. Factored out so a re-review packet can carry CI
+    fetched live at build time instead of leaning on the (possibly hours-old)
+    synced record, which is what made residents re-fetch CI by hand."""
+    commit_nodes = (detail.get("commits") or {}).get("nodes") or []
+    rollup = (commit_nodes[0].get("commit") or {}).get("statusCheckRollup") if commit_nodes else None
+    ci = _CI_MAP.get(rollup.get("state") if rollup else None, "pending")
+    mergeable = {"MERGEABLE": True, "CONFLICTING": False}.get(detail.get("mergeable"))
+    return {"ci": ci, "mergeable": mergeable}
+
+
 # --- glob matching --------------------------------------------------------
 
 def _glob_to_regex(pattern: str) -> str:
@@ -275,21 +288,13 @@ def build_record(detail: dict, viewer: str, requested: bool,
         gov_ts = _head_arrived_at(detail)
     age_hrs = _hours_since(gov_ts, now)
 
-    ci_raw = None
-    commit_nodes = (detail.get("commits") or {}).get("nodes") or []
-    if commit_nodes:
-        rollup = (commit_nodes[0].get("commit") or {}).get("statusCheckRollup")
-        ci_raw = rollup.get("state") if rollup else None
-    ci = _CI_MAP.get(ci_raw, "pending")
+    ms = merge_state_from_detail(detail)
 
     lane = derive_lane(blocked_on, last_reviewed_sha, delta, age_hrs)
     if lane is None:
         return None
 
-    acuity = derive_acuity(files, blocked_on, age_hrs, ci)
-
-    mergeable_raw = detail.get("mergeable")
-    mergeable = {"MERGEABLE": True, "CONFLICTING": False}.get(mergeable_raw)
+    acuity = derive_acuity(files, blocked_on, age_hrs, ms["ci"])
 
     return {
         "repo": repo,
@@ -310,6 +315,6 @@ def build_record(detail: dict, viewer: str, requested: bool,
         "last_reviewed_sha": last_reviewed_sha,
         "delta": delta,
         "conditions": [],  # reconstructed in slice 2 (re-review-delta)
-        "merge_state": {"ci": ci, "mergeable": mergeable},
+        "merge_state": ms,
         "escalation": escalation,
     }

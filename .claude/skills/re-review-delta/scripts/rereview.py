@@ -21,6 +21,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "..", "pr-sync", "scripts"))
 
 import config as config_mod  # noqa: E402
+import derive  # noqa: E402
 from github import GitHubClient, GitHubError  # noqa: E402
 
 import conditions  # noqa: E402
@@ -31,7 +32,8 @@ _PR_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      number title url headRefOid
+      number title url headRefOid mergeable
+      commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
       reviews(last: 50) {
         nodes { author { login } state submittedAt commit { oid } }
       }
@@ -126,6 +128,9 @@ def build_packet(repo: str, number: int, config_dir: str) -> dict:
     return {
         "pr": {"repo": repo, "number": number, "title": pr["title"], "url": pr["url"],
                "head": head, "last_reviewed_sha": last_reviewed, "viewer": viewer},
+        # CI/mergeability fetched live here at build time — don't re-fetch by hand;
+        # the synced record's copy may be hours stale (parity with the fresh packet).
+        "merge_state": derive.merge_state_from_detail(pr),
         "conditions": ledger,
         "delta": delta,
     }
