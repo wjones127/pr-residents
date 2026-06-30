@@ -100,5 +100,26 @@ class TestColdStart(unittest.TestCase):
         self.assertIn("no shared-signal match", why)
 
 
+class TestPrimaryDomain(unittest.TestCase):
+    def test_dominant_bucket_wins(self):
+        paths = ["rust/lance-index/a.rs", "rust/lance-index/b.rs",
+                 "rust/lance-core/c.rs"]
+        self.assertEqual(affinity.primary_domain(paths), "rust/lance-index")
+
+    def test_tie_breaks_alphabetically(self):
+        # One file each in two crates -> stable, deterministic key.
+        paths = ["rust/lance-index/a.rs", "rust/lance-core/b.rs"]
+        self.assertEqual(affinity.primary_domain(paths), "rust/lance-core")
+
+    def test_matches_bucket_depth(self):
+        # Same bucketing the affinity profile uses: python tree collapses to depth 2.
+        paths = ["python/python/lancedb/x.py", "python/python/lancedb/y.py"]
+        self.assertEqual(affinity.primary_domain(paths), "python/python")
+
+    def test_empty(self):
+        self.assertEqual(affinity.primary_domain([]), "")
+        self.assertEqual(affinity.primary_domain(None), "")
+
+
 if __name__ == "__main__":
     unittest.main()

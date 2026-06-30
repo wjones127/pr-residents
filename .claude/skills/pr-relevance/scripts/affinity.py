@@ -35,6 +35,24 @@ def buckets_for(paths, depth: int = DEFAULT_BUCKET_DEPTH) -> set[str]:
     return {bucket_path(p, depth) for p in paths if p}
 
 
+def primary_domain(paths, depth: int = DEFAULT_BUCKET_DEPTH) -> str:
+    """The PR's dominant area: the bucket most of its changed files fall under.
+    This is the canonical `domain` for a §5 disposition — derived deterministically
+    from the changed files (the same bucketing the affinity profile uses) rather
+    than free-typed by a resident, so the per-domain agreement log doesn't
+    fragment on `lance-arrow` vs `rust/lance-arrow`. Ties break alphabetically for
+    a stable key. Returns "" for an empty/path-less change set."""
+    counts: dict[str, int] = {}
+    for p in paths or []:
+        b = bucket_path(p, depth)
+        if b:
+            counts[b] = counts.get(b, 0) + 1
+    if not counts:
+        return ""
+    top = max(counts.values())
+    return sorted(b for b, c in counts.items() if c == top)[0]
+
+
 def build_profile(reviewed_paths_per_pr, depth: int = DEFAULT_BUCKET_DEPTH) -> dict[str, int]:
     """`reviewed_paths_per_pr`: one path-list per PR I have reviewed. Returns
     {area: how many of my reviewed PRs touched it}. Counting PRs (not files)
