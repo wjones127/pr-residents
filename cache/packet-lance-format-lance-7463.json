@@ -1,0 +1,49 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7463,
+    "title": "feat(index): read a column's min/max from ZoneMap without a scan",
+    "url": "https://github.com/lance-format/lance/pull/7463",
+    "head": "855f0738294603bfa2cf5017b0b74dee12d2d491",
+    "last_reviewed_sha": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db",
+    "viewer": "wjones127"
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "conditions": [],
+  "delta": {
+    "base": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db",
+    "head": "855f0738294603bfa2cf5017b0b74dee12d2d491",
+    "files": [
+      {
+        "path": "rust/lance/src/dataset.rs",
+        "status": "modified",
+        "additions": 7,
+        "deletions": 0,
+        "patch": "@@ -100,6 +100,7 @@ use self::cleanup::RemovalStats;\n use self::fragment::FileFragment;\n use self::refs::Refs;\n use self::scanner::{DatasetRecordBatchStream, Scanner};\n+use self::statistics::DatasetStatistics;\n use self::transaction::{Operation, Transaction, TransactionBuilder, UpdateMapEntry};\n use self::write::{cleanup_data_fragments, write_fragments_internal};\n use crate::dataset::branch_location::BranchLocation;\n@@ -453,6 +454,12 @@ impl Dataset {\n         self.refs.tags()\n     }\n \n+    /// A handle for cheap, index-derived statistics about this dataset (e.g. a\n+    /// column's global value range) that never scan data.\n+    pub fn statistics(&self) -> DatasetStatistics<'_> {\n+        DatasetStatistics::new(self)\n+    }\n+\n     pub fn branches(&self) -> Branches<'_> {\n         self.refs.branches()\n     }",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/dataset/statistics.rs",
+        "status": "modified",
+        "additions": 99,
+        "deletions": 1,
+        "patch": "@@ -5,11 +5,16 @@\n \n use std::{collections::HashMap, future::Future, sync::Arc};\n \n+use datafusion::scalar::ScalarValue;\n use futures::{StreamExt, TryStreamExt};\n-use lance_core::Result;\n+use lance_core::{Error, Result};\n+use lance_index::metrics::NoOpMetricsCollector;\n+use lance_index::scalar::zonemap::ZoneMapIndex;\n use lance_io::scheduler::{ScanScheduler, SchedulerConfig};\n+use roaring::RoaringBitmap;\n \n use super::{Dataset, fragment::FileFragment};\n+use crate::index::{DatasetIndexExt, DatasetIndexInternalExt};\n \n /// Statistics about a single field in the dataset\n pub struct FieldStatistics {\n@@ -83,6 +88,99 @@ impl DatasetStatisticsExt for Dataset {\n     }\n }\n \n+/// A read-only handle for cheap, index-derived statistics about a [`Dataset`].\n+///\n+/// Obtained via [`Dataset::statistics`]. Groups the dataset's statistics\n+/// accessors behind one handle so they don't accrete as one-off methods on\n+/// [`Dataset`]. Every accessor is served from index metadata and never scans\n+/// data.\n+#[derive(Debug, Clone, Copy)]\n+pub struct DatasetStatistics<'a> {\n+    dataset: &'a Dataset,\n+}\n+\n+impl<'a> DatasetStatistics<'a> {\n+    pub(crate) fn new(dataset: &'a Dataset) -> Self {\n+        Self { dataset }\n+    }\n+\n+    /// Global `[min, max]` for `column` from its min/max-capable scalar index\n+    /// (currently ZoneMap), without a scan.\n+    ///\n+    /// `None` unless the column's index segments *jointly* cover every live\n+    /// fragment and the column can be soundly bounded \u2014 fragments appended after\n+    /// the index was built, or a NaN-bearing column, yield `None`. The disjoint\n+    /// segments of a multi-segment index are folded together.\n+    ///\n+    /// When `Some`, the range is a superset of live values, conservative under\n+    /// deletion vectors: safe to prune with. See [`ScalarIndex::value_range`].\n+    ///\n+    /// [`ScalarIndex::value_range`]: lance_index::scalar::ScalarIndex::value_range\n+    pub async fn column_value_range(\n+        &self,\n+        column: &str,\n+    ) -> Result<Option<(ScalarValue, ScalarValue)>> {\n+        let dataset = self.dataset;\n+        let Some(field) = dataset.schema().field(column) else {\n+            return Err(Error::invalid_input(format!(\n+                \"column_value_range: column '{column}' not found in dataset schema\"\n+            )));\n+        };\n+        let field_id = field.id;\n+        let field_path = dataset.schema().field_path(field_id)?;\n+\n+        // A multi-segment ZoneMap is several index entries over the same column,\n+        // each covering a disjoint fragment subset. Match the field, then the\n+        // details type (the column may also carry e.g. a BTree).\n+        let indices = dataset.load_indices().await?;\n+        let segments: Vec<_> = indices\n+            .iter()\n+            .filter(|idx| matches!(idx.fields.as_slice(), [only] if *only == field_id))\n+            .filter(|idx| {\n+                idx.index_details\n+                    .as_ref()\n+                    .is_some_and(|d| d.type_url.ends_with(\"ZoneMapIndexDetails\"))\n+            })\n+            .collect();\n+        if segments.is_empty() {\n+            return Ok(None);\n+        }\n+\n+        // Soundness: the segments must *jointly* cover every live fragment, else\n+        // the fold sees only a subset and could prune live rows (e.g. fragments\n+        // appended after the index was built). Extra dead fragments are harmless.\n+        let mut covered = RoaringBitmap::new();\n+        for idx in &segments {\n+            let Some(bitmap) = idx.fragment_bitmap.as_ref() else {\n+                return Ok(None);\n+            };\n+            covered |= bitmap.clone();\n+        }\n+        if !dataset.fragment_bitmap.as_ref().is_subset(&covered) {\n+            return Ok(None);\n+        }\n+\n+        // Keep the opened indices alive so the `ZoneMapIndex` refs we fold over\n+        // stay borrowed.\n+        let mut opened = Vec::with_capacity(segments.len());\n+        for idx in &segments {\n+            opened.push(\n+                dataset\n+                    .open_generic_index(&field_path, &idx.uuid, &NoOpMetricsCollector)\n+                    .await?,\n+            );\n+        }\n+        let Some(zonemaps) = opened\n+            .iter()\n+            .map(|index| index.as_any().downcast_ref::<ZoneMapIndex>())\n+            .collect::<Option<Vec<_>>>()\n+        else {\n+            return Ok(None);\n+        };\n+        Ok(ZoneMapIndex::value_range_over(zonemaps))\n+    }\n+}\n+\n #[cfg(test)]\n mod tests {\n     use std::sync::Arc;",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/index/scalar.rs",
+        "status": "modified",
+        "additions": 17,
+        "deletions": 5,
+        "patch": "@@ -1798,11 +1798,14 @@ mod tests {\n \n         // Folded straight from the ZoneMap summaries: global [0, 9].\n         assert_eq!(\n-            ds.column_value_range(\"id\").await.unwrap(),\n+            ds.statistics().column_value_range(\"id\").await.unwrap(),\n             Some((ScalarValue::Int64(Some(0)), ScalarValue::Int64(Some(9))))\n         );\n         // `other` has no ZoneMap index -> no precomputed range.\n-        assert_eq!(ds.column_value_range(\"other\").await.unwrap(), None);\n+        assert_eq!(\n+            ds.statistics().column_value_range(\"other\").await.unwrap(),\n+            None\n+        );\n     }\n \n     #[tokio::test]\n@@ -1823,7 +1826,13 @@ mod tests {\n         ds.create_index(&[\"id\"], IndexType::Scalar, None, &params, false)\n             .await\n             .unwrap();\n-        assert!(ds.column_value_range(\"id\").await.unwrap().is_some());\n+        assert!(\n+            ds.statistics()\n+                .column_value_range(\"id\")\n+                .await\n+                .unwrap()\n+                .is_some()\n+        );\n \n         // Append a fragment the index doesn't cover. Its rows may hold values\n         // outside the indexed range, so any non-None range would be a subset\n@@ -1833,7 +1842,10 @@ mod tests {\n             .into_reader_rows(RowCount::from(5), BatchCount::from(1));\n         ds.append(reader, None).await.unwrap();\n \n-        assert_eq!(ds.column_value_range(\"id\").await.unwrap(), None);\n+        assert_eq!(\n+            ds.statistics().column_value_range(\"id\").await.unwrap(),\n+            None\n+        );\n     }\n \n     #[tokio::test]\n@@ -1873,7 +1885,7 @@ mod tests {\n         // spans both and yields the global range, not None.\n         assert_eq!(ds.load_indices_by_name(\"id_idx\").await.unwrap().len(), 2);\n         assert_eq!(\n-            ds.column_value_range(\"id\").await.unwrap(),\n+            ds.statistics().column_value_range(\"id\").await.unwrap(),\n             Some((ScalarValue::Int64(Some(0)), ScalarValue::Int64(Some(9))))\n         );\n     }",
+        "patch_truncated": false
+      }
+    ],
+    "commit_count": 1,
+    "files_off_branch_excluded": 2,
+    "note": "scoped to author's changes: excluded 2 files that changed on the branch via merges from the base branch, not the PR's own work"
+  }
+}

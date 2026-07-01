@@ -1,6 +1,32 @@
 [
   {
     "repo": "lancedb/lancedb",
+    "number": 3489,
+    "title": "feat(query): add use_lsm_read to query data via the MemWAL LSM scanner",
+    "url": "https://github.com/lancedb/lancedb/pull/3489",
+    "author": "touch-of-grey",
+    "score": 157.0,
+    "base_score": 157.0,
+    "semantic": 0.0,
+    "mode": "affinity",
+    "rationale": "overlaps your review history: python/python (reviewed 49\u00d7), rust/lancedb (reviewed 33\u00d7), python/src (reviewed 16\u00d7)",
+    "matched_areas": [
+      "python/python",
+      "rust/lancedb",
+      "python/src",
+      "docs/src",
+      "nodejs/__test__",
+      "nodejs/src",
+      "nodejs/lancedb"
+    ],
+    "files_changed_count": 16,
+    "relevance": {
+      "score": 157.0,
+      "requested": false
+    }
+  },
+  {
+    "repo": "lancedb/lancedb",
     "number": 3122,
     "title": "fix(rust): change `optimize` steps ordering",
     "url": "https://github.com/lancedb/lancedb/pull/3122",
@@ -25,46 +51,24 @@
     }
   },
   {
-    "repo": "lancedb/lancedb",
-    "number": 3509,
-    "title": "feat: add an elastic dataloader as an iterable dataset",
-    "url": "https://github.com/lancedb/lancedb/pull/3509",
-    "author": "westonpace",
-    "score": 99.0,
-    "base_score": 99.0,
-    "semantic": 0.0,
-    "mode": "affinity",
-    "rationale": "overlaps your review history: python/python (reviewed 49\u00d7), rust/lancedb (reviewed 33\u00d7), Cargo.lock (reviewed 17\u00d7)",
-    "matched_areas": [
-      "python/python",
-      "rust/lancedb",
-      "Cargo.lock"
-    ],
-    "files_changed_count": 8,
-    "relevance": {
-      "score": 99.0,
-      "requested": false
-    }
-  },
-  {
     "repo": "lance-format/lance",
-    "number": 7237,
-    "title": "feat(compaction): introduce RowAddrRemap structure to avoid remap OOM caused by HashMap",
-    "url": "https://github.com/lance-format/lance/pull/7237",
-    "author": "zhangyue19921010",
-    "score": 83.0,
-    "base_score": 83.0,
+    "number": 7565,
+    "title": "fix(index): translate address-domain scalar index results to row ids under stable row ids",
+    "url": "https://github.com/lance-format/lance/pull/7565",
+    "author": "charleshuang119",
+    "score": 97.0,
+    "base_score": 97.0,
     "semantic": 0.0,
     "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), rust/lance-index (reviewed 24\u00d7), rust/lance-core (reviewed 7\u00d7)",
+    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), rust/lance-index (reviewed 24\u00d7), python/python (reviewed 21\u00d7)",
     "matched_areas": [
       "rust/lance",
       "rust/lance-index",
-      "rust/lance-core"
+      "python/python"
     ],
-    "files_changed_count": 37,
+    "files_changed_count": 7,
     "relevance": {
-      "score": 83.0,
+      "score": 97.0,
       "requested": false
     }
   },
@@ -112,28 +116,6 @@
   },
   {
     "repo": "lance-format/lance",
-    "number": 7138,
-    "title": "feat(mem_wal): support prefiltered LSM vector and FTS search",
-    "url": "https://github.com/lance-format/lance/pull/7138",
-    "author": "touch-of-grey",
-    "score": 81.0,
-    "base_score": 81.0,
-    "semantic": 0.0,
-    "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7), python/src (reviewed 8\u00d7)",
-    "matched_areas": [
-      "rust/lance",
-      "python/python",
-      "python/src"
-    ],
-    "files_changed_count": 29,
-    "relevance": {
-      "score": 81.0,
-      "requested": false
-    }
-  },
-  {
-    "repo": "lance-format/lance",
     "number": 7440,
     "title": "feat(index): expose vector index handle readers",
     "url": "https://github.com/lance-format/lance/pull/7440",
@@ -149,6 +131,28 @@
       "python/src"
     ],
     "files_changed_count": 8,
+    "relevance": {
+      "score": 81.0,
+      "requested": false
+    }
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7558,
+    "title": "feat: add blob write preparation API",
+    "url": "https://github.com/lance-format/lance/pull/7558",
+    "author": "Xuanwo",
+    "score": 81.0,
+    "base_score": 81.0,
+    "semantic": 0.0,
+    "mode": "affinity",
+    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7), python/src (reviewed 8\u00d7)",
+    "matched_areas": [
+      "rust/lance",
+      "python/python",
+      "python/src"
+    ],
+    "files_changed_count": 12,
     "relevance": {
       "score": 81.0,
       "requested": false
@@ -178,32 +182,31 @@
   },
   {
     "repo": "lance-format/lance",
-    "number": 7461,
-    "title": "fix(index): record IVF_HNSW index file sizes after writing footer",
-    "url": "https://github.com/lance-format/lance/pull/7461",
-    "author": "Ali2Arslan",
-    "score": 78.0,
-    "base_score": 78.0,
+    "number": 7413,
+    "title": "perf(index): add sparse ngram tokenization",
+    "url": "https://github.com/lance-format/lance/pull/7413",
+    "author": "everySympathy",
+    "score": 76.0,
+    "base_score": 76.0,
     "semantic": 0.0,
     "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), rust/lance-index (reviewed 24\u00d7), rust/lance-file (reviewed 2\u00d7)",
+    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), rust/lance-index (reviewed 24\u00d7)",
     "matched_areas": [
       "rust/lance",
-      "rust/lance-index",
-      "rust/lance-file"
+      "rust/lance-index"
     ],
-    "files_changed_count": 6,
+    "files_changed_count": 3,
     "relevance": {
-      "score": 78.0,
+      "score": 76.0,
       "requested": false
     }
   },
   {
     "repo": "lance-format/lance",
-    "number": 7413,
-    "title": "perf(index): add sparse ngram tokenization",
-    "url": "https://github.com/lance-format/lance/pull/7413",
-    "author": "everySympathy",
+    "number": 7521,
+    "title": "fix: avoid nightly rustc coverage ICE from nested opaque streams",
+    "url": "https://github.com/lance-format/lance/pull/7521",
+    "author": "XuQianJin-Stars",
     "score": 76.0,
     "base_score": 76.0,
     "semantic": 0.0,

@@ -1,80 +1,29 @@
 [
   {
     "repo": "lance-format/lance",
-    "number": 7523,
-    "url": "https://github.com/lance-format/lance/pull/7523",
-    "title": "feat(cache): support batch get-or-insert single-flight",
-    "body": "## Feature\r\n\r\n### What is the new feature?\r\n\r\nThis adds backend-level batch get-or-insert support to Lance cache primitives.\r\n\r\nThe new API allows callers to provide one batch loader for multiple missing keys while preserving backend-owned per-key single-flight semantics. This is intended as cache-layer groundwork for callers such as coalesced BTree page reads, where we need both:\r\n\r\n- coalesced loading: one loader can load multiple missing pages together\r\n- single-flight: concurrent cold overlapping requests do not duplicate loading for the same key\r\n\r\nRelated to #6759.\r\n\r\n### Why do we need this feature?\r\n\r\n`CacheBackend::get_or_insert` currently supports one key at a time. That works for single-key cache misses because the backend can deduplicate concurrent loaders for the same key.\r\n\r\nFor batch-oriented callers, neither existing pattern provides both desired properties:\r\n\r\n- calling single-key `get_or_insert` in a loop preserves single-flight, but loses batch/coalesced loading\r\n- doing manual `get` + batch load + `insert` preserves batch loading, but bypasses backend single-flight\r\n\r\nUnder concurrent cold overlapping range reads, the manual batch pattern can duplicate page IO and materialization for the same logical cache keys.\r\n\r\n### How does it work?\r\n\r\n- Adds low-level batch cache types and API:\r\n  - `CacheLoadedEntry`\r\n  - `CacheBatchEntry`\r\n  - `CacheBatchLoader`\r\n  - `CacheBackend::get_or_insert_many`\r\n- Adds typed cache APIs:\r\n  - `LanceCache::get_or_insert_with_key_batch`\r\n  - `WeakLanceCache::get_or_insert_with_key_batch`\r\n  - `CacheBatchValue<T>`\r\n- Implements true batch single-flight in `MokaCacheBackend`.\r\n- Uses one shared in-flight registry for both single-key and batch get-or-insert paths, so mixed callers still coalesce on the same key.\r\n- Ensures the batch loader only receives missing keys currently owned by this caller.\r\n- Preserves input key order in returned values.\r\n- Rejects duplicate input keys with `InvalidInput`.\r\n- Validates loader output exactly:\r\n  - missing returned key => `InvalidInput`\r\n  - extra returned key => `InvalidInput`\r\n  - duplicate returned key => `InvalidInput`\r\n- Clarifies `was_cached` semantics:\r\n  - `true` means this call did not run the loader for that key\r\n  - this includes ordinary cache hits and values produced by another in-flight owner\r\n- Keeps the default trait implementation as a compatibility fallback that calls single-key `get_or_insert` one key at a time.\r\n\r\n### Compatibility\r\n\r\nThis is an additive cache API change.\r\n\r\nExisting single-key `get_or_insert` behavior remains compatible. The default `get_or_insert_many` implementation preserves existing backend single-key semantics for custom backends, but does not preserve coalesced batch loading unless a backend overrides it.\r\n\r\nThis PR does not change BTree query logic directly. It only adds the cache primitive needed by future multi-page miss paths.\r\n\r\n## Testing\r\n\r\nLocal verification run on commit `50dd286d2`:\r\n\r\n- `cargo fmt --all -- --check`\r\n- `cargo test -p lance-core cache`\r\n  - 38 passed\r\n- `cargo test -p lance-core --doc cache`\r\n  - 3 passed, 2 ignored\r\n- `cargo test -p lance-core --bench cache_batch -- --test`\r\n  - all benchmark scenarios reported `Success`\r\n- `cargo clippy -p lance-core --all-targets -- -D warnings`\r\n- `cargo bench -p lance-core --bench cache_batch -- --noplot`\r\n\r\n## Benchmarks\r\n\r\nThese are cache primitive microbenchmarks, not end-to-end BTree or object-store benchmarks. They intentionally use small `usize` values and cheap / yielding loaders so the cache coordination overhead and duplicate-load behavior are visible.\r\n\r\nBenchmark environment:\r\n\r\n- MacBook Pro, Apple M1 Pro, 16 GiB memory\r\n- macOS 15.6, arm64\r\n- Rust 1.94.0\r\n- Command: `cargo bench -p lance-core --bench cache_batch -- --noplot`\r\n- Criterion config: sample size 10, 100 ms warmup, 250 ms measurement time\r\n\r\nEach row runs multiple concurrent tasks against the same cache. `Batch size`\r\nis the number of keys requested by each task. `Concurrent tasks` is the number\r\nof simultaneous cache callers. `Key overlap` controls how many keys are shared\r\nacross those concurrent callers.\r\n\r\n`Actual loads` counts how many entries were actually produced by loaders across\r\nall concurrent tasks. Lower load counts indicate less duplicate cold-miss work.\r\n\r\n| Batch size | Concurrent tasks | Key overlap | Loader | Actual loads: single / manual / new batch | Single-key loop | Manual get + batch load + insert | Batch get_or_insert_many | New vs manual |\r\n|---:|---:|---:|---|---:|---:|---:|---:|---:|\r\n| 64 | 8 | 50% | cheap | 288 / 512 / 288 | 0.961 ms | 0.843 ms | 1.258 ms | 1.49x |\r\n| 64 | 8 | 100% | cheap | 64 / 512 / 64 | 0.395 ms | 0.851 ms | 0.702 ms | 0.82x |\r\n| 64 | 8 | 50% | yield_once | 288 / 512 / 288 | 1.269 ms | 0.827 ms | 1.335 ms | 1.61x |\r\n| 64 | 8 | 100% | yield_once | 64 / 512 / 64 | 0.660 ms | 0.936 ms | 0.718 ms | 0.77x |\r\n| 8 | 32 | 50% | cheap | 132 / 256 / 132 | 0.523 ms | 0.532 ms | 0.625 ms | 1.18x |\r\n| 64 | 8 | 0% | cheap | n/a / 512 / 512 | n/a | 0.671 ms | 1.815 ms | 2.71x |\r\n| 64 | 8 | 0% | yield_once | n/a / 512 / 512 | n/a | 0.700 ms | 1.894 ms | 2.71x |\r\n| 512 | 32 | 0% | cheap | n/a / 16384 / 16384 | n/a | 20.414 ms | 61.045 ms | 2.99x |\r\n\r\nInterpretation:\r\n\r\n- The new batch API is not intended to be a universal faster path for cheap disjoint misses.\r\n- In no-overlap scenarios, it has expected overhead from per-key flight coordination, validation, and result ordering.\r\n- The value is semantic: overlapping cold batch requests preserve batch/coalesced loading while avoiding duplicate loads for shared keys.\r\n- In full-overlap scenarios, the new batch API avoids the duplicate work in the manual `get` + load + `insert` pattern and is faster in this microbenchmark.\r\n- The single-key loop still has strong single-flight behavior, but it cannot give a multi-key loader the full missing-key set for coalesced IO.",
-    "author": "zouhuajian",
-    "author_status": "first_time",
+    "number": 7477,
+    "url": "https://github.com/lance-format/lance/pull/7477",
+    "title": "perf: merge half-open range queries on the same BTree index",
+    "body": "## Problem\nA filter like `fqdn = x AND log_time >= A AND log_time <= B AND channel = y` is compiled into two **half-open** range queries on the same BTree index (`log_time >= A` with an unbounded upper bound, and `log_time <= B` with an unbounded lower bound). Each half-open range matches nearly all BTree pages, so the entire index is loaded even though only the pages inside `[A, B]` are needed.\n\n## Fix\nAdd a `ScalarIndexExpr::optimize()` pass that:\n1. flattens the AND tree to collect leaf queries,\n2. merges Range queries on the same index into a single closed range,\n3. rebuilds the AND tree.\n\nIt is called from `ScalarIndexExec::new()` before execution.\n\n## Benchmark\n\n**Method:** build a real BTree index over 100,000 sorted unique `i32` values, split into ~100 pages (`batch_size = 1000`). Query a narrow 50-value window in the middle of the range. Measure both (a) the number of BTree pages loaded (via `LocalMetricsCollector.parts_loaded`) and (b) query wall-clock time, for:\n- **Before** \u2014 the two half-open range searches the AND tree issues separately: `value >= a` (unbounded upper) and `value <= b` (unbounded lower);\n- **After** \u2014 the single closed range `[a, b]` produced by `optimize()`.\n\n**Pages loaded:**\n\n| Execution | BTree pages loaded |\n|---|---|\n| Before (two half-open ranges) | 101 (\u2248 whole index) |\n| After (merged closed range) | 1 |\n\n\u2248 **101x** fewer index pages loaded for this query shape.\n\n**Query latency:**\n\n| Scenario | Before (two half-open) | After (merged) | Speedup |\n|---|---|---|---|\n| In-memory (CPU/decode bound) | 18.6 ms/q | 0.28 ms/q | ~67x |\n| Per-page latency (2 ms/GET) | 76.7 ms/q | 10.8 ms/q | ~7x |\n\nIn-memory, the ~67x reflects the decode/scan cost of touching the whole index vs a single page. On remote storage the wall-clock gain depends on whether the workload is latency-bound (page fetches are parallelized, so the gain is smaller) or bandwidth-bound (scales with the ~100x reduction in bytes read).\n\n## Test\n`test_optimize_*` suite in `expression.rs` covers the merge logic (nested AND trees, exclusive bounds, no-merge cases for different indices / non-range queries, OR/NOT preservation, recheck propagation).",
+    "author": "xloya",
+    "author_status": "regular",
     "files_changed": [
-      "Cargo.lock",
-      "rust/lance-core/Cargo.toml",
-      "rust/lance-core/benches/cache_batch.rs",
-      "rust/lance-core/src/cache/backend.rs",
-      "rust/lance-core/src/cache/mod.rs",
-      "rust/lance-core/src/cache/moka.rs"
+      "rust/lance-index/src/scalar/expression.rs",
+      "rust/lance/src/io/exec/scalar_index.rs"
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 6.4,
+    "age_in_state_hrs": 157.2,
     "lane": "fresh",
     "acuity": {
       "risk": "med",
-      "urgency": "low",
+      "urgency": "high",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
       "size_bucket": "XL",
-      "additions": 2744,
-      "deletions": 116,
-      "files": 6
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "red",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "large-blast-radius"
-      ],
-      "reason": "Large blast radius (XL diff)"
-    },
-    "head_oid": "50dd286d26ea4b39a35f829a1951fd6fbff33a12"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7510,
-    "url": "https://github.com/lance-format/lance/pull/7510",
-    "title": "fix: avoid stack overflow on deep logical filters",
-    "body": "This fixes OSS-1232 by preventing deeply chained `AND` / `OR` SQL filters from overflowing the Rust stack during Lance's SQL filter planning.\n\nThe immediate root cause is in Lance's side of the SQL planning path. We first cloned deeply nested sqlparser AST expressions, and then recursively converted left-deep `AND` / `OR` trees into DataFusion expressions. A user-supplied flat logical filter could therefore abort the process before Lance returned an error.\n\nThis PR is intentionally a Lance-side workaround: it moves parsed SQL expressions out of the AST instead of recursively cloning them, then flattens same-operator logical chains and rebuilds a balanced DataFusion expression tree. That protects the known vulnerable path without waiting for upstream DataFusion/sqlparser behavior to change.\n\nA more systematic follow-up should add shared expression complexity/depth limits across SQL, Substrait, DataFusion-expression inputs, merge-insert predicates, and any later optimization / planning passes, so Lance rejects pathological expressions consistently instead of fixing individual recursive call sites one by one.\n",
-    "author": "Xuanwo",
-    "author_status": "core",
-    "files_changed": [
-      "rust/lance-datafusion/src/planner.rs",
-      "rust/lance-datafusion/src/sql.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 30.7,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "low",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "M",
-      "additions": 107,
-      "deletions": 27,
+      "additions": 996,
+      "deletions": 1,
       "files": 2
     },
     "relevance": {
@@ -93,302 +42,51 @@
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "5cb1cf7b66fa4f77420ccdc329c14091532ae22d"
+    "head_oid": "89cf08feee0eb53cc322d876d893747666b5971f"
   },
   {
     "repo": "lance-format/lance",
-    "number": 7498,
-    "url": "https://github.com/lance-format/lance/pull/7498",
-    "title": "fix(arrow): preserve inner nulls in convert_to_floating_point",
-    "body": "## What\n\n`FixedSizeListArrayExt::convert_to_floating_point` (used throughout the vector-indexing path \u2014 ivf, kmeans, residual, l2/dot/cosine distance) built each integer arm's float values with `from_iter_values(... .filter_map(|x| x.map(...)))`. `filter_map` **drops null inner elements**, so the values array gets shorter while the outer `FixedSizeList` null buffer is kept at full length (`self.nulls().cloned()`). For a nullable integer vector this either panics in `FixedSizeListArray::new` (when the surviving element count is not a multiple of the list size) or silently shifts every later element into the wrong list.\n\n## Fix\n\nSwitch each arm from `from_iter_values(... filter_map(|x| x.map(...)))` to `from_iter(... map(|x| x.map(...)))`, which keeps nulls in place (same length, null positions preserved). For all-non-null data this is identical to the previous behavior, so existing callers are unaffected.\n\n## Test\n\n`test_convert_to_floating_point_preserves_inner_nulls` builds a `FixedSizeList<Int8>` with a null inner element and asserts the conversion keeps 2 lists / 4 values with the null still at position 1. It panics on `main` (3 surviving values, `3 % 2 != 0`) and passes with the fix.\n\n`cargo test -p lance-arrow`, `cargo clippy -p lance-arrow --tests -- -D warnings`, and `cargo fmt -- --check` are green.\n\n## Note\n\nThe per-type structure (Int8/16/32 \u2192 Float32, Int64/UInt8/UInt32 \u2192 Float64) is left as-is. A follow-up could collapse the whole match to `arrow_cast::cast`, but that would add an `arrow-cast` dependency to this crate, so it's intentionally kept out of this focused correctness fix.\n",
-    "author": "LuciferYang",
-    "author_status": "core",
+    "number": 7559,
+    "url": "https://github.com/lance-format/lance/pull/7559",
+    "title": "chore(deps): bump the cargo group across 1 directory with 9 updates",
+    "body": "Bumps the cargo group with 9 updates in the /java/lance-jni directory:\n\n| Package | From | To |\n| --- | --- | --- |\n| [jni](https://github.com/jni-rs/jni-rs) | `0.21.1` | `0.22.4` |\n| [log](https://github.com/rust-lang/log) | `0.4.32` | `0.4.33` |\n| [env_logger](https://github.com/rust-cli/env_logger) | `0.11.10` | `0.11.11` |\n| [uuid](https://github.com/uuid-rs/uuid) | `1.23.3` | `1.23.4` |\n| [arc-swap](https://github.com/vorner/arc-swap) | `1.9.1` | `1.9.2` |\n| [io-uring](https://github.com/tokio-rs/io-uring) | `0.7.12` | `0.7.13` |\n| [xxhash-rust](https://github.com/DoumanAsh/xxhash-rust) | `0.8.15` | `0.8.16` |\n| [cc](https://github.com/rust-lang/cc-rs) | `1.2.64` | `1.2.65` |\n| [rustls-pki-types](https://github.com/rustls/pki-types) | `1.14.1` | `1.15.0` |\n\n\nUpdates `jni` from 0.21.1 to 0.22.4\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/jni-rs/jni-rs/releases\">jni's releases</a>.</em></p>\n<blockquote>\n<h2>Release JNI 0.22.4</h2>\n<h3>Added</h3>\n<ul>\n<li><code>JCharSequence</code> bindings for <code>java.lang.CharSequence</code> (including <code>AsRef&lt;JCharSequence&gt;</code> + <code>.as_char_sequence()</code> for <code>JString</code>) (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/793\">#793</a>)</li>\n<li><code>bind_java_type</code> supports <code>non_null</code> qualifier/property for methods and fields to map null references to <code>Error::NullPtr</code> (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/795\">#795</a>)</li>\n<li><code>bind_java_type</code> supports <code>#[cfg()]</code> attributes on methods and fields, to conditionally compile them based on features or other cfg conditions (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/795\">#797</a>)</li>\n<li><code>JValueOwned::check_null()</code> + <code>::is_null()</code> methods for ergonomic null checks on owned (returned) values (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/798\">#798</a>)</li>\n<li>More readable type accessors for <code>JValueOwned</code>, like <code>.into_bool()</code> instead of <code>.z()</code>, <code>.into_object()</code> instead of <code>.l()</code>, etc (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/798\">#798</a>)</li>\n</ul>\n<h4>Fixed</h4>\n<ul>\n<li><code>jni_mangle</code> now includes <code>docs/macros/jni_mangle.md</code> in the crate documentation, so the macro's documentation is visible on docs.rs and in IDEs (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/799\">#799</a>)</li>\n</ul>\n<p><strong>Full Changelog</strong>: <a href=\"https://github.com/jni-rs/jni-rs/compare/v0.22.3...v0.22.4\">https://github.com/jni-rs/jni-rs/compare/v0.22.3...v0.22.4</a></p>\n<h2>Release JNI 0.22.3</h2>\n<p>No functional change in this release but it fixes the <a href=\"https://docs.rs/jni/latest/jni/\">docs.rs</a> build by bumping the <code>simd_cesu8</code> dep to &gt;= 1.1.1 which no longer has an automatically-enabled &quot;nightly&quot; feature that may affect the docs.rs build (1.1.x is now also MSRV compatible).</p>\n<p><em>Note: Technically we shouldn't need this release (since the <code>simd_cesu8</code> release alone will have fixed the build issue) but the other reason for the release is that the crates.io feature for queuing docs.rs rebuilds is not currently usable in our situation. docs.rs is currently fighting through a <a href=\"https://docs.rs/releases/queue\">huge backlog</a> of low-priority build jobs that will likely to take over a week to clear (we moved about 500 spots in two days, out of ~3k crates queued).</em></p>\n<h2>Release JNI 0.22.2</h2>\n<p><em><em>Note</em>: although no breaking API change was made in this release there were some important fixes made, including a few non-trivial changes to how exceptions are handled and some important safety / soundness fixes made in the re-exported <code>jni-macros</code>.</em></p>\n<p><em>For these reasons I'm going to <em>again</em> yank the previous 0.22.1 release after this is published, again taking into account that 0.22.1 was itself only released very recently and it should still be relatively unlikely that anyone has strictly locked in a 0.22.1 dependency.</em></p>\n<p><em>Another benefit to yanking 0.22.1 is that it allows me to pin the <code>jni-macros</code> dependency via <code>=0.22.2</code> in this release so that in future releases I don't need to be worried that a new <code>jni-macros</code> release needs to be backwards compatible with all prior <code>jni</code> releases (so macros can take advantage of new <code>jni</code> features).</em></p>\n<p><em>Hopefully things will be smoother moving forward, now that more people have been starting to update to 0.22.x and there are more people testing it.</em></p>\n<h3>Added</h3>\n<p>Adds bindings for the following <code>java.lang</code> errors / exceptions (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/767\">#767</a>):</p>\n<ul>\n<li><code>JArrayIndexOutOfBoundsException</code> (<code>java.lang.ArrayIndexOutOfBoundsException</code>)</li>\n<li><code>JArrayStoreException</code> (<code>java.lang.ArrayStoreException</code>)</li>\n<li><code>JClassCircularityError</code> (<code>java.lang.ClassCircularityError</code>)</li>\n<li><code>JClassFormatError</code> (<code>java.lang.ClassFormatError</code>)</li>\n<li><code>JExceptionInInitializerError</code> (<code>java.lang.ExceptionInInitializerError</code>)</li>\n<li><code>JClassNotFoundException</code> (<code>java.lang.ClassNotFoundException</code>)</li>\n<li><code>JIllegalArgumentException</code> (<code>java.lang.IllegalArgumentException</code>)</li>\n<li><code>JIllegalMonitorStateException</code> (<code>java.lang.IllegalMonitorStateException</code>)</li>\n<li><code>JInstantiationException</code> (<code>java.lang.InstantiationException</code>)</li>\n<li><code>JLinkageError</code> (<code>java.lang.LinkageError</code>)</li>\n<li><code>JNoClassDefFoundError</code> (<code>java.lang.NoClassDefFoundError</code>)</li>\n<li><code>JNoSuchFieldError</code> (<code>java.lang.NoSuchFieldError</code>)</li>\n<li><code>JNoSuchMethodError</code> (<code>java.lang.NoSuchMethodError</code>)</li>\n<li><code>JNumberFormatException</code> (<code>java.lang.NumberFormatException</code>)</li>\n<li><code>JOutOfMemoryError</code> (<code>java.lang.OutOfMemoryError</code>)</li>\n<li><code>JRuntimeException</code> (<code>java.lang.RuntimeException</code>)</li>\n<li><code>JSecurityException</code> (<code>java.lang.SecurityException</code>)</li>\n</ul>\n<!-- raw HTML omitted -->\n</blockquote>\n<p>... (truncated)</p>\n</details>\n<details>\n<summary>Changelog</summary>\n<p><em>Sourced from <a href=\"https://github.com/jni-rs/jni-rs/blob/master/CHANGELOG.md\">jni's changelog</a>.</em></p>\n<blockquote>\n<h2>[0.22.4] \u2014 2026-03-16</h2>\n<h3>Added</h3>\n<ul>\n<li><code>JCharSequence</code> bindings for <code>java.lang.CharSequence</code> (including <code>AsRef&lt;JCharSequence&gt;</code> + <code>.as_char_sequence()</code> for <code>JString</code>) (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/793\">#793</a>)</li>\n<li><code>bind_java_type</code> supports <code>non_null</code> qualifier/property for methods and fields to map null references to <code>Error::NullPtr</code> (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/795\">#795</a>)</li>\n<li><code>bind_java_type</code> supports <code>#[cfg()]</code> attributes on methods and fields, to conditionally compile them based on features or other cfg conditions (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/795\">#797</a>)</li>\n<li><code>JValueOwned::check_null()</code> + <code>::is_null()</code> methods for ergonomic null checks on owned (returned) values (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/798\">#798</a>)</li>\n<li>More readable type accessors for <code>JValueOwned</code>, like <code>.into_bool()</code> instead of <code>.z()</code>, <code>.into_object()</code> instead of <code>.l()</code>, etc (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/798\">#798</a>)</li>\n</ul>\n<h4>Fixed</h4>\n<ul>\n<li><code>jni_mangle</code> now includes <code>docs/macros/jni_mangle.md</code> in the crate documentation, so the macro's documentation is visible on docs.rs and in IDEs (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/799\">#799</a>)</li>\n</ul>\n<h2>[0.22.3] \u2014 2026-03-05</h2>\n<h4>Fixed</h4>\n<ul>\n<li>docs.rs build: Bumps <code>simd_cesu8</code> dep to &gt;= 1.1.1 which no longer has an automatically-enabled\n&quot;nightly&quot; feature that may affect the docs.rs build (1.1.x is now also MSRV compatible) (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/790\">#790</a>)</li>\n</ul>\n<h2>[0.22.2] \u2014 2026-03-01</h2>\n<p><em><em>Note</em>: although no breaking API change was made in this release there were some important fixes\nmade, including a few non-trivial changes to how exceptions are handled and some important safety /\nsoundness fixes made in the re-exported <code>jni-macros</code>.</em></p>\n<p><em>For these reasons I'm going to <em>again</em> yank the previous 0.22.1 release after this is published,\nagain taking into account that 0.22.1 was itself only released very recently and it should still be\nrelatively unlikely that anyone has strictly locked in a 0.22.1 dependency.</em></p>\n<p><em>Another benefit to yanking 0.22.1 is that it allows me to pin the <code>jni-macros</code> dependency via\n<code>=0.22.2</code> in this release so that in future releases I don't need to be worried that a new\n<code>jni-macros</code> release needs to be backwards compatible with all prior <code>jni</code> releases (so macros can\ntake advantage of new <code>jni</code> features).</em></p>\n<p><em>Hopefully things will be smoother moving forward, now that more people have been starting to update\nto 0.22.x and there are more people testing it.</em></p>\n<h3>Added</h3>\n<p>Adds bindings for the following <code>java.lang</code> errors / exceptions (<a href=\"https://redirect.github.com/jni-rs/jni-rs/pull/767\">#767</a>):</p>\n<ul>\n<li><code>JArrayIndexOutOfBoundsException</code> (<code>java.lang.ArrayIndexOutOfBoundsException</code>)</li>\n<li><code>JArrayStoreException</code> (<code>java.lang.ArrayStoreException</code>)</li>\n<li><code>JClassCircularityError</code> (<code>java.lang.ClassCircularityError</code>)</li>\n<li><code>JClassFormatError</code> (<code>java.lang.ClassFormatError</code>)</li>\n<li><code>JExceptionInInitializerError</code> (<code>java.lang.ExceptionInInitializerError</code>)</li>\n<li><code>JClassNotFoundException</code> (<code>java.lang.ClassNotFoundException</code>)</li>\n<li><code>JIllegalArgumentException</code> (<code>java.lang.IllegalArgumentException</code>)</li>\n<li><code>JIllegalMonitorStateException</code> (<code>java.lang.IllegalMonitorStateException</code>)</li>\n</ul>\n<!-- raw HTML omitted -->\n</blockquote>\n<p>... (truncated)</p>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/5ae9458a4ec44c5318f37ddc7569c1d4ae8a69e7\"><code>5ae9458</code></a> Release jni 0.22.4</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/2f954cdf25ad43fd3656fba123fa8c0071b03d72\"><code>2f954cd</code></a> Fix copy&amp;paste error s/JString::collection/JString::as_char_sequence/</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/33045a124105c939d1e2cbdcb5a39e5d868ffa03\"><code>33045a1</code></a> Release jni-macros 0.22.4</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/527703e044558c0604ebd1b29ba9f7fa2c6a7d0e\"><code>527703e</code></a> No longer recommend passing <code>&amp;mut Env</code> as the last argument</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/ce7130b10b76aa0dfe54d6951c3416f32c0f18a1\"><code>ce7130b</code></a> Import docs/macros/jni_mangle.md docs for jni_mangle macro</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/d80bf234cfa44c716925ea8ce2097b22bbe2e451\"><code>d80bf23</code></a> Add more-ergonomic JValueOwned accessors</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/5ffd96a2aeb20b60ade1049c011e75b784d73c2a\"><code>5ffd96a</code></a> bind_java_type: Support #[cfg()] guarded methods/fields</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/b498e9f87018eb2821be08984c5288e170d799a0\"><code>b498e9f</code></a> bind_java_type: support non_null methods/fields</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/1f74e4b9c65acac8ee331be0be9df05431413fef\"><code>1f74e4b</code></a> Add <code>objects::JCharSequence</code> binding</li>\n<li><a href=\"https://github.com/jni-rs/jni-rs/commit/25f810ddd7ce8ac3c93c1c8e98eb6e854e8b2a7d\"><code>25f810d</code></a> Release jni 0.22.3</li>\n<li>Additional commits viewable in <a href=\"https://github.com/jni-rs/jni-rs/compare/v0.21.1...v0.22.4\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `log` from 0.4.32 to 0.4.33\n<details>\n<summary>Changelog</summary>\n<p><em>Sourced from <a href=\"https://github.com/rust-lang/log/blob/master/CHANGELOG.md\">log's changelog</a>.</em></p>\n<blockquote>\n<h2>[0.4.33] - 2026-06-20</h2>\n<h2>What's Changed</h2>\n<ul>\n<li>Fixed key comparison by <a href=\"https://github.com/matteo-zeggiotti-ok\"><code>@\u200bmatteo-zeggiotti-ok</code></a> in <a href=\"https://redirect.github.com/rust-lang/log/pull/732\">rust-lang/log#732</a></li>\n</ul>\n<h2>New Contributors</h2>\n<ul>\n<li><a href=\"https://github.com/matteo-zeggiotti-ok\"><code>@\u200bmatteo-zeggiotti-ok</code></a> made their first contribution in <a href=\"https://redirect.github.com/rust-lang/log/pull/732\">rust-lang/log#732</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a href=\"https://github.com/rust-lang/log/compare/0.4.32...0.4.33\">https://github.com/rust-lang/log/compare/0.4.32...0.4.33</a></p>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/rust-lang/log/commit/f405739f3a15a3f00680c793e1e1fa7e57d26ba4\"><code>f405739</code></a> Merge pull request <a href=\"https://redirect.github.com/rust-lang/log/issues/734\">#734</a> from rust-lang/cargo/0.4.33</li>\n<li><a href=\"https://github.com/rust-lang/log/commit/6a24abf0835cef62e3d882287c97307dd3ecb403\"><code>6a24abf</code></a> prepare for 0.4.33 release</li>\n<li><a href=\"https://github.com/rust-lang/log/commit/87e062162e051d54bb553aacae3f0c6c4c213e59\"><code>87e0621</code></a> Merge pull request <a href=\"https://redirect.github.com/rust-lang/log/issues/732\">#732</a> from matteo-zeggiotti-ok/fix-key-comparison</li>\n<li><a href=\"https://github.com/rust-lang/log/commit/a9b57119a631249fc8e881c7ef78e2028aacb823\"><code>a9b5711</code></a> Review: fallback to the &amp;str hash</li>\n<li><a href=\"https://github.com/rust-lang/log/commit/cc89cc6e41190de36892e33fff48e5f48cf57fa9\"><code>cc89cc6</code></a> Review: fixed other comparisons</li>\n<li><a href=\"https://github.com/rust-lang/log/commit/920e7dc2811c18a228bf78e818196de950659d85\"><code>920e7dc</code></a> Review: fixed comparison on <code>MaybeStaticStr</code></li>\n<li><a href=\"https://github.com/rust-lang/log/commit/0d71d3c685f2e23b1ad209b48408efe1205b18b0\"><code>0d71d3c</code></a> Fixed key comparison</li>\n<li>See full diff in <a href=\"https://github.com/rust-lang/log/compare/0.4.32...0.4.33\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `env_logger` from 0.11.10 to 0.11.11\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/rust-cli/env_logger/releases\">env_logger's releases</a>.</em></p>\n<blockquote>\n<h2>v0.11.11</h2>\n<h2>[0.11.11] - 2026-06-25</h2>\n<h3>Internal</h3>\n<ul>\n<li>Updated <code>env_filter</code></li>\n</ul>\n</blockquote>\n</details>\n<details>\n<summary>Changelog</summary>\n<p><em>Sourced from <a href=\"https://github.com/rust-cli/env_logger/blob/main/CHANGELOG.md\">env_logger's changelog</a>.</em></p>\n<blockquote>\n<h2>[0.11.11] - 2026-06-25</h2>\n<h3>Internal</h3>\n<ul>\n<li>Updated <code>env_filter</code></li>\n</ul>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/b4d3f2b8dd3f1c3362f07da8f6f4a30c701358cf\"><code>b4d3f2b</code></a> chore: Release</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/cc2b2efcd7454be82ca49f8ac165b3fbc3095ae3\"><code>cc2b2ef</code></a> chore: Release</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/69e27d1e822d8f7e6b788bedffcb00575127553f\"><code>69e27d1</code></a> docs: Update changelog</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/166880db07de228ab22dd32f06b408464e73ac79\"><code>166880d</code></a> Merge pull request <a href=\"https://redirect.github.com/rust-cli/env_logger/issues/411\">#411</a> from epage/parse</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/0a580d06e7ac42816e1a84e06fe6417d6973f8e6\"><code>0a580d0</code></a> fix(filter): Remove 'parse' on no_std</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/78d8ef116efbf981e272ad41c0b380298e4b2060\"><code>78d8ef1</code></a> Merge pull request <a href=\"https://redirect.github.com/rust-cli/env_logger/issues/404\">#404</a> from cagatay-y/feature/filter-no_std</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/132fe86c8cb8e5df4fca7d71067a8d862a366b95\"><code>132fe86</code></a> feat(filter): Add support for no_std environments</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/4feafa4c3c5baeec6d8646bb73a35246882a731d\"><code>4feafa4</code></a> refactor(env_filter): Fix unreachable pub warning</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/92f8d8d08343c30e60b5f54455d7e16c810fcf11\"><code>92f8d8d</code></a> Merge pull request <a href=\"https://redirect.github.com/rust-cli/env_logger/issues/410\">#410</a> from rust-cli/renovate/crate-ci-typos-1.x</li>\n<li><a href=\"https://github.com/rust-cli/env_logger/commit/4e57784e0a878d9e6510d71ee4f63ec96b8fdcc8\"><code>4e57784</code></a> chore(deps): Update pre-commit hook crate-ci/typos to v1.47.0</li>\n<li>Additional commits viewable in <a href=\"https://github.com/rust-cli/env_logger/compare/v0.11.10...v0.11.11\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `uuid` from 1.23.3 to 1.23.4\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/uuid-rs/uuid/releases\">uuid's releases</a>.</em></p>\n<blockquote>\n<h2>v1.23.4</h2>\n<h2>What's Changed</h2>\n<ul>\n<li>Fix up name of fuzz script in readme by <a href=\"https://github.com/KodrAus\"><code>@\u200bKodrAus</code></a> in <a href=\"https://redirect.github.com/uuid-rs/uuid/pull/888\">uuid-rs/uuid#888</a></li>\n<li>document fixes by <a href=\"https://github.com/frostyplanet\"><code>@\u200bfrostyplanet</code></a> in <a href=\"https://redirect.github.com/uuid-rs/uuid/pull/889\">uuid-rs/uuid#889</a></li>\n<li>Prepare for 1.23.4 release by <a href=\"https://github.com/KodrAus\"><code>@\u200bKodrAus</code></a> in <a href=\"https://redirect.github.com/uuid-rs/uuid/pull/890\">uuid-rs/uuid#890</a></li>\n</ul>\n<h2>New Contributors</h2>\n<ul>\n<li><a href=\"https://github.com/frostyplanet\"><code>@\u200bfrostyplanet</code></a> made their first contribution in <a href=\"https://redirect.github.com/uuid-rs/uuid/pull/889\">uuid-rs/uuid#889</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a href=\"https://github.com/uuid-rs/uuid/compare/v1.23.3...v1.23.4\">https://github.com/uuid-rs/uuid/compare/v1.23.3...v1.23.4</a></p>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/3296d64a196e0303c486538cdf143080c681ae2e\"><code>3296d64</code></a> Merge pull request <a href=\"https://redirect.github.com/uuid-rs/uuid/issues/890\">#890</a> from uuid-rs/cargo/v1.23.4</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/cba53d0da2089109ea23fd964c8ffd21b0165a49\"><code>cba53d0</code></a> prepare for 1.23.4 release</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/e347af48aab7f7dd6b58a6bb5b578d467660e327\"><code>e347af4</code></a> Merge pull request <a href=\"https://redirect.github.com/uuid-rs/uuid/issues/889\">#889</a> from frostyplanet/main</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/e9bf55c22216c27ff2283a6c427a7b13e025c75e\"><code>e9bf55c</code></a> doc: Fix broken link warnings</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/5351af40a0bc3243a580c40d313f243d2435bad6\"><code>5351af4</code></a> doc: Enable feature flag label for docs.rs</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/1e6a9669e30d53bae50fd52f16b7a1961fda236b\"><code>1e6a966</code></a> Merge pull request <a href=\"https://redirect.github.com/uuid-rs/uuid/issues/888\">#888</a> from uuid-rs/KodrAus-patch-1</li>\n<li><a href=\"https://github.com/uuid-rs/uuid/commit/c9619f639c0e2d5f932fa4e3588aed859f7dc5d0\"><code>c9619f6</code></a> fix up name of fuzz script in readme</li>\n<li>See full diff in <a href=\"https://github.com/uuid-rs/uuid/compare/v1.23.3...v1.23.4\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `arc-swap` from 1.9.1 to 1.9.2\n<details>\n<summary>Changelog</summary>\n<p><em>Sourced from <a href=\"https://github.com/vorner/arc-swap/blob/master/CHANGELOG.md\">arc-swap's changelog</a>.</em></p>\n<blockquote>\n<h1>1.9.2</h1>\n<ul>\n<li>Document RefCnt must not panic (<a href=\"https://redirect.github.com/vorner/arc-swap/issues/208\">#208</a>).</li>\n</ul>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li>See full diff in <a href=\"https://github.com/vorner/arc-swap/commits\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `io-uring` from 0.7.12 to 0.7.13\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/6789e176157cdc88a64b8f2ca9c56ef48756c1a7\"><code>6789e17</code></a> release 0.7.13 (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/401\">#401</a>)</li>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/f3d36638571e4d41c36a257c238a2c00eca5df04\"><code>f3d3663</code></a> Add <code>register_napi</code>/<code>unregister_napi</code> methods (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/397\">#397</a>)</li>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/d8356f9a45fae79e7f8fd779004834fce941f949\"><code>d8356f9</code></a> io-uring-test: fix flaky epoll_wait_race short-read assertion (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/400\">#400</a>)</li>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/eb8557c7a62ee8d38f1a54ad62bdb27c18265c77\"><code>eb8557c</code></a> Add <code>Parameters::is_feature_no_iowait</code> accessor (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/399\">#399</a>)</li>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/03539b38030d17384a6833d480b61a19179ce4c0\"><code>03539b3</code></a> Add <code>register_buffers_clone</code> for cloning registered buffers (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/396\">#396</a>)</li>\n<li><a href=\"https://github.com/tokio-rs/io-uring/commit/c58afbf007b706c2b8f69993304912faf662dd69\"><code>c58afbf</code></a> feat: add ioprio method for Send and Recv (<a href=\"https://redirect.github.com/tokio-rs/io-uring/issues/394\">#394</a>)</li>\n<li>See full diff in <a href=\"https://github.com/tokio-rs/io-uring/compare/v0.7.12...v0.7.13\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `xxhash-rust` from 0.8.15 to 0.8.16\n<details>\n<summary>Commits</summary>\n<ul>\n<li>See full diff in <a href=\"https://github.com/DoumanAsh/xxhash-rust/commits\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `cc` from 1.2.64 to 1.2.65\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/rust-lang/cc-rs/releases\">cc's releases</a>.</em></p>\n<blockquote>\n<h2>cc-v1.2.65</h2>\n<h3>Other</h3>\n<ul>\n<li>Regenerate target info (<a href=\"https://redirect.github.com/rust-lang/cc-rs/pull/1763\">#1763</a>)</li>\n</ul>\n</blockquote>\n</details>\n<details>\n<summary>Changelog</summary>\n<p><em>Sourced from <a href=\"https://github.com/rust-lang/cc-rs/blob/main/CHANGELOG.md\">cc's changelog</a>.</em></p>\n<blockquote>\n<h2><a href=\"https://github.com/rust-lang/cc-rs/compare/cc-v1.2.64...cc-v1.2.65\">1.2.65</a> - 2026-06-19</h2>\n<h3>Other</h3>\n<ul>\n<li>Regenerate target info (<a href=\"https://redirect.github.com/rust-lang/cc-rs/pull/1763\">#1763</a>)</li>\n</ul>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/rust-lang/cc-rs/commit/640c66a8b8a225146a16068bad637d5e3417ffbf\"><code>640c66a</code></a> chore(cc): release v1.2.65 (<a href=\"https://redirect.github.com/rust-lang/cc-rs/issues/1764\">#1764</a>)</li>\n<li><a href=\"https://github.com/rust-lang/cc-rs/commit/26e1972e89d30f6143fde642c63efe909a1dc5bc\"><code>26e1972</code></a> Regenerate target info (<a href=\"https://redirect.github.com/rust-lang/cc-rs/issues/1763\">#1763</a>)</li>\n<li><a href=\"https://github.com/rust-lang/cc-rs/commit/9858eb891fae17fa8ddbcf5124e9657d5d5a6f93\"><code>9858eb8</code></a> Bump taiki-e/install-action from 2.77.6 to 2.81.8 (<a href=\"https://redirect.github.com/rust-lang/cc-rs/issues/1758\">#1758</a>)</li>\n<li><a href=\"https://github.com/rust-lang/cc-rs/commit/3bcc923987c9b5ef45f3db11e9cf27c2dca035e6\"><code>3bcc923</code></a> Bump release-plz/action from 0.5.129 to 0.5.130 (<a href=\"https://redirect.github.com/rust-lang/cc-rs/issues/1759\">#1759</a>)</li>\n<li>See full diff in <a href=\"https://github.com/rust-lang/cc-rs/compare/cc-v1.2.64...cc-v1.2.65\">compare view</a></li>\n</ul>\n</details>\n<br />\n\nUpdates `rustls-pki-types` from 1.14.1 to 1.15.0\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/rustls/pki-types/releases\">rustls-pki-types's releases</a>.</em></p>\n<blockquote>\n<h2>v/1.15.0</h2>\n<p><strong>New feature</strong>: add a constructor for <code>FipsStatus::Certified</code>.</p>\n<h2>What's Changed</h2>\n<ul>\n<li>ci: sync cargo-check-external-types nightly by <a href=\"https://github.com/cpu\"><code>@\u200bcpu</code></a> in <a href=\"https://redirect.github.com/rustls/pki-types/pull/109\">rustls/pki-types#109</a></li>\n<li>1.15.0: ensure <code>FipsStatus::Certified</code> is usable  by <a href=\"https://github.com/ctz\"><code>@\u200bctz</code></a> in <a href=\"https://redirect.github.com/rustls/pki-types/pull/110\">rustls/pki-types#110</a></li>\n</ul>\n<p><strong>Full Changelog</strong>: <a href=\"https://github.com/rustls/pki-types/compare/v/1.14.1...v/1.15.0\">https://github.com/rustls/pki-types/compare/v/1.14.1...v/1.15.0</a></p>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/rustls/pki-types/commit/ab46a65e3b5f25ef4b33eba6805c9a23cd01aae1\"><code>ab46a65</code></a> Prepare 1.15.0</li>\n<li><a href=\"https://github.com/rustls/pki-types/commit/13d2dee79f2bcbe341186fd8cc5c64446fc86cba\"><code>13d2dee</code></a> Ensure <code>FipsStatus::Certified</code> is usable</li>\n<li><a href=\"https://github.com/rustls/pki-types/commit/23bc39f3ab01698d32651aac990a9dc4412a588a\"><code>23bc39f</code></a> ci: sync cargo-check-external-types nightly</li>\n<li>See full diff in <a href=\"https://github.com/rustls/pki-types/compare/v/1.14.1...v/1.15.0\">compare view</a></li>\n</ul>\n</details>\n<br />\n",
+    "author": "dependabot",
+    "author_status": "first_time",
     "files_changed": [
-      "rust/lance-arrow/src/lib.rs"
+      "java/lance-jni/Cargo.lock"
     ],
-    "blocked_on": "me",
+    "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 101.7,
-    "lane": "fresh",
+    "age_in_state_hrs": 1.6,
+    "lane": "housekeeping",
     "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
+      "risk": "low",
+      "urgency": "low",
+      "rationale": "docs/tests/config/deps only"
     },
     "effort": {
-      "size_bucket": "M",
-      "additions": 69,
-      "deletions": 12,
-      "files": 1
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "acbf7462c81588d1ad62124fb26df2518ec1293e"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7497,
-    "url": "https://github.com/lance-format/lance/pull/7497",
-    "title": "refactor(arrow): simplify normalize_slicing to a no-op",
-    "body": "## What\n\n`StructArrayExt::normalize_slicing` folds a struct array's slice offset into its children. But in arrow-rs a `StructArray` cannot carry a slice offset in the first place \u2014 both `Array::slice` and `StructArray::from(ArrayData)` push any offset into the children (slicing them) at construction. So every `StructArray` that reaches `normalize_slicing` already satisfies the early-return condition (`offset() == 0 && all columns.len() == len()`), and the `normalized_struct_array_data` branch is dead code.\n\nVerified by probe: `make_array(struct_data.into_builder().offset(1).len(2).build())` comes back as `offset 0, child len 2, validity preserved`. The crate's own `test_arrow_cpp_slicing` constructs exactly this shape and also hits the early-return.\n\n## Change\n\n- Remove the dead `normalized_struct_array_data` (~30 lines) and its `arrow_data` import.\n- Collapse `normalize_slicing` to `Ok(self.clone())`, with a `debug_assert!` that trips in tests if a future arrow-rs change ever produces a non-normalized `StructArray`.\n- Keep the public `normalize_slicing` method (no API break) and update its docs to describe the invariant honestly.\n\nBehavior is unchanged: the existing `test_normalize_slicing_no_offset`, `test_arrow_rs_slicing`, and `test_arrow_cpp_slicing` pass without modification. `cargo test -p lance-arrow`, `cargo clippy -p lance-arrow --tests -- -D warnings`, and `cargo fmt -- --check` are green.\n\n## Note for reviewers\n\nThe \"dead code\" claim rests on arrow-rs's `StructArray` representation (no struct-level offset). If you know of a path that produces a non-normalized `StructArray` (e.g. a specific FFI / C Data Interface import), the `debug_assert` will catch it in tests \u2014 and I'm happy to keep the original normalization logic instead if you'd prefer it as a defensive net.\n",
-    "author": "LuciferYang",
-    "author_status": "core",
-    "files_changed": [
-      "rust/lance-arrow/src/struct.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 103.3,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "M",
+      "size_bucket": "S",
       "additions": 18,
-      "deletions": 47,
+      "deletions": 18,
       "files": 1
     },
     "relevance": {
       "score": null,
-      "requested": true
+      "requested": false
     },
-    "last_reviewed_sha": null,
+    "last_reviewed_sha": "9b39eb015ad65a571b9fdb3894b2c33ac1c974ea",
     "delta": null,
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": true
+      "mergeable": null
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "6484746a3aa76400fc9f52a3aa3d119ad8004383"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7465,
-    "url": "https://github.com/lance-format/lance/pull/7465",
-    "title": "perf(encoding): initialize only the page metadata a read will touch",
-    "body": "## Summary\n\nThe structural decoder's `StructuralFieldScheduler::initialize` eagerly initializes **every** page in a column before scheduling, even when the read only touches one page. For a column with thousands of large, non-coalescing pages (e.g. a BTree leaf scan that reads one leaf), this means paying metadata IO proportional to the page count regardless of how few rows are actually requested.\n\nThis PR makes page-metadata initialization **range-scoped and per-page**:\n\n- `DecodeBatchScheduler::try_new` and `StructuralFieldScheduler::initialize` now take an optional `requested_ranges: Option<Arc<[Range<u64>]>>` \u2014 the top-level row ranges that will later be scheduled. The structural path initializes only the pages those ranges overlap (`pages_overlapping_ranges`). `None` preserves the prior eager behavior.\n- The page-scheduler `initialize` is split into `init_ranges()` (declare the byte ranges the page needs) and `init_from_buffers(buffers, io)` (finish initialization from those bytes). The field scheduler concatenates the misses' ranges into a **single** `submit_request` so adjacent ranges coalesce into shared GETs instead of one request per page.\n- Page metadata is cached per page via `PageDataCacheKey { column_index, page_index, view_tag }` (replacing the per-column `FieldDataCacheKey`). `view_tag` is retained so a column decoded under two shapes (blob descriptor `Struct<pos,size>` vs raw `LargeBinary`) can't collide on cached state.\n- Nested schedulers forward ranges consistently with their existing `schedule_ranges`: lists/maps/structs pass the top-level ranges through unchanged; fixed-size-list scales by `dimension`. The requested ranges are always a **superset** of what `schedule_ranges`/`schedule_take` later touch, so any page a read schedules was initialized here.\n\nNet effect: a cold point/range read's metadata IO is invariant to the column's total page count.\n\n## Test plan\n\n- [x] `cargo test -p lance-encoding --lib` (393 passed) \u2014 the round-trip encoding harness now exercises **both** the eager path (full scan, `None`) and the lazy path (range reads and scattered takes pass their `requested_ranges`).\n- [x] New unit test `test_initialize_coalesces_missed_page_metadata`: an N-page cache miss issues exactly **one** `submit_request` carrying every page's metadata range (not one request per page).\n- [x] Updated FullZip page-scheduler tests to the `init_ranges` / `init_from_buffers` split.\n- [x] `cargo test -p lance-file --lib` (76 passed).\n- [x] `cargo test -p lance --lib dataset::blob::tests::test_blob_cache_key_distinguishes_views` \u2014 confirms the per-page key still distinguishes blob decoder views.\n- [x] `cargo fmt --all` and `cargo clippy -p lance-encoding -p lance-file --tests --benches -- -D warnings` clean.\n\nMade with [Cursor](https://cursor.com)",
-    "author": "Ali2Arslan",
-    "author_status": "first_time",
-    "files_changed": [
-      "rust/lance-encoding/benches/decoder.rs",
-      "rust/lance-encoding/src/decoder.rs",
-      "rust/lance-encoding/src/encodings/logical/fixed_size_list.rs",
-      "rust/lance-encoding/src/encodings/logical/list.rs",
-      "rust/lance-encoding/src/encodings/logical/map.rs",
-      "rust/lance-encoding/src/encodings/logical/primitive.rs",
-      "rust/lance-encoding/src/encodings/logical/primitive/blob.rs",
-      "rust/lance-encoding/src/encodings/logical/primitive/constant.rs",
-      "rust/lance-encoding/src/encodings/logical/struct.rs",
-      "rust/lance-encoding/src/testing.rs",
-      "rust/lance-file/src/reader.rs",
-      "rust/lance/src/dataset/blob.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 90.7,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "XL",
-      "additions": 521,
-      "deletions": 212,
-      "files": 12
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "dd100bbb02333ca126fd037ba61be7bd749071c9"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7464,
-    "url": "https://github.com/lance-format/lance/pull/7464",
-    "title": "perf(index): coalesce concurrent scalar-index opens (single-flight)",
-    "body": "## Summary\n\n`open_scalar_index` checks the cache, and on a miss **every** caller independently re-reads `page_lookup.lance` and rebuilds the lookup. Under concurrent cold opens of the same index (common when many queries hit a freshly opened dataset) this is an N\u00d7 I/O and transient-memory spike \u2014 each open loads the full index in parallel.\n\nThis PR routes the open through a new single-flight cache primitive so concurrent cold opens share one load:\n\n- **`LanceCache::get_or_insert_unsized_with_key`** (lance-core) \u2014 the `UnsizedCacheKey` / `Arc<dyn Trait>` analogue of the existing `get_or_insert_with_key`. The cache backend dedups concurrent loads (moka `optionally_get_with`), so the loader runs at most once per key and all racing callers share the resulting `Arc`.\n- **`open_scalar_index`** (lance) now wraps its L2 cache lookup \u2192 compatibility check \u2192 load \u2192 `put_in_cache` inside that loader. A warm open returns the live index with no I/O.\n\nBehavior is otherwise unchanged; this is purely a coalescing/caching improvement on the open path.\n\n## Test plan\n\n- [x] `test_get_or_insert_unsized_dedup` (lance-core): 5 racing callers for one key \u2192 loader runs exactly once.\n- [x] `test_open_scalar_index_coalesces_concurrent_cold_opens` (lance): 8 concurrent cold opens of a reopened dataset's BTree index \u2192 exactly one `record_index_load`, all opens return a usable index.\n- [x] Full `index::scalar::tests` module passes (open-path regression).\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-core -p lance --tests` clean\n\nMade with [Cursor](https://cursor.com)",
-    "author": "Ali2Arslan",
-    "author_status": "first_time",
-    "files_changed": [
-      "rust/lance-core/src/cache/mod.rs",
-      "rust/lance/src/index/scalar.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 91.0,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "L",
-      "additions": 184,
-      "deletions": 21,
-      "files": 2
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "7fef56a13b804187cbd2e6f1603392d4ac9287db"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7463,
-    "url": "https://github.com/lance-format/lance/pull/7463",
-    "title": "feat(index): read a column's min/max from ZoneMap without a scan",
-    "body": "## Summary\n\nA ZoneMap scalar index already stores per-zone `min`/`max` summaries. This PR folds those summaries into a single global `(min, max)` for a column **without scanning any data**, and exposes it on the dataset:\n\n- `ZoneMapIndex::value_range()` / `ZoneMapIndex::value_range_over(segments)` (lance-index) \u2014 fold one or more ZoneMap segments.\n- `DatasetIndexExt::zonemap_value_range(column)` (lance) \u2014 the dataset-level accessor.\n\nThis is useful for cheap min/max stats and as a planning input (e.g. range pruning) without paying for a scan.\n\n## Soundness\n\nThe folded range is designed to be **safe to prune with** \u2014 it never drops a matching row:\n\n- **NaN bail.** `ScalarValue`'s total order ranks NaN above every finite value, so a NaN-bearing zone records `max = NaN`, hiding its true finite max. Folding only the finite maxes would yield a *subset* that could prune live rows, so any NaN zone makes the result `None`.\n- **Joint fragment coverage.** The dataset accessor returns `None` unless the column's ZoneMap segments *jointly* cover every live fragment. Fragments appended after the index was built (or a segment set that doesn't span the table) leave a live fragment uncovered \u2192 `None`. Extra dead fragments in the union are fine.\n- The disjoint segments of a multi-segment index are folded together.\n- The result is a **superset** of live values, conservative under deletion vectors (a deleted extreme still bounds its zone): not guaranteed tight.\n\nReuses the existing `scalar_is_nan` helper rather than duplicating NaN logic.\n\n## Test plan\n\nlance-index (`value_range` / `value_range_over`):\n- [x] spans multiple fragments/zones\n- [x] all-null \u2192 `None`\n- [x] NaN max \u2192 `None`\n- [x] folds across segments; NaN in any segment \u2192 `None`; skips all-null segment\n\nlance (`zonemap_value_range`):\n- [x] basic range; column without a ZoneMap \u2192 `None`\n- [x] `None` when an appended fragment isn't covered by the index\n- [x] folds multiple committed segments of one logical index\n\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-index -p lance --tests` clean\n\n## Follow-up\n\nPython bindings (`Dataset`-level accessor) can follow in a separate PR to keep this one focused on the Rust core + dataset API.\n\nMade with [Cursor](https://cursor.com)",
-    "author": "Ali2Arslan",
-    "author_status": "first_time",
-    "files_changed": [
-      "rust/lance-index/src/scalar.rs",
-      "rust/lance-index/src/scalar/zonemap.rs",
-      "rust/lance/src/index.rs",
-      "rust/lance/src/index/api.rs",
-      "rust/lance/src/index/scalar.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 91.1,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "L",
-      "additions": 357,
-      "deletions": 2,
-      "files": 5
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 6265,
-    "url": "https://github.com/lance-format/lance/pull/6265",
-    "title": "feat: support hamming clustering",
-    "body": "Add support for SIMD accelerated pairwise hamming distance computation, and the ability to compute a cluster of binary vectors that are within a given hamming distance threshold, these are considered similar or potentially duplicated vectors of the original representation. \r\n\r\nAlso expose the feature in python for easy consumption.",
-    "author": "jackye1995",
-    "author_status": "core",
-    "files_changed": [
-      "Cargo.lock",
-      "python/Cargo.lock",
-      "python/python/lance/lance/__init__.pyi",
-      "python/python/lance/vector.py",
-      "python/src/dataset.rs",
-      "rust/lance-linalg/Cargo.toml",
-      "rust/lance-linalg/benches/hamming.rs",
-      "rust/lance-linalg/src/distance.rs",
-      "rust/lance-linalg/src/distance/hamming.rs",
-      "rust/lance/Cargo.toml",
-      "rust/lance/benches/hamming.rs",
-      "rust/lance/src/index/vector.rs",
-      "rust/lance/src/index/vector/hamming.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 2229.8,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "XL",
-      "additions": 2848,
-      "deletions": 58,
-      "files": 13
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "red",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "public-api",
-        "large-blast-radius"
-      ],
-      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
-    },
-    "head_oid": "dca341033e85eb1c95d378cf53473e0fd6a00368"
+    "head_oid": "9b39eb015ad65a571b9fdb3894b2c33ac1c974ea"
   },
   {
     "repo": "lance-format/lance",
@@ -406,7 +104,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 7.3,
+    "age_in_state_hrs": 9.5,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -426,7 +124,7 @@
     "last_reviewed_sha": "cdc25d7f4a7ab21bb14af330361820b8db53abde",
     "delta": {
       "commits": [
-        "f2596e9b87e5b03223dd33878a4767237c78ec61"
+        "0bdf87036a5304b94f718a75424141fbebde131b"
       ],
       "files_touched": [
         "rust/lance-arrow/src/bfloat16.rs",
@@ -437,6 +135,173 @@
     },
     "conditions": [],
     "merge_state": {
+      "ci": "green",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "0bdf87036a5304b94f718a75424141fbebde131b"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7464,
+    "url": "https://github.com/lance-format/lance/pull/7464",
+    "title": "perf(index): coalesce concurrent scalar-index opens (single-flight)",
+    "body": "## Summary\n\n`open_scalar_index` checks the cache, and on a miss **every** caller independently re-reads `page_lookup.lance` and rebuilds the lookup. Under concurrent cold opens of the same index (common when many queries hit a freshly opened dataset) this is an N\u00d7 I/O and transient-memory spike \u2014 each open loads the full index in parallel.\n\nThis PR routes the open through a new single-flight cache primitive so concurrent cold opens share one load:\n\n- **`LanceCache::get_or_insert_unsized_with_key`** (lance-core) \u2014 the `UnsizedCacheKey` / `Arc<dyn Trait>` analogue of the existing `get_or_insert_with_key`. The cache backend dedups concurrent loads (moka `optionally_get_with`), so the loader runs at most once per key and all racing callers share the resulting `Arc`.\n- **`open_scalar_index`** (lance) now wraps its L2 cache lookup \u2192 compatibility check \u2192 load \u2192 `put_in_cache` inside that loader. A warm open returns the live index with no I/O.\n\nBehavior is otherwise unchanged; this is purely a coalescing/caching improvement on the open path.\n\n## Test plan\n\n- [x] `test_get_or_insert_unsized_dedup` (lance-core): 5 racing callers for one key \u2192 loader runs exactly once.\n- [x] `test_open_scalar_index_coalesces_concurrent_cold_opens` (lance): 8 concurrent cold opens of a reopened dataset's BTree index \u2192 exactly one `record_index_load`, all opens return a usable index.\n- [x] Full `index::scalar::tests` module passes (open-path regression).\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-core -p lance --tests` clean\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "infrequent",
+    "files_changed": [
+      "rust/lance-index/src/scalar/bitmap.rs",
+      "rust/lance-index/src/scalar/btree.rs",
+      "rust/lance-index/src/scalar/label_list.rs",
+      "rust/lance-index/src/scalar/registry.rs",
+      "rust/lance/src/index/scalar.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 2.2,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 261,
+      "deletions": 51,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "7fef56a13b804187cbd2e6f1603392d4ac9287db",
+    "delta": {
+      "commits": [
+        "66f475cdf8703d69aec193d617a75748b8a7a61e"
+      ],
+      "files_touched": [
+        "rust/lance-index/src/scalar/bitmap.rs",
+        "rust/lance-index/src/scalar/btree.rs",
+        "rust/lance-index/src/scalar/label_list.rs",
+        "rust/lance-index/src/scalar/registry.rs",
+        "rust/lance/src/index/scalar.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "red",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "66f475cdf8703d69aec193d617a75748b8a7a61e"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7463,
+    "url": "https://github.com/lance-format/lance/pull/7463",
+    "title": "feat(index): read a column's min/max from ZoneMap without a scan",
+    "body": "## Summary\n\nA ZoneMap scalar index already stores per-zone `min`/`max` summaries. This PR folds those summaries into a single global `(min, max)` for a column **without scanning any data**, and exposes it on the dataset:\n\n- `ZoneMapIndex::value_range()` / `ZoneMapIndex::value_range_over(segments)` (lance-index) \u2014 fold one or more ZoneMap segments.\n- `DatasetIndexExt::zonemap_value_range(column)` (lance) \u2014 the dataset-level accessor.\n\nThis is useful for cheap min/max stats and as a planning input (e.g. range pruning) without paying for a scan.\n\n## Soundness\n\nThe folded range is designed to be **safe to prune with** \u2014 it never drops a matching row:\n\n- **NaN bail.** `ScalarValue`'s total order ranks NaN above every finite value, so a NaN-bearing zone records `max = NaN`, hiding its true finite max. Folding only the finite maxes would yield a *subset* that could prune live rows, so any NaN zone makes the result `None`.\n- **Joint fragment coverage.** The dataset accessor returns `None` unless the column's ZoneMap segments *jointly* cover every live fragment. Fragments appended after the index was built (or a segment set that doesn't span the table) leave a live fragment uncovered \u2192 `None`. Extra dead fragments in the union are fine.\n- The disjoint segments of a multi-segment index are folded together.\n- The result is a **superset** of live values, conservative under deletion vectors (a deleted extreme still bounds its zone): not guaranteed tight.\n\nReuses the existing `scalar_is_nan` helper rather than duplicating NaN logic.\n\n## Test plan\n\nlance-index (`value_range` / `value_range_over`):\n- [x] spans multiple fragments/zones\n- [x] all-null \u2192 `None`\n- [x] NaN max \u2192 `None`\n- [x] folds across segments; NaN in any segment \u2192 `None`; skips all-null segment\n\nlance (`zonemap_value_range`):\n- [x] basic range; column without a ZoneMap \u2192 `None`\n- [x] `None` when an appended fragment isn't covered by the index\n- [x] folds multiple committed segments of one logical index\n\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance-index -p lance --tests` clean\n\n## Follow-up\n\nPython bindings (`Dataset`-level accessor) can follow in a separate PR to keep this one focused on the Rust core + dataset API.\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "infrequent",
+    "files_changed": [
+      "rust/lance-index/src/scalar.rs",
+      "rust/lance-index/src/scalar/zonemap.rs",
+      "rust/lance/src/dataset.rs",
+      "rust/lance/src/dataset/statistics.rs",
+      "rust/lance/src/index/scalar.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 2.9,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "L",
+      "additions": 399,
+      "deletions": 3,
+      "files": 5
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db",
+    "delta": {
+      "commits": [
+        "855f0738294603bfa2cf5017b0b74dee12d2d491"
+      ],
+      "files_touched": [
+        "rust/lance-index/src/scalar.rs",
+        "rust/lance-index/src/scalar/zonemap.rs",
+        "rust/lance/src/dataset.rs",
+        "rust/lance/src/dataset/statistics.rs",
+        "rust/lance/src/index/scalar.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": null
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "855f0738294603bfa2cf5017b0b74dee12d2d491"
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7461,
+    "url": "https://github.com/lance-format/lance/pull/7461",
+    "title": "fix(index): record IVF_HNSW index file sizes after writing footer",
+    "body": "## Summary\n\n`optimize_ivf_hnsw_indices` captured the index/aux file sizes via `writer.tell()` **before** calling `finish()`. These are legacy `FileWriter` (`previous::writer::FileWriter`) instances, and `finish()` calls `write_footer()` which appends page tables, statistics, dictionaries, schema metadata, and magic bytes. As a result the captured `index_size` / `aux_size` were smaller than the actual on-disk files.\n\nThese undercounted values are persisted into `IndexMetadata.files` and surface through `describe_indices()` and `total_size_bytes()`. (Reads aren't affected today because legacy `(0,2)` vector indices are opened via `object_store.open()`, which ignores the cached sizes \u2014 but the recorded metadata is permanently wrong.)\n\nThis was introduced in #7129.\n\n## Fix\n\nMove both `tell()` calls to **after** `finish()`. The underlying object writer's cursor stays valid post-shutdown (`ObjectWriter::tell()` returns the running `cursor`; the local writer returns the finalized `result.size`), so it now reflects the full on-disk size including the footer.\n\n```rust\nwriter.finish().await?;\nlet index_size = writer.tell().await? as u64;\n```\n\n## Test plan\n\n- [x] Added `test_optimize_ivf_hnsw_records_actual_file_sizes`: builds a legacy IVF_HNSW_SQ index, appends unindexed data, runs `optimize_indices` (exercising `optimize_ivf_hnsw_indices`), then asserts each recorded `IndexFile.size_bytes` exactly equals the file size reported by the object store. This fails on the old code (recorded size < on-disk size) and passes with the fix.\n- [x] `cargo fmt --all`\n- [x] `cargo clippy -p lance --tests` clean\n- [x] `cargo test -p lance --lib index::vector::ivf::tests::test_optimize_ivf_hnsw_records_actual_file_sizes` passes\n\nMade with [Cursor](https://cursor.com)",
+    "author": "Ali2Arslan",
+    "author_status": "infrequent",
+    "files_changed": [
+      "rust/lance-file/src/previous/writer/mod.rs",
+      "rust/lance-index/src/scalar/lance_format.rs",
+      "rust/lance/src/dataset/fragment/write.rs",
+      "rust/lance/src/dataset/write.rs",
+      "rust/lance/src/index/vector/ivf.rs",
+      "rust/lance/src/index/vector/ivf/io.rs"
+    ],
+    "blocked_on": "merge",
+    "is_draft": false,
+    "age_in_state_hrs": 0.1,
+    "lane": "housekeeping",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 99,
+      "deletions": 18,
+      "files": 6
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "100b078966075ea83aa8fd56bb8335e0fc035b62",
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
       "ci": "red",
       "mergeable": true
     },
@@ -445,51 +310,7 @@
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "f2596e9b87e5b03223dd33878a4767237c78ec61"
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7500,
-    "url": "https://github.com/lance-format/lance/pull/7500",
-    "title": "perf(arrow): avoid per-element allocation in BFloat16Array::from",
-    "body": "## What\n\n`impl From<Vec<bf16>> for BFloat16Array` built its byte buffer with:\n\n```rust\nlet bytes = data.iter().flat_map(|val| {\n    let bytes = val.to_bits().to_le_bytes();  // [u8; 2] on the stack\n    bytes.to_vec()                            // heap allocation per element\n});\nbuffer.extend(bytes);\n```\n\n`to_vec()` heap-allocates a 2-byte `Vec` for **every** element. On the vector-ingestion path (`coerce_float_vector` \u2192 `BFloat16Array::from`) that is ~2M tiny allocations for a 4096\u00d7512 bf16 batch.\n\n## Fix\n\nWrite each value's little-endian bytes straight into the pre-sized `MutableBuffer`:\n\n```rust\nfor val in &data {\n    buffer.extend_from_slice(&val.to_bits().to_le_bytes());\n}\n```\n\nNo per-element allocation; the bytes produced are identical.\n\n## Test\n\nBehavior-preserving \u2014 the existing `test_basics` already asserts `BFloat16Array::from(values) == BFloat16Array::from_iter_values(values)` and checks the decoded values, and `test_nulls` / `test_coerce_float_vector_bfloat16` cover the surrounding paths. All pass. `cargo clippy -p lance-arrow --tests -- -D warnings` and `cargo fmt -- --check` are green.\n",
-    "author": "LuciferYang",
-    "author_status": "core",
-    "files_changed": [
-      "rust/lance-arrow/src/bfloat16.rs"
-    ],
-    "blocked_on": "merge",
-    "is_draft": false,
-    "age_in_state_hrs": 23.7,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "low",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "XS",
-      "additions": 5,
-      "deletions": 5,
-      "files": 1
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "da915f31cc076ba2cd53f7fae191390f1258000c",
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "da915f31cc076ba2cd53f7fae191390f1258000c"
+    "head_oid": "100b078966075ea83aa8fd56bb8335e0fc035b62"
   },
   {
     "repo": "lance-format/lance",
@@ -1327,44 +1148,77 @@
   },
   {
     "repo": "lancedb/lancedb",
-    "number": 3489,
-    "url": "https://github.com/lancedb/lancedb/pull/3489",
-    "title": "feat(query): add use_lsm_read to query data via the MemWAL LSM scanner",
-    "body": "## What\n\nWhen a table has an LSM write spec installed (`set_lsm_write_spec`), `merge_insert` upserts are routed through Lance's MemWAL `ShardWriter` and live in the active/frozen in-memory memtables and flushed (L0) generations until an external compaction merges them into the base table. Until then a normal scan returns **stale** data \u2014 it never sees the newly written rows.\n\nThis adds an opt-in `use_lsm_read` query flag that routes reads through Lance's `LsmScanner` / LSM planners so they also return this in-flight data, deduplicated by primary key (newest generation wins).\n\n## How\n\n- New `QueryRequest.use_lsm_read` (default `false`) + `QueryBase::use_lsm_read()` builder.\n- New `table/query/lsm.rs`: assembles per-shard snapshots from on-disk shard manifests (via the dataset's own object store, so `memory://` and custom-registered stores work), overriding the active shard with the cached `ShardWriter`'s authoritative in-memory manifest and active+frozen memtables.\n- Dispatches by query shape: plain scan (filter/projection/limit), full-text search, and vector (ANN) search. Shapes the LSM path cannot honor (hybrid, multi-vector, `with_row_id`, rerank, `order_by`, dynamic projection, Substrait) and remote tables return a clear `NotSupported` error; `use_lsm_read` without a spec returns `InvalidInput`.\n- Off by default, so behavior is unchanged unless opted in.\n\nExposed across the Rust core and the Python (`use_lsm_read()`) and TypeScript (`useLsmRead()`) bindings.\n\nA follow-up could auto-resolve the FTS column from a single FTS index, support binary-vector LSM search, and add per-query snapshot caching.",
-    "author": "touch-of-grey",
+    "number": 3599,
+    "url": "https://github.com/lancedb/lancedb/pull/3599",
+    "title": "fix(python): average MRR reciprocal ranks over all rankings",
+    "body": "## What\r\n\r\n`MRRReranker.rerank_multivector` averages each document's reciprocal ranks over the wrong denominator. It divides by the number of rankings the document *happens to appear in*, instead of the total number of rankings being fused.\r\n\r\n```python\r\n# python/python/lancedb/rerankers/mrr.py\r\nfor result_id, reciprocal_ranks in mrr_score_map.items():\r\n    mean_rr = np.mean(reciprocal_ranks)   # divides by len(present systems)\r\n```\r\n\r\n`mrr_score_map[doc]` only accumulates a reciprocal rank for the systems in which the document was returned, so `np.mean` never accounts for the systems that missed it.\r\n\r\n## Why it's wrong\r\n\r\nMean Reciprocal Rank fusion treats a system that didn't return a document as a reciprocal rank of `0` and averages across **all** systems. That's the exact mechanism by which it rewards cross-system consensus. Dividing by the appearance count removes that, so a document liked by a single ranking can beat one ranked highly by every ranking.\r\n\r\nConcretely, fusing 3 vector rankings:\r\n\r\n| Doc | Ranks | Current score | Correct score |\r\n|-----|-------|---------------|---------------|\r\n| A   | #1 in 1 system only          | `mean([1.0]) = 1.000` | `1.0 / 3 = 0.333` |\r\n| B   | #1, #1, #2 across all 3      | `mean([1, 1, .5]) = 0.833` | `2.5 / 3 = 0.833` |\r\n\r\nThe current code ranks **A above B** - a document two of three rankings ignored outranks one all three ranked at or near the top.\r\n\r\nThis also makes `rerank_multivector` inconsistent with `rerank_hybrid` in the same file, which already treats a missing system as `0` (`vector_rr = 0.0` / `fts_rr = 0.0`), and with the class docstring (\"average of reciprocal ranks across different search results\").\r\n\r\n## Fix\r\n\r\nDivide the summed reciprocal ranks by the total number of rankings:\r\n\r\n```python\r\nnum_systems = len(vector_results)\r\n...\r\nmean_rr = float(np.sum(reciprocal_ranks)) / num_systems\r\n```\r\n\r\n## Tests\r\n\r\nAdds `test_mrr_multivector_rewards_consensus`, which asserts the exact MRR scores and that the consensus document ranks first. It fails on `main` and passes with this change. Existing reranker tests are unaffected.",
+    "author": "Ar-maan05",
     "author_status": "regular",
     "files_changed": [
-      "docs/src/js/classes/Query.md",
-      "docs/src/js/classes/VectorQuery.md",
-      "nodejs/__test__/table.test.ts",
-      "nodejs/lancedb/query.ts",
-      "nodejs/src/query.rs",
-      "python/python/lancedb/_lancedb.pyi",
-      "python/python/lancedb/query.py",
-      "python/python/lancedb/table.py",
-      "python/python/tests/test_merge_insert_lsm.py",
-      "python/src/query.rs",
-      "rust/lancedb/src/query.rs",
-      "rust/lancedb/src/remote/table.rs",
-      "rust/lancedb/src/table/merge.rs",
-      "rust/lancedb/src/table/merge/lsm.rs",
-      "rust/lancedb/src/table/query.rs",
-      "rust/lancedb/src/table/query/lsm.rs"
+      "python/python/lancedb/rerankers/mrr.py",
+      "python/python/tests/test_rerankers.py"
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 657.0,
+    "age_in_state_hrs": 34.7,
     "lane": "fresh",
     "acuity": {
       "risk": "med",
-      "urgency": "high",
+      "urgency": "low",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
-      "size_bucket": "XL",
-      "additions": 1135,
-      "deletions": 0,
-      "files": 16
+      "size_bucket": "S",
+      "additions": 40,
+      "deletions": 1,
+      "files": 2
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "cefe6435a69e3e276786f6413af5dd6c2a7021e9"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3526,
+    "url": "https://github.com/lancedb/lancedb/pull/3526",
+    "title": "feat: add Tencent COS and GooseFS object store support via new feature flags",
+    "body": "## Summary\r\n\r\nCloses #3525\r\n\r\nThis PR wires up two new optional object-store backends at the LanceDB layer, exposing capabilities that already exist upstream in `lance` / `lance-io`:\r\n\r\n| Backend | Cargo feature | Default in Rust crate | Default in Python wheel | Default in Node binding |\r\n| --- | --- | --- | --- | --- |\r\n| **Tencent COS** | `cos`     | \u274c off | \u2705 on | \u274c off |\r\n| **GooseFS**     | `goosefs` | \u274c off | \u2705 on | \u2705 on |\r\n\r\nBoth backends are additive and do not affect existing users who don't opt in.\r\n\r\n## Motivation\r\n\r\n- **Tencent COS** is the dominant object storage in the China region. Tencent Cloud users currently need an S3-compatible proxy or a private fork to use LanceDB against COS buckets.\r\n- **GooseFS** is Tencent Cloud's distributed cache acceleration layer that sits in front of COS/S3, a common pattern for vector search / AI training where the same hot dataset is read repeatedly.\r\n- This brings COS / GooseFS to feature parity with the existing first-class backends (`aws`, `gcs`, `azure`, `oss`, `huggingface`).\r\n\r\nSee the linked issue #3525 for the full discussion.\r\n\r\n## Changes\r\n\r\n### `rust/lancedb/Cargo.toml`\r\n\r\nAdd two new optional features that pull through the corresponding upstream feature flags:\r\n\r\n```toml\r\ncos = [\"lance/tencent\", \"lance-io/tencent\"]\r\ngoosefs = [\r\n    \"lance/goosefs\",\r\n    \"lance-io/goosefs\",\r\n    \"lance-namespace-impls/dir-goosefs\",\r\n]\r\n```\r\n\r\n### `python/Cargo.toml`\r\n\r\nEnable both `cos` and `goosefs` by default for the Python wheels, so `pip install lancedb` works against COS / GooseFS out of the box (consistent with how `aws` / `gcs` / `azure` / `oss` are bundled today):\r\n\r\n```diff\r\n-default = [\"remote\",  \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/cos\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `nodejs/Cargo.toml`\r\n\r\nEnable `goosefs` by default for the Node binding (COS kept opt-in to limit the default native binary size; can be revisited based on demand):\r\n\r\n```diff\r\n-default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `Cargo.lock`\r\n\r\nRegenerated to reflect the transitive dependencies brought in by the new upstream features. No manual edits.\r\n\r\n## Example Usage\r\n\r\n### Rust\r\n\r\n```toml\r\n# Cargo.toml\r\nlancedb = { version = \"0.30\", features = [\"cos\", \"goosefs\"] }\r\n```\r\n\r\n```rust\r\n// Tencent COS\r\nlet db = lancedb::connect(\"cos://my-bucket/my-db\").execute().await?;\r\n\r\n// GooseFS\r\nlet db = lancedb::connect(\"goosefs://my-namespace/my-db\").execute().await?;\r\n```\r\n\r\n### Python\r\n\r\n```python\r\nimport lancedb\r\n\r\ndb = lancedb.connect(\r\n    \"cos://my-bucket/my-db\",\r\n    storage_options={\r\n        \"secret_id\": \"...\",\r\n        \"secret_key\": \"...\",\r\n        \"region\": \"ap-guangzhou\",\r\n    },\r\n)\r\n```\r\n\r\n## Backwards Compatibility\r\n\r\n- All new features are **opt-in** at the Rust crate level (`default = []` for `lancedb` itself is unchanged).\r\n- The Python wheel gains both backends by default, increasing wheel size slightly but matching the existing pattern of bundling all major cloud backends.\r\n- Node binding only adds `goosefs` to defaults; existing users see no behavior change.\r\n\r\n## Testing\r\n\r\n- `cargo check --all-features` \u2705\r\n- `cargo check -p lancedb --features cos` \u2705\r\n- `cargo check -p lancedb --features goosefs` \u2705\r\n- End-to-end COS / GooseFS smoke tests require Tencent Cloud credentials and are intentionally not added to CI in this PR (same approach used for `s3-test`). Happy to add a gated test feature in a follow-up if reviewers prefer.\r\n\r\n## Checklist\r\n\r\n- [x] Added `cos` and `goosefs` features to `rust/lancedb/Cargo.toml`\r\n- [x] Updated `python/Cargo.toml` default features\r\n- [x] Updated `nodejs/Cargo.toml` default features\r\n- [x] Regenerated `Cargo.lock`\r\n- [x] Verified build with `--all-features`\r\n- [ ] Documentation update (can be done in a follow-up PR once API stabilizes)\r\n\r\n## Related\r\n\r\n- Issue: #3525\r\n- Upstream support: [`lance/tencent`](https://github.com/lance-format/lance), [`lance/goosefs`](https://github.com/lance-format/lance)",
+    "author": "XuQianJin-Stars",
+    "author_status": "first_time",
+    "files_changed": [
+      "Cargo.lock",
+      "nodejs/Cargo.toml",
+      "python/Cargo.toml",
+      "rust/lancedb/Cargo.toml"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 158.7,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "low",
+      "urgency": "high",
+      "rationale": "docs/tests/config/deps only"
+    },
+    "effort": {
+      "size_bucket": "M",
+      "additions": 146,
+      "deletions": 2,
+      "files": 4
     },
     "relevance": {
       "score": null,
@@ -1375,17 +1229,67 @@
     "conditions": [],
     "merge_state": {
       "ci": "red",
+      "mergeable": true
+    },
+    "escalation": {
+      "forced": false,
+      "rule_ids": [],
+      "reason": ""
+    },
+    "head_oid": "6fe79fe727b7f77ae7995fef045b4d8bcb690a0a"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3509,
+    "url": "https://github.com/lancedb/lancedb/pull/3509",
+    "title": "feat: add an elastic dataloader as an iterable dataset",
+    "body": "# Elastic Streaming Dataloader\r\n\r\n## Motivation\r\n\r\nTraining large models on LanceDB tables today requires loading the entire dataset\r\ninto memory or writing bespoke batching logic. This PR introduces\r\n`StreamingDataset`, a PyTorch `IterableDataset` that streams directly from a\r\nLanceDB table with two hard guarantees that are difficult to achieve together:\r\n**elastic determinism** and **resumability**.\r\n\r\n## Goals\r\n\r\n### Elastic determinism\r\n\r\nThe dataset partitions the table into a fixed number of *splits* (controlled by\r\n`num_splits`, `shuffle_seed`, and `epoch`). Samples are yielded by round-robining\r\nover splits one sample per split per cycle. Because the split structure is fixed,\r\nthe set of samples that makes up each global training step is identical regardless\r\nof `world_size` or `num_workers`. You can scale your cluster up or down between\r\nruns and the model sees the same data in the same order \u2014 no re-sharding, no\r\ngradient variance from topology changes.\r\n\r\n### Resumability\r\n\r\n`state_dict()` / `load_state_dict()` capture how many samples each split has\r\nconsumed. Because all splits are the same size and the round-robin design keeps\r\nthem in lockstep, the state reduces to a single scalar (`samples_consumed_per_split`)\r\nthat is topology-independent. A checkpoint saved with 8 GPUs can resume correctly\r\non 4 GPUs or 16 GPUs without any adjustment.\r\n\r\n### PyTorch `IterableDataset` / streaming\r\n\r\n`StreamingDataset` implements the standard PyTorch `IterableDataset` interface, so\r\nit drops into any existing `DataLoader` pipeline without modification. Data is\r\nfetched lazily from Lance in chunks \u2014 only the rows needed for the current batch are\r\never in memory.\r\n\r\nCompared to the map dataset this takes more work from pytorch and puts it into the dataset itself (e.g. shuffling, filtering, etc.).  We do this because we cannot achieve things like elastic determinism or prefiltering otherwise.\r\n\r\n### Multi-worker support\r\n\r\nDataLoader workers are automatically assigned contiguous sub-blocks of splits (the\r\nrank's splits are divided evenly across workers). Each worker is independent:\r\nno shared state, no inter-process coordination. The only constraint is that\r\n`num_splits` must be divisible by `world_size * num_workers`.\r\n\r\nThat being said, multi-worker is highly discouraged as it relies on multiprocessing which is inefficient.  Still, we want to support it.\r\n\r\n### Filters as prefilters\r\n\r\nFilters are applied at *permutation-build time* via `PermutationBuilder.filter()`,\r\nnot re-evaluated on every fetch. The filtered row IDs are stored in the permutation\r\ntable so that subsequent reads see only the matching rows. This allows us to avoid loading rows that don't match the filter (which is the default pytorch behavior)\r\n\r\n### Prefetching\r\n\r\nTwo parameters control the I/O pipeline:\r\n\r\n- `read_batch_size` (default 64) \u2014 number of rows fetched per `take_offsets` call.\r\n  Larger values amortise per-request overhead, which is critical on object storage\r\n  where a single round-trip can cost ~100 ms.\r\n- `prefetch_batches` (default 4) \u2014 number of batches prefetched in parallel per\r\n  split via a `ThreadPoolExecutor`. While the model processes the current batch,\r\n  the next several batches are already in flight, hiding storage latency behind\r\n  compute.\r\n\r\nIf set correctly then you can get good performance even with num_workers=0 (unless you are bottlenecked on transform).\r\n\r\n### Transform parallelism *(planned)*\r\n\r\nThe underlying `Permutation` API supports a `with_transform()` callback for\r\ndecoding, augmentation, and format conversion.  Unfortunately, this is not parallelized.  Pytorch typically parallelizes this with num_workers which is multiprocessing which is highly inefficient.  For simple transforms we should be able to utilize multithreading and Rust based UDFs.  For complex python UDFs we could have a dedicated multiprocessing pipeline for just the transform.  Or we could just utilize multithreading.  In both cases we would exclude the I/O stage from the multiprocessing because that ends up being very memory hungry and inefficient.",
+    "author": "westonpace",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "python/benchmarks/bench_streaming_dataloader.py",
+      "python/python/lancedb/streaming.py",
+      "python/python/tests/test_elastic_dataloader.py",
+      "rust/lancedb/Cargo.toml",
+      "rust/lancedb/examples/bench_streaming_dataloader.rs",
+      "rust/lancedb/src/dataloader/permutation/reader.rs",
+      "rust/lancedb/src/query.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 171.8,
+    "lane": "fresh",
+    "acuity": {
+      "risk": "med",
+      "urgency": "high",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 2536,
+      "deletions": 43,
+      "files": 8
+    },
+    "relevance": {
+      "score": null,
+      "requested": true
+    },
+    "last_reviewed_sha": null,
+    "delta": null,
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
       "mergeable": false
     },
     "escalation": {
       "forced": true,
       "rule_ids": [
-        "public-api",
         "large-blast-radius"
       ],
-      "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+      "reason": "Large blast radius (XL diff)"
     },
-    "head_oid": "22b753db364ef0e8b81aa250a1de31781afa7e73"
+    "head_oid": "b395948c28c9c0f616dd412171271fa3a05505d3"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1494,109 +1398,6 @@
   },
   {
     "repo": "lancedb/lancedb",
-    "number": 3597,
-    "url": "https://github.com/lancedb/lancedb/pull/3597",
-    "title": "feat(remote): monotonic reads via x-lancedb-min-read-version watermark",
-    "body": "## Summary\n\nAdds per-session monotonic reads for remote (LanceDB Cloud/Enterprise) tables, preventing successive reads on a handle from moving *backward* in dataset version when a load balancer routes them to query nodes with differently-cached views.\n\nEach `RemoteTable` handle tracks the highest dataset version it has observed in a read response \u2014 surfaced by the server via a new `x-lancedb-version` response header \u2014 and sends it back as `x-lancedb-min-read-version` on subsequent reads (`count_rows`, `query`). A query node whose cache is behind that version refreshes before serving; a node already at/beyond it serves from cache at no extra cost.\n\nThe watermark is sourced only from reads (always committed dataset versions), so unlike the retired `x-lancedb-min-version` it is unaffected by WAL writes returning WAL entry ids. It is reset on `checkout_latest()`. Both headers are optional and ignored by older peers.\n\nServer-side enforcement lives in LanceDB Enterprise. Targets the `codex/update-lance-9-0-0-beta-8` integration branch to match the Enterprise submodule pin.",
-    "author": "jackye1995",
-    "author_status": "core",
-    "files_changed": [
-      "rust/lancedb/src/remote/table.rs"
-    ],
-    "blocked_on": "merge",
-    "is_draft": false,
-    "age_in_state_hrs": 14.2,
-    "lane": "housekeeping",
-    "acuity": {
-      "risk": "med",
-      "urgency": "low",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "M",
-      "additions": 149,
-      "deletions": 3,
-      "files": 1
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "ed6b166fc484f981fdfaa8953e64e40fcd8b1e3a",
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "ed6b166fc484f981fdfaa8953e64e40fcd8b1e3a"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3584,
-    "url": "https://github.com/lancedb/lancedb/pull/3584",
-    "title": "feat: add polars dataframe integration",
-    "body": "This PR is part cleanup, part feature, part example.\r\n\r\nIt removes `IntoArrow` and `IntoArrowStream`.  There was only one redundant call site between the two.  Once we moved everything to `Scannable` these traits no longer serve any purpose.\r\n\r\nIt adds a `Scannable` impl for a polars DataFrame.  We used to have this at one point for `IntoArrow` so this is more like a regression fix than anything.\r\n\r\nIt adds an example (and unit test) which ensures we can ingest from a Polars DataFrame and export to one.  LazyFrame support would be a follow-up (though a pretty straightforward one) but we've never had proper LazyFrame support before.",
-    "author": "westonpace",
-    "author_status": "core",
-    "files_changed": [
-      "nodejs/src/merge.rs",
-      "rust/lancedb/Cargo.toml",
-      "rust/lancedb/examples/polars.rs",
-      "rust/lancedb/src/arrow.rs",
-      "rust/lancedb/src/data/scannable.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 0.3,
-    "lane": "re_review",
-    "acuity": {
-      "risk": "med",
-      "urgency": "low",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "L",
-      "additions": 150,
-      "deletions": 53,
-      "files": 5
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "06259a3e47233288edd8358f6b5de64c12a1ec04",
-    "delta": {
-      "commits": [
-        "64e1d8e6dee153d5187d8ec99501ed0daa4a2b7d"
-      ],
-      "files_touched": [
-        "nodejs/src/merge.rs",
-        "rust/lancedb/Cargo.toml",
-        "rust/lancedb/examples/polars.rs",
-        "rust/lancedb/src/arrow.rs",
-        "rust/lancedb/src/data/scannable.rs"
-      ]
-    },
-    "conditions": [],
-    "merge_state": {
-      "ci": "pending",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "64e1d8e6dee153d5187d8ec99501ed0daa4a2b7d"
-  },
-  {
-    "repo": "lancedb/lancedb",
     "number": 3578,
     "url": "https://github.com/lancedb/lancedb/pull/3578",
     "title": "feat(python): blob v2 fetch API",
@@ -1667,13 +1468,13 @@
       "python/python/lancedb/util.py",
       "python/python/tests/test_util.py"
     ],
-    "blocked_on": "me",
+    "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 52.4,
-    "lane": "re_review",
+    "age_in_state_hrs": 0.0,
+    "lane": "housekeeping",
     "acuity": {
       "risk": "med",
-      "urgency": "med",
+      "urgency": "low",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
@@ -1686,19 +1487,11 @@
       "score": null,
       "requested": false
     },
-    "last_reviewed_sha": "777d2dc1f97b3d2532365dc1e5c5605cb25dcb86",
-    "delta": {
-      "commits": [
-        "25f8c6568f7072eebd5fd831164e0e0f877d444d"
-      ],
-      "files_touched": [
-        "python/python/lancedb/util.py",
-        "python/python/tests/test_util.py"
-      ]
-    },
+    "last_reviewed_sha": "25f8c6568f7072eebd5fd831164e0e0f877d444d",
+    "delta": null,
     "conditions": [],
     "merge_state": {
-      "ci": "green",
+      "ci": "pending",
       "mergeable": true
     },
     "escalation": {
@@ -1707,57 +1500,6 @@
       "reason": ""
     },
     "head_oid": "25f8c6568f7072eebd5fd831164e0e0f877d444d"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3536,
-    "url": "https://github.com/lancedb/lancedb/pull/3536",
-    "title": "docs(python): add missing parameter documentation for when_matched_update_all",
-    "body": "Fixes #2493\r\n\r\nAdded target. prefix requirement to where parameter docstring.",
-    "author": "Neo-X7",
-    "author_status": "first_time",
-    "files_changed": [
-      "python/python/lancedb/merge.py"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 95.0,
-    "lane": "re_review",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "XS",
-      "additions": 9,
-      "deletions": 0,
-      "files": 1
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "f09c3a36f0c2f7282271798f7ce91ca85dc69506",
-    "delta": {
-      "commits": [
-        "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3"
-      ],
-      "files_touched": [
-        "python/python/lancedb/merge.py"
-      ]
-    },
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "ffd4d14810c9a65ebb7526a8b06bf3f0952bd7a3"
   },
   {
     "repo": "lancedb/lancedb",
@@ -2229,68 +1971,5 @@
       "reason": ""
     },
     "head_oid": "cad75301c663380cc022915c6b978a8fc929d89b"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 2345,
-    "url": "https://github.com/lancedb/lancedb/pull/2345",
-    "title": "chore: bump Python 3.12 to 3.13 in actions",
-    "body": "### Updates\r\n- Bump Python 3.12 to 3.13 in GitHub Actions\r\n\r\n### Cosmetics\r\n- Bump Python 3.8 to 3.9 in comments\r\n\r\n### Future updates\r\nMany things are outdated, can they be updated too?\r\n- protobuf compilers\r\n- NodeJS 18\r\n- Java dependencies\r\n- No tests with Java 8 and 21 (publish uses 8)\r\n- Ubuntu 22.04 runners\r\n- Docker and docker-compose\r\n\r\n\r\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n- **Chores**\n  - Updated CI workflows and project metadata to support Python 3.13.\n  - Removed the `python-minor-version` input parameter from several GitHub Actions workflows.\n  - Adjusted Python versions used in CI jobs for Linux, macOS, and Windows.\n  - Improved package installation command in doctest job for better binary preference.\n  - Added a reference comment for the Docker container used in Linux builds.\n  - Enhanced package installation step with pip upgrade and environment variable for compatibility in test workflows.\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
-    "author": "reneleonhardt",
-    "author_status": "first_time",
-    "files_changed": [
-      ".github/workflows/build_linux_wheel/action.yml",
-      ".github/workflows/build_mac_wheel/action.yml",
-      ".github/workflows/build_windows_wheel/action.yml",
-      ".github/workflows/pypi-publish.yml",
-      ".github/workflows/python.yml",
-      ".github/workflows/run_tests/action.yml",
-      "python/pyproject.toml"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 10165.5,
-    "lane": "re_review",
-    "acuity": {
-      "risk": "low",
-      "urgency": "high",
-      "rationale": "docs/tests/config/deps only"
-    },
-    "effort": {
-      "size_bucket": "S",
-      "additions": 18,
-      "deletions": 27,
-      "files": 7
-    },
-    "relevance": {
-      "score": null,
-      "requested": false
-    },
-    "last_reviewed_sha": "7ea333f8b4a9e7068b31318f577c86142c71a215",
-    "delta": {
-      "commits": [
-        "aac34e665e13f40e30286c9ddbbb264fce6f1108"
-      ],
-      "files_touched": [
-        ".github/workflows/build_linux_wheel/action.yml",
-        ".github/workflows/build_mac_wheel/action.yml",
-        ".github/workflows/build_windows_wheel/action.yml",
-        ".github/workflows/pypi-publish.yml",
-        ".github/workflows/python.yml",
-        ".github/workflows/run_tests/action.yml",
-        "python/pyproject.toml"
-      ]
-    },
-    "conditions": [],
-    "merge_state": {
-      "ci": "pending",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "aac34e665e13f40e30286c9ddbbb264fce6f1108"
   }
 ]

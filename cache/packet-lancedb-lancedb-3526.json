@@ -1,0 +1,74 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3526,
+    "title": "feat: add Tencent COS and GooseFS object store support via new feature flags",
+    "url": "https://github.com/lancedb/lancedb/pull/3526",
+    "head": "6fe79fe727b7f77ae7995fef045b4d8bcb690a0a",
+    "author": "XuQianJin-Stars",
+    "author_status": "first_time",
+    "body": "## Summary\r\n\r\nCloses #3525\r\n\r\nThis PR wires up two new optional object-store backends at the LanceDB layer, exposing capabilities that already exist upstream in `lance` / `lance-io`:\r\n\r\n| Backend | Cargo feature | Default in Rust crate | Default in Python wheel | Default in Node binding |\r\n| --- | --- | --- | --- | --- |\r\n| **Tencent COS** | `cos`     | \u274c off | \u2705 on | \u274c off |\r\n| **GooseFS**     | `goosefs` | \u274c off | \u2705 on | \u2705 on |\r\n\r\nBoth backends are additive and do not affect existing users who don't opt in.\r\n\r\n## Motivation\r\n\r\n- **Tencent COS** is the dominant object storage in the China region. Tencent Cloud users currently need an S3-compatible proxy or a private fork to use LanceDB against COS buckets.\r\n- **GooseFS** is Tencent Cloud's distributed cache acceleration layer that sits in front of COS/S3, a common pattern for vector search / AI training where the same hot dataset is read repeatedly.\r\n- This brings COS / GooseFS to feature parity with the existing first-class backends (`aws`, `gcs`, `azure`, `oss`, `huggingface`).\r\n\r\nSee the linked issue #3525 for the full discussion.\r\n\r\n## Changes\r\n\r\n### `rust/lancedb/Cargo.toml`\r\n\r\nAdd two new optional features that pull through the corresponding upstream feature flags:\r\n\r\n```toml\r\ncos = [\"lance/tencent\", \"lance-io/tencent\"]\r\ngoosefs = [\r\n    \"lance/goosefs\",\r\n    \"lance-io/goosefs\",\r\n    \"lance-namespace-impls/dir-goosefs\",\r\n]\r\n```\r\n\r\n### `python/Cargo.toml`\r\n\r\nEnable both `cos` and `goosefs` by default for the Python wheels, so `pip install lancedb` works against COS / GooseFS out of the box (consistent with how `aws` / `gcs` / `azure` / `oss` are bundled today):\r\n\r\n```diff\r\n-default = [\"remote\",  \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/cos\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `nodejs/Cargo.toml`\r\n\r\nEnable `goosefs` by default for the Node binding (COS kept opt-in to limit the default native binary size; can be revisited based on demand):\r\n\r\n```diff\r\n-default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `Cargo.lock`\r\n\r\nRegenerated to reflect the transitive dependencies brought in by the new upstream features. No manual edits.\r\n\r\n## Example Usage\r\n\r\n### Rust\r\n\r\n```toml\r\n# Cargo.toml\r\nlancedb = { version = \"0.30\", features = [\"cos\", \"goosefs\"] }\r\n```\r\n\r\n```rust\r\n// Tencent COS\r\nlet db = lancedb::connect(\"cos://my-bucket/my-db\").execute().await?;\r\n\r\n// GooseFS\r\nlet db = lancedb::connect(\"goosefs://my-namespace/my-db\").execute().await?;\r\n```\r\n\r\n### Python\r\n\r\n```python\r\nimport lancedb\r\n\r\ndb = lancedb.connect(\r\n    \"cos://my-bucket/my-db\",\r\n    storage_options={\r\n        \"secret_id\": \"...\",\r\n        \"secret_key\": \"...\",\r\n        \"region\": \"ap-guangzhou\",\r\n    },\r\n)\r\n```\r\n\r\n## Backwards Compatibility\r\n\r\n- All new features are **opt-in** at the Rust crate level (`default = []` for `lancedb` itself is unchanged).\r\n- The Python wheel gains both backends by default, increasing wheel size slightly but matching the existing pattern of bundling all major cloud backends.\r\n- Node binding only adds `goosefs` to defaults; existing users see no behavior change.\r\n\r\n## Testing\r\n\r\n- `cargo check --all-features` \u2705\r\n- `cargo check -p lancedb --features cos` \u2705\r\n- `cargo check -p lancedb --features goosefs` \u2705\r\n- End-to-end COS / GooseFS smoke tests require Tencent Cloud credentials and are intentionally not added to CI in this PR (same approach used for `s3-test`). Happy to add a gated test feature in a follow-up if reviewers prefer.\r\n\r\n## Checklist\r\n\r\n- [x] Added `cos` and `goosefs` features to `rust/lancedb/Cargo.toml`\r\n- [x] Updated `python/Cargo.toml` default features\r\n- [x] Updated `nodejs/Cargo.toml` default features\r\n- [x] Regenerated `Cargo.lock`\r\n- [x] Verified build with `--all-features`\r\n- [ ] Documentation update (can be done in a follow-up PR once API stabilizes)\r\n\r\n## Related\r\n\r\n- Issue: #3525\r\n- Upstream support: [`lance/tencent`](https://github.com/lance-format/lance), [`lance/goosefs`](https://github.com/lance-format/lance)",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "low",
+    "urgency": "high",
+    "rationale": "docs/tests/config/deps only"
+  },
+  "effort": {
+    "size_bucket": "M",
+    "additions": 146,
+    "deletions": 2,
+    "files": 4
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "red",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "Cargo.lock",
+        "status": "modified",
+        "additions": 138,
+        "deletions": 0,
+        "patch": "@@ -3788,6 +3788,30 @@ dependencies = [\n  \"wasm-bindgen\",\n ]\n \n+[[package]]\n+name = \"goosefs-sdk\"\n+version = \"0.1.5\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"9ae079b88ffe7772d12cfc5c40a5a324babb357893d95b5e3a22ae857f236c5f\"\n+dependencies = [\n+ \"async-trait\",\n+ \"bytes\",\n+ \"dashmap\",\n+ \"hostname\",\n+ \"prost\",\n+ \"prost-types\",\n+ \"rand 0.9.4\",\n+ \"reqwest 0.12.28\",\n+ \"serde\",\n+ \"thiserror 2.0.18\",\n+ \"tokio\",\n+ \"tokio-stream\",\n+ \"tonic\",\n+ \"tonic-prost\",\n+ \"tracing\",\n+ \"uuid\",\n+]\n+\n [[package]]\n name = \"group\"\n version = \"0.12.1\"\n@@ -3999,6 +4023,17 @@ dependencies = [\n  \"windows-sys 0.61.2\",\n ]\n \n+[[package]]\n+name = \"hostname\"\n+version = \"0.4.2\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"617aaa3557aef3810a6369d0a99fac8a080891b68bd9f9812a1eeda0c0730cbd\"\n+dependencies = [\n+ \"cfg-if 1.0.4\",\n+ \"libc\",\n+ \"windows-link\",\n+]\n+\n [[package]]\n name = \"http\"\n version = \"0.2.12\"\n@@ -4159,6 +4194,19 @@ dependencies = [\n  \"webpki-roots 1.0.7\",\n ]\n \n+[[package]]\n+name = \"hyper-timeout\"\n+version = \"0.5.2\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"2b90d566bffbce6a75bd8b09a05aa8c2cb1fabb6cb348f8840c9e4c90a0d83b0\"\n+dependencies = [\n+ \"hyper 1.9.0\",\n+ \"hyper-util\",\n+ \"pin-project-lite\",\n+ \"tokio\",\n+ \"tower-service\",\n+]\n+\n [[package]]\n name = \"hyper-util\"\n version = \"0.1.20\"\n@@ -6347,7 +6395,9 @@ dependencies = [\n  \"opendal-layer-timeout\",\n  \"opendal-service-azblob\",\n  \"opendal-service-azdls\",\n+ \"opendal-service-cos\",\n  \"opendal-service-gcs\",\n+ \"opendal-service-goosefs\",\n  \"opendal-service-hf\",\n  \"opendal-service-oss\",\n  \"opendal-service-s3\",\n@@ -6475,6 +6525,23 @@ dependencies = [\n  \"opendal-core\",\n ]\n \n+[[package]]\n+name = \"opendal-service-cos\"\n+version = \"0.57.0\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"aa8cafe9729213375c7331019b0cb756ad3e1aff7f45cd32c45eae91ebde8901\"\n+dependencies = [\n+ \"bytes\",\n+ \"http 1.4.2\",\n+ \"log\",\n+ \"opendal-core\",\n+ \"quick-xml 0.39.4\",\n+ \"reqsign-core\",\n+ \"reqsign-file-read-tokio\",\n+ \"reqsign-tencent-cos\",\n+ \"serde\",\n+]\n+\n [[package]]\n name = \"opendal-service-gcs\"\n version = \"0.57.0\"\n@@ -6496,6 +6563,20 @@ dependencies = [\n  \"tokio\",\n ]\n \n+[[package]]\n+name = \"opendal-service-goosefs\"\n+version = \"0.57.0\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"69e43048bde419947ba826fbdc2f134d6c03f44ebf48bd33a03b72f9fc45fcb4\"\n+dependencies = [\n+ \"bytes\",\n+ \"goosefs-sdk\",\n+ \"log\",\n+ \"opendal-core\",\n+ \"serde\",\n+ \"tokio\",\n+]\n+\n [[package]]\n name = \"opendal-service-hf\"\n version = \"0.57.0\"\n@@ -8109,6 +8190,21 @@ dependencies = [\n  \"tokio\",\n ]\n \n+[[package]]\n+name = \"reqsign-tencent-cos\"\n+version = \"3.0.0\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"e128f19525861dbded59e1e7c17653a8ed63d573ca04aed708d552dbef5bb32a\"\n+dependencies = [\n+ \"anyhow\",\n+ \"http 1.4.2\",\n+ \"log\",\n+ \"percent-encoding\",\n+ \"reqsign-core\",\n+ \"serde\",\n+ \"serde_json\",\n+]\n+\n [[package]]\n name = \"reqwest\"\n version = \"0.12.28\"\n@@ -9794,6 +9890,45 @@ dependencies = [\n  \"winnow\",\n ]\n \n+[[package]]\n+name = \"tonic\"\n+version = \"0.14.6\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"ac2a5518c70fa84342385732db33fb3f44bc4cc748936eb5833d2df34d6445ef\"\n+dependencies = [\n+ \"async-trait\",\n+ \"base64 0.22.1\",\n+ \"bytes\",\n+ \"h2 0.4.14\",\n+ \"http 1.4.2\",\n+ \"http-body 1.0.1\",\n+ \"http-body-util\",\n+ \"hyper 1.9.0\",\n+ \"hyper-timeout\",\n+ \"hyper-util\",\n+ \"percent-encoding\",\n+ \"pin-project\",\n+ \"socket2 0.6.3\",\n+ \"sync_wrapper\",\n+ \"tokio\",\n+ \"tokio-stream\",\n+ \"tower\",\n+ \"tower-layer\",\n+ \"tower-service\",\n+ \"tracing\",\n+]\n+\n+[[package]]\n+name = \"tonic-prost\"\n+version = \"0.14.6\"\n+source = \"registry+https://github.com/rust-lang/crates.io-index\"\n+checksum = \"50849f68853be452acf590cde0b146665b8d507b3b8af17261df47e02c209ea0\"\n+dependencies = [\n+ \"bytes\",\n+ \"prost\",\n+ \"tonic\",\n+]\n+\n [[package]]\n name = \"tower\"\n version = \"0.5.3\"\n@@ -9802,9 +9937,12 @@ checksum = \"ebe5ef63511595f1344e2d5cfa636d973292adc0eec1f0ad45fae9f0851ab1d4\"\n dependencies = [\n  \"futures-core\",\n  \"futures-util\",\n+ \"indexmap 2.14.0\",\n  \"pin-project-lite\",\n+ \"slab\",\n  \"sync_wrapper\",\n  \"tokio\",\n+ \"tokio-util\",\n  \"tower-layer\",\n  \"tower-service\",\n  \"tracing\",",
+        "patch_truncated": false
+      },
+      {
+        "path": "nodejs/Cargo.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "patch": "@@ -44,6 +44,6 @@ aws-lc-rs = \"=1.16.3\"\n napi-build = \"2.3.1\"\n \n [features]\n-default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/goosefs\"]\n fp16kernels = [\"lancedb/fp16kernels\"]\n remote = [\"lancedb/remote\"]",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/Cargo.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "patch": "@@ -47,6 +47,6 @@ pyo3-build-config = { version = \"0.28\", features = [\n ] }\n \n [features]\n-default = [\"remote\",  \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/cos\", \"lancedb/goosefs\"]\n fp16kernels = [\"lancedb/fp16kernels\"]\n remote = [\"lancedb/remote\"]",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lancedb/Cargo.toml",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 0,
+        "patch": "@@ -123,6 +123,12 @@ azure = [\n     \"lance-namespace-impls/dir-azure\",\n     \"lance-namespace-impls/credential-vendor-azure\",\n ]\n+cos = [\"lance/tencent\", \"lance-io/tencent\"]\n+goosefs = [\n+    \"lance/goosefs\",\n+    \"lance-io/goosefs\",\n+    \"lance-namespace-impls/dir-goosefs\",\n+]\n huggingface = [\n     \"lance/huggingface\",\n     \"lance-io/huggingface\",",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 4,
+    "shown_files": 4
+  },
+  "lane_note": null
+}

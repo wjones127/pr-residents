@@ -1,0 +1,58 @@
+{
+  "pr": {
+    "repo": "lancedb/lancedb",
+    "number": 3599,
+    "title": "fix(python): average MRR reciprocal ranks over all rankings",
+    "url": "https://github.com/lancedb/lancedb/pull/3599",
+    "head": "cefe6435a69e3e276786f6413af5dd6c2a7021e9",
+    "author": "Ar-maan05",
+    "author_status": "regular",
+    "body": "## What\r\n\r\n`MRRReranker.rerank_multivector` averages each document's reciprocal ranks over the wrong denominator. It divides by the number of rankings the document *happens to appear in*, instead of the total number of rankings being fused.\r\n\r\n```python\r\n# python/python/lancedb/rerankers/mrr.py\r\nfor result_id, reciprocal_ranks in mrr_score_map.items():\r\n    mean_rr = np.mean(reciprocal_ranks)   # divides by len(present systems)\r\n```\r\n\r\n`mrr_score_map[doc]` only accumulates a reciprocal rank for the systems in which the document was returned, so `np.mean` never accounts for the systems that missed it.\r\n\r\n## Why it's wrong\r\n\r\nMean Reciprocal Rank fusion treats a system that didn't return a document as a reciprocal rank of `0` and averages across **all** systems. That's the exact mechanism by which it rewards cross-system consensus. Dividing by the appearance count removes that, so a document liked by a single ranking can beat one ranked highly by every ranking.\r\n\r\nConcretely, fusing 3 vector rankings:\r\n\r\n| Doc | Ranks | Current score | Correct score |\r\n|-----|-------|---------------|---------------|\r\n| A   | #1 in 1 system only          | `mean([1.0]) = 1.000` | `1.0 / 3 = 0.333` |\r\n| B   | #1, #1, #2 across all 3      | `mean([1, 1, .5]) = 0.833` | `2.5 / 3 = 0.833` |\r\n\r\nThe current code ranks **A above B** - a document two of three rankings ignored outranks one all three ranked at or near the top.\r\n\r\nThis also makes `rerank_multivector` inconsistent with `rerank_hybrid` in the same file, which already treats a missing system as `0` (`vector_rr = 0.0` / `fts_rr = 0.0`), and with the class docstring (\"average of reciprocal ranks across different search results\").\r\n\r\n## Fix\r\n\r\nDivide the summed reciprocal ranks by the total number of rankings:\r\n\r\n```python\r\nnum_systems = len(vector_results)\r\n...\r\nmean_rr = float(np.sum(reciprocal_ranks)) / num_systems\r\n```\r\n\r\n## Tests\r\n\r\nAdds `test_mrr_multivector_rewards_consensus`, which asserts the exact MRR scores and that the consensus document ranks first. It fails on `main` and passes with this change. Existing reranker tests are unaffected.",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "S",
+    "additions": 40,
+    "deletions": 1,
+    "files": 2
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "python/python/lancedb/rerankers/mrr.py",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 1,
+        "patch": "@@ -156,9 +156,16 @@ def rerank_multivector(\n                 reciprocal_rank = 1.0 / rank\n                 mrr_score_map[result_id].append(reciprocal_rank)\n \n+        # MRR averages the reciprocal rank across *all* ranking systems, treating\n+        # a system in which a document does not appear as a reciprocal rank of 0.\n+        # We therefore divide by the total number of systems, not by the number of\n+        # systems the document happens to appear in -- otherwise a document found\n+        # by a single ranking would outrank one ranked highly by every system,\n+        # defeating the purpose of fusing the rankings.\n+        num_systems = len(vector_results)\n         final_mrr_scores = {}\n         for result_id, reciprocal_ranks in mrr_score_map.items():\n-            mean_rr = np.mean(reciprocal_ranks)\n+            mean_rr = float(np.sum(reciprocal_ranks)) / num_systems\n             final_mrr_scores[result_id] = mean_rr\n \n         combined = pa.concat_tables(vector_results, **self._concat_tables_args)",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_rerankers.py",
+        "status": "modified",
+        "additions": 32,
+        "deletions": 0,
+        "patch": "@@ -350,6 +350,38 @@ def test_mrr_reranker_empty_input():\n         reranker.rerank_multivector([])\n \n \n+def test_mrr_multivector_rewards_consensus():\n+    # Reciprocal ranks must be averaged across *all* ranking systems, treating a\n+    # missing system as 0. A document ranked first by every system must outrank a\n+    # document ranked first by only one of them.\n+    reranker = MRRReranker()\n+\n+    def ranking(row_ids):\n+        return pa.table({\"_rowid\": pa.array(row_ids, type=pa.int64())})\n+\n+    # Doc 1 is rank 1 in only the first system; doc 2 is rank 1 in two systems\n+    # and rank 2 in the third (strong cross-system consensus).\n+    rs1 = ranking([1, 2, 3])\n+    rs2 = ranking([2, 3, 4])\n+    rs3 = ranking([2, 5, 6])\n+\n+    result = reranker.rerank_multivector([rs1, rs2, rs3])\n+    scores = {\n+        row_id: score\n+        for row_id, score in zip(\n+            result[\"_rowid\"].to_pylist(),\n+            result[\"_relevance_score\"].to_pylist(),\n+        )\n+    }\n+\n+    # sum of reciprocal ranks / number of systems\n+    assert scores[1] == pytest.approx(1.0 / 3)\n+    assert scores[2] == pytest.approx((0.5 + 1.0 + 1.0) / 3)\n+    assert scores[2] > scores[1]\n+    # The consensus document ranks first overall.\n+    assert result[\"_rowid\"].to_pylist()[0] == 2\n+\n+\n def test_rrf_reranker_distance():\n     data = pa.table(\n         {",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 2,
+    "shown_files": 2
+  },
+  "lane_note": null
+}

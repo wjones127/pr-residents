@@ -1,0 +1,195 @@
+{
+  "cycle": "2026-07-01T22:21:05Z",
+  "viewer": "wjones127",
+  "dispositions": [
+    {
+      "repo": "lance-format/lance",
+      "number": 5583,
+      "lane": "re_review",
+      "domain": "rust/lance-index",
+      "recommendation": "comment",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 6215,
+      "lane": "re_review",
+      "domain": "rust/lance-namespace-impls",
+      "recommendation": "comment",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 6255,
+      "lane": "re_review",
+      "domain": "rust/lance",
+      "recommendation": "block",
+      "drafted_blocking_count": 2,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 6890,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 7245,
+      "lane": "re_review",
+      "domain": "python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 7463,
+      "lane": "re_review",
+      "domain": "rust/lance",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 7464,
+      "lane": "re_review",
+      "domain": "rust/lance-index",
+      "recommendation": "comment",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 7477,
+      "lane": "fresh",
+      "domain": "rust/lance",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lance-format/lance",
+      "number": 7511,
+      "lane": "re_review",
+      "domain": "rust/lance-arrow",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 2395,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "block",
+      "drafted_blocking_count": 3,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 2829,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 2915,
+      "lane": "re_review",
+      "domain": "python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 2921,
+      "lane": "fresh",
+      "domain": "python/python",
+      "recommendation": "block",
+      "drafted_blocking_count": 2,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3028,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "comment",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3192,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3235,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "block",
+      "drafted_blocking_count": 3,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3303,
+      "lane": "re_review",
+      "domain": "rust/lancedb",
+      "recommendation": "block",
+      "drafted_blocking_count": 1,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3443,
+      "lane": "re_review",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3509,
+      "lane": "fresh",
+      "domain": "rust/lancedb",
+      "recommendation": "block",
+      "drafted_blocking_count": 2,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3526,
+      "lane": "fresh",
+      "domain": "Cargo.lock",
+      "recommendation": "block",
+      "drafted_blocking_count": 1,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    },
+    {
+      "repo": "lancedb/lancedb",
+      "number": 3599,
+      "lane": "fresh",
+      "domain": "python/python",
+      "recommendation": "approve",
+      "drafted_blocking_count": 0,
+      "drafted_at": "2026-07-01T22:21:05Z"
+    }
+  ]
+}
