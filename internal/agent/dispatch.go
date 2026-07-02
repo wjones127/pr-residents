@@ -21,6 +21,7 @@ type WorkupDoc struct {
 	Risk           string         `json:"risk"`
 	Assessment     string         `json:"assessment"`
 	Summary        string         `json:"summary"`
+	SOAP           string         `json:"soap,omitempty"` // legacy free-text synthesis (old cached workups)
 	Comments       []DraftComment `json:"comments"`
 	CachedAt       string         `json:"cached_at"`
 	TokensIn       int            `json:"tokens_in"`

@@ -107,7 +107,11 @@ func copyText(c agent.DraftComment) string {
 }
 
 func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
-	if strings.TrimSpace(doc.Summary) == "" && len(doc.Comments) == 0 {
+	summary := strings.TrimSpace(doc.Summary)
+	if summary == "" {
+		summary = strings.TrimSpace(doc.SOAP) // legacy free-text workup
+	}
+	if summary == "" && len(doc.Comments) == 0 {
 		return nil
 	}
 	nb := 0
@@ -116,16 +120,19 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 			nb++
 		}
 	}
-	head := fmt.Sprintf("%d comment%s", len(doc.Comments), plural(len(doc.Comments)))
-	if nb > 0 {
-		head += fmt.Sprintf(" · %d blocking", nb)
+	head := "workup cached"
+	if len(doc.Comments) > 0 {
+		head = fmt.Sprintf("%d comment%s", len(doc.Comments), plural(len(doc.Comments)))
+		if nb > 0 {
+			head += fmt.Sprintf(" · %d blocking", nb)
+		}
 	}
 	base := strings.ReplaceAll(fmt.Sprintf("%s-%d", repo, number), "/", "-")
 
 	wv := &WorkupView{
 		Recommendation: doc.Recommendation,
 		HeadLabel:      head,
-		Summary:        strings.TrimSpace(doc.Summary),
+		Summary:        summary,
 		SummaryCopyID:  "s-" + base,
 	}
 	for i, c := range doc.Comments {

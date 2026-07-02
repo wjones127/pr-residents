@@ -3,9 +3,32 @@ package web
 import (
 	"testing"
 
+	"github.com/lancedb/pr-residents/internal/agent"
 	"github.com/lancedb/pr-residents/internal/prr"
 	"github.com/lancedb/pr-residents/internal/relevance"
 )
+
+func TestBuildWorkupViewLegacySOAP(t *testing.T) {
+	// A workup cached in the old free-text `soap` shape (no summary/comments)
+	// must still render — as the summary.
+	doc := agent.WorkupDoc{Recommendation: "block", SOAP: "old free-text review body"}
+	wv := buildWorkupView("o/r", 5, doc)
+	if wv == nil {
+		t.Fatal("legacy soap workup should render")
+	}
+	if wv.Summary != "old free-text review body" || wv.Recommendation != "block" {
+		t.Errorf("legacy render: %+v", wv)
+	}
+	if wv.HeadLabel != "workup cached" {
+		t.Errorf("head label for comment-less workup: %q", wv.HeadLabel)
+	}
+}
+
+func TestBuildWorkupViewEmpty(t *testing.T) {
+	if buildWorkupView("o/r", 5, agent.WorkupDoc{}) != nil {
+		t.Error("an empty workup should not render")
+	}
+}
 
 func TestBuildViewTriage(t *testing.T) {
 	panel := []relevance.Candidate{
