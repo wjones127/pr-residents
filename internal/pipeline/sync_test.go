@@ -129,36 +129,54 @@ func TestSyncDedupAndRequested(t *testing.T) {
 	}
 }
 
-func TestSyncCacheHitFlipsRequested(t *testing.T) {
+func TestSyncReusesCacheWhenUnchanged(t *testing.T) {
 	cfg := testConfig(t)
 	c := cache.NewMemory()
 
 	first := &fakeAPI{
 		requested: []gh.LightPR{light(1, "u1")},
-		reviewed:  []gh.LightPR{light(2, "u2")},
-		details: map[int]*gh.Detail{
-			1: det(1, "alice"),                                           // fresh
-			2: withReviews(det(2, "bob"), reviewBy("APPROVED", "h2", 5)), // housekeeping
-		},
+		details:   map[int]*gh.Detail{1: det(1, "alice")},
 	}
 	Sync(cfg, func(string) API { return first }, c, now)
 
-	// Second run: same updatedAts (cache hits), but #1 is no longer requested.
+	// Same updatedAt and same requested-status -> pure cache hit, no re-fetch.
 	second := &fakeAPI{
-		requested: []gh.LightPR{},
-		reviewed:  []gh.LightPR{light(1, "u1"), light(2, "u2")},
+		requested: []gh.LightPR{light(1, "u1")},
 		details:   map[int]*gh.Detail{}, // must not be consulted
 	}
 	records, _ := Sync(cfg, func(string) API { return second }, c, now)
-
 	if second.detailCount != 0 {
-		t.Errorf("cache hits should skip detail fetch, got %d fetches", second.detailCount)
+		t.Errorf("unchanged PR should be a cache hit, got %d fetches", second.detailCount)
 	}
-	if len(records) != 2 {
-		t.Fatalf("expected 2 records, got %d", len(records))
+	if len(records) != 1 || !records[0].Relevance.Requested {
+		t.Errorf("cached record reused: %+v", records)
 	}
-	if records[0].Number != 1 || records[0].Relevance.Requested {
-		t.Errorf("#1 requested flag should flip to false on cache hit: %+v", records[0].Relevance)
+}
+
+func TestSyncReDerivesWhenRequestedFlips(t *testing.T) {
+	cfg := testConfig(t)
+	c := cache.NewMemory()
+
+	// First run: #1 requested, never reviewed -> fresh, cached.
+	first := &fakeAPI{
+		requested: []gh.LightPR{light(1, "u1")},
+		details:   map[int]*gh.Detail{1: det(1, "alice")},
+	}
+	Sync(cfg, func(string) API { return first }, c, now)
+
+	// Second run: same updatedAt, but #1 is no longer requested and I've since
+	// approved it -> must re-fetch and re-derive to housekeeping, not serve the
+	// stale fresh record.
+	second := &fakeAPI{
+		reviewed: []gh.LightPR{light(1, "u1")},
+		details:  map[int]*gh.Detail{1: withReviews(det(1, "alice"), reviewBy("APPROVED", "h1", 5))},
+	}
+	records, _ := Sync(cfg, func(string) API { return second }, c, now)
+	if second.detailCount != 1 {
+		t.Errorf("requested flip should force a re-fetch, got %d fetches", second.detailCount)
+	}
+	if len(records) != 1 || records[0].Lane != "housekeeping" || records[0].Relevance.Requested {
+		t.Errorf("expected re-derived housekeeping record, got %+v", records)
 	}
 }
 

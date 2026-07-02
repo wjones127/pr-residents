@@ -48,8 +48,10 @@ func TestBuildPanelAffinity(t *testing.T) {
 		},
 	}
 	panel, warns := BuildPanel(cfg, func(string) API { return fake }, store.New(t.TempDir()), Options{})
-	if len(warns) != 0 {
-		t.Fatalf("warnings: %v", warns)
+	for _, w := range warns {
+		if strings.HasPrefix(w, "[error]") {
+			t.Fatalf("unexpected error: %s", w)
+		}
 	}
 	if len(panel) != 1 || panel[0].Number != 1 || panel[0].Mode != "affinity" || panel[0].Score != 5 {
 		t.Fatalf("expected 1 affinity candidate scoring 5, got %+v", panel)

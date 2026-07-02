@@ -142,10 +142,13 @@ func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, n
 			if err != nil {
 				warns = append(warns, fmt.Sprintf("[warn] %s#%d: cache read: %v", repo, number, err))
 			}
-			if entry != nil && entry.UpdatedAt == lr.UpdatedAt {
+			// Reuse the cached record only when the PR is unchanged AND its
+			// requested-status is the same. `requested` flipping (e.g. you just
+			// added yourself as a reviewer) changes blocked_on/lane, which the
+			// cached record was NOT derived with — so re-fetch and re-derive.
+			if entry != nil && entry.UpdatedAt == lr.UpdatedAt &&
+				entry.Record != nil && entry.Record.Relevance.Requested == req {
 				record = entry.Record
-				// `requested` can flip without updatedAt changing; refresh it.
-				record.Relevance.Requested = req
 			} else {
 				detail, err := client.FetchDetail(owner, name, number)
 				if err != nil {

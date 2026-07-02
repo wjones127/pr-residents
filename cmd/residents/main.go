@@ -69,6 +69,7 @@ func runRefresh(args []string) int {
 	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
 	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
 	out := fs.String("out", "", "output path for records JSON; '-' for stdout; empty writes the state cache")
+	rebuildRelevance := fs.Bool("rebuild-relevance", false, "rebuild the review-history relevance profile from the API")
 	fs.Parse(args)
 
 	cfg, err := config.Load(*configDir)
@@ -123,7 +124,7 @@ func runRefresh(args []string) int {
 
 	// Triage panel: self-requested relevance candidates (deterministic, no LLM).
 	newRel := func(token string) relevance.API { return gh.NewClient(token) }
-	panel, pwarns := relevance.BuildPanel(cfg, newRel, st, relevance.Options{})
+	panel, pwarns := relevance.BuildPanel(cfg, newRel, st, relevance.Options{Rebuild: *rebuildRelevance})
 	for _, warn := range pwarns {
 		fmt.Fprintln(os.Stderr, warn)
 	}

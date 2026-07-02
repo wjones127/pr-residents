@@ -165,21 +165,30 @@ func BuildPanel(cfg *config.Config, newClient func(token string) API, st *store.
 	}
 
 	profiles := loadProfiles(st, viewer)
-	if profiles == nil || opts.Rebuild {
+	if profiles == nil {
 		profiles = map[string]RepoProfile{}
-		for _, repo := range repos {
-			api := clients[splitOwner(repo)]
-			reviewed, err := api.SearchWithFiles("repo:"+repo+" is:pr reviewed-by:@me -author:@me", opts.HistoryLimit)
-			if err != nil {
-				warns = append(warns, fmt.Sprintf("[error] %s: history failed: %v", repo, err))
-				continue
-			}
-			var pathsPerPR [][]string
-			for _, pr := range reviewed {
-				pathsPerPR = append(pathsPerPR, filtered(pr.Paths, cfg.ExcludePaths))
-			}
-			profiles[repo] = RepoProfile{Reviews: len(reviewed), Weights: BuildProfile(pathsPerPR, DefaultBucketDepth)}
+	}
+	// Build any active repo missing from the cached profile (so a newly-added
+	// repo is back-filled, not stuck cold forever), or all repos on --rebuild.
+	dirty := false
+	for _, repo := range repos {
+		if _, ok := profiles[repo]; ok && !opts.Rebuild {
+			continue
 		}
+		api := clients[splitOwner(repo)]
+		reviewed, err := api.SearchWithFiles("repo:"+repo+" is:pr reviewed-by:@me -author:@me", opts.HistoryLimit)
+		if err != nil {
+			warns = append(warns, fmt.Sprintf("[error] %s: history failed: %v", repo, err))
+			continue
+		}
+		var pathsPerPR [][]string
+		for _, pr := range reviewed {
+			pathsPerPR = append(pathsPerPR, filtered(pr.Paths, cfg.ExcludePaths))
+		}
+		profiles[repo] = RepoProfile{Reviews: len(reviewed), Weights: BuildProfile(pathsPerPR, DefaultBucketDepth)}
+		dirty = true
+	}
+	if dirty {
 		saveProfiles(st, viewer, profiles)
 	}
 
@@ -193,10 +202,13 @@ func BuildPanel(cfg *config.Config, newClient func(token string) API, st *store.
 		}
 		profile := profiles[repo]
 		cold := profile.Reviews < MinHistory
+		claimedCount, scored := 0, 0
 		for _, c := range candidates {
 			if isClaimed(c.Reviews, viewer) {
+				claimedCount++
 				continue
 			}
+			scored++
 			paths := filtered(c.Paths, cfg.ExcludePaths)
 			var score float64
 			var rationale, mode string
@@ -220,6 +232,12 @@ func BuildPanel(cfg *config.Config, newClient func(token string) API, st *store.
 				MatchedAreas: matchedAreas, FilesChangedCount: len(paths),
 			})
 		}
+		mode := "affinity"
+		if cold {
+			mode = "cold_start"
+		}
+		warns = append(warns, fmt.Sprintf("[info] %s: %d candidates, %d claimed-excluded, %d scored (mode=%s, history=%d)",
+			repo, len(candidates), claimedCount, scored, mode, profile.Reviews))
 	}
 
 	var kept []Candidate
@@ -237,6 +255,8 @@ func BuildPanel(cfg *config.Config, newClient func(token string) API, st *store.
 		}
 		return kept[i].Number < kept[j].Number
 	})
+	warns = append(warns, fmt.Sprintf("[info] triage: %d of %d scored candidates kept at min_score %.1f (interests configured: %d)",
+		len(kept), len(panel), opts.MinScore, len(cfg.Interests)))
 	if len(kept) > opts.Top {
 		kept = kept[:opts.Top]
 	}
