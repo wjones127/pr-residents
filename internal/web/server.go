@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/lancedb/pr-residents/internal/agent"
@@ -118,9 +119,26 @@ func (s *Server) loadPanel() []relevance.Candidate {
 	return panel
 }
 
+// reviewSearchQuery is the manual "find PRs to review" filter, mirrored from the
+// old HTML render's per-repo links.
+const reviewSearchQuery = "is:open is:pr draft:false review:required -author:@me"
+
+func (s *Server) repoLinks() []RepoLink {
+	var links []RepoLink
+	for _, repo := range s.cfg.ActiveRepos() {
+		links = append(links, RepoLink{
+			Name: repo,
+			URL:  "https://github.com/" + repo + "/pulls?q=" + url.QueryEscape(reviewSearchQuery),
+		})
+	}
+	return links
+}
+
 func (s *Server) view() RoundsView {
 	records := s.loadRecords()
-	return BuildView(records, s.loadWorkups(records), s.loadPanel(), today())
+	v := BuildView(records, s.loadWorkups(records), s.loadPanel(), today())
+	v.RepoLinks = s.repoLinks()
+	return v
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -168,8 +186,13 @@ func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
 // already persisted.
 func (s *Server) doDispatch(ctx context.Context, emit func(jobs.Event)) error {
 	records := s.loadRecords()
-	agent.Dispatch(ctx, s.cfg, s.store, s.agent, s.newFetcher, records, s.now().UTC(),
+	res := agent.Dispatch(ctx, s.cfg, s.store, s.agent, s.newFetcher, records, s.now().UTC(),
 		func(ev agent.DispatchEvent) {
+			// Surface per-PR problems in the server log — an SSE-only failure
+			// leaves no trace to diagnose from.
+			if ev.Phase == "failed" || ev.Phase == "cancelled" || ev.Phase == "skipped" {
+				log.Printf("dispatch: %s#%d %s: %s", ev.Repo, ev.Number, ev.Phase, ev.Message)
+			}
 			emit(jobs.Event{
 				Phase:     ev.Phase,
 				Repo:      fmt.Sprintf("%s#%d", ev.Repo, ev.Number),
@@ -181,6 +204,13 @@ func (s *Server) doDispatch(ctx context.Context, emit func(jobs.Event)) error {
 				Status:    "running",
 			})
 		})
+	log.Printf("dispatch complete: reviewed %d, cached %d, failed %d, skipped %d, tokens %d in / %d out",
+		res.Reviewed, res.Cached, res.Failed, res.Skipped, res.TokensIn, res.TokensOut)
+	// If nothing succeeded but work failed, surface it as a job error so the UI
+	// shows it rather than a silent "done".
+	if res.Reviewed == 0 && res.Failed > 0 {
+		return fmt.Errorf("all %d review(s) failed — see server log for details", res.Failed)
+	}
 	return nil
 }
 

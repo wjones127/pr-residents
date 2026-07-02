@@ -48,11 +48,19 @@ type TriageRow struct {
 	Rationale string
 }
 
+// RepoLink points at a repo's GitHub PR search for finding review candidates by
+// hand (the manual complement to the triage panel).
+type RepoLink struct {
+	Name string
+	URL  string
+}
+
 // RoundsView is the whole page's data.
 type RoundsView struct {
 	DateLabel string
 	Total     int
 	Triage    []TriageRow
+	RepoLinks []RepoLink
 	Fresh     []RowView
 	Rereview  []RowView
 	House     []RowView

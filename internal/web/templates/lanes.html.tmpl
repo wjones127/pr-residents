@@ -29,6 +29,7 @@
 {{define "lanes"}}
   <section id="triage"><div class="lane-head"><h2>Triage</h2><span class="count">{{len .Triage}}</span><span class="desc">self-requested candidates — confirm / strike</span></div>
 {{range .Triage}}{{template "triagerow" .}}{{else}}    <div class="note">(none proposed)</div>{{end}}
+{{if .RepoLinks}}    <div class="repo-links">Find more on GitHub:{{range .RepoLinks}} <a href="{{.URL}}">{{.Name}}</a>{{end}}</div>{{end}}
   </section>
   <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
 {{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
