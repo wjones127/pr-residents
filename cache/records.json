@@ -1,19 +1,19 @@
 [
   {
     "repo": "lance-format/lance",
-    "number": 7477,
-    "url": "https://github.com/lance-format/lance/pull/7477",
-    "title": "perf: merge half-open range queries on the same BTree index",
-    "body": "## Problem\nA filter like `fqdn = x AND log_time >= A AND log_time <= B AND channel = y` is compiled into two **half-open** range queries on the same BTree index (`log_time >= A` with an unbounded upper bound, and `log_time <= B` with an unbounded lower bound). Each half-open range matches nearly all BTree pages, so the entire index is loaded even though only the pages inside `[A, B]` are needed.\n\n## Fix\nAdd a `ScalarIndexExpr::optimize()` pass that:\n1. flattens the AND tree to collect leaf queries,\n2. merges Range queries on the same index into a single closed range,\n3. rebuilds the AND tree.\n\nIt is called from `ScalarIndexExec::new()` before execution.\n\n## Benchmark\n\n**Method:** build a real BTree index over 100,000 sorted unique `i32` values, split into ~100 pages (`batch_size = 1000`). Query a narrow 50-value window in the middle of the range. Measure both (a) the number of BTree pages loaded (via `LocalMetricsCollector.parts_loaded`) and (b) query wall-clock time, for:\n- **Before** \u2014 the two half-open range searches the AND tree issues separately: `value >= a` (unbounded upper) and `value <= b` (unbounded lower);\n- **After** \u2014 the single closed range `[a, b]` produced by `optimize()`.\n\n**Pages loaded:**\n\n| Execution | BTree pages loaded |\n|---|---|\n| Before (two half-open ranges) | 101 (\u2248 whole index) |\n| After (merged closed range) | 1 |\n\n\u2248 **101x** fewer index pages loaded for this query shape.\n\n**Query latency:**\n\n| Scenario | Before (two half-open) | After (merged) | Speedup |\n|---|---|---|---|\n| In-memory (CPU/decode bound) | 18.6 ms/q | 0.28 ms/q | ~67x |\n| Per-page latency (2 ms/GET) | 76.7 ms/q | 10.8 ms/q | ~7x |\n\nIn-memory, the ~67x reflects the decode/scan cost of touching the whole index vs a single page. On remote storage the wall-clock gain depends on whether the workload is latency-bound (page fetches are parallelized, so the gain is smaller) or bandwidth-bound (scales with the ~100x reduction in bytes read).\n\n## Test\n`test_optimize_*` suite in `expression.rs` covers the merge logic (nested AND trees, exclusive bounds, no-merge cases for different indices / non-range queries, OR/NOT preservation, recheck propagation).",
-    "author": "xloya",
-    "author_status": "regular",
+    "number": 7432,
+    "url": "https://github.com/lance-format/lance/pull/7432",
+    "title": "perf: serialize updated_fragment_offsets as RoaringBitmap bytes in proto",
+    "body": "Fixes: https://github.com/lance-format/lance/issues/7080\r\n\r\n## Summary\r\n\r\nFollow-up to #6650. The `updated_fragment_offsets` field (proto field 9) stores per-fragment\r\nmatched row offsets as `map<uint64, UInt32List>` -- one uint32 per matched row. For dense\r\nrewrites this produces multi-GB manifests (e.g. 86k matched rows x 4 bytes x many fragments).\r\n\r\nThis PR adds proto field 10 (`map<uint64, bytes>`) using portable RoaringBitmap serialization,\r\nwhich typically compresses the same data to tens of bytes per fragment. Writers emit field 10\r\nonly; readers prefer field 10, falling back to field 9 for manifests written before this change.\r\n\r\n\r\n## Background\r\n\r\nPR #6650 added `updated_fragment_offsets` to the `Update` transaction message so that\r\n`build_manifest` can partially refresh `_row_last_updated_at_version` for matched rows only.\r\nThe encoding choice -- one uint32 per offset in a `UInt32List` -- was flagged post-merge as a\r\nsize regression for dense updates. The offsets are already stored internally as `RoaringBitmap`;\r\nthis PR aligns the proto encoding with that representation.\r\n\r\n\r\n## Changes\r\n\r\n### protos/transaction.proto\r\n- Deprecate field 9 (`map<uint64, UInt32List> updated_fragment_offsets`) with a comment\r\n  pointing to field 10.\r\n- Add field 10: `map<uint64, bytes> updated_fragment_offset_bitmaps` with documentation of\r\n  the dual-read strategy.\r\n\r\n### rust/lance/src/dataset/transaction.rs\r\n\r\nSerialization (`From<&Transaction> for pb::Transaction`):\r\n- Write field 10 only: `RoaringBitmap::serialize_into` produces portable bytes for each\r\n  fragment's bitmap.\r\n- Set field 9 to an empty `HashMap` (forward compat; old readers ignore unknown fields).\r\n\r\nDeserialization (`TryFrom<pb::Transaction> for Transaction`):\r\n- If field 10 is non-empty: deserialize each entry with `RoaringBitmap::deserialize_from`.\r\n- Else if field 9 is non-empty: convert each `UInt32List` to `RoaringBitmap::from_iter`\r\n  (legacy fallback).\r\n- Same `if !new_field.is_empty() { ... } else { ... }` pattern used by the existing\r\n  `Rewrite.groups` / `Rewrite.old_fragments` migration.\r\n\r\nInvalid field 10 bytes fail deserialize with `Error::invalid_input`.\r\n\r\nIn-memory type unchanged: `UpdatedFragmentOffsets(HashMap<u64, RoaringBitmap>)`.\r\n\r\n\r\n## Test plan\r\n\r\n- `test_proto_round_trip_field_10` -- write a transaction with field 10, read back, verify\r\n  offsets match for two fragments.\r\n- `test_proto_legacy_field_9_read` -- construct a proto with only field 9 populated\r\n  (simulating an old writer), deserialize, verify offsets are correctly recovered.\r\n- `test_proto_field_10_takes_precedence_over_field_9` -- when both fields are present,\r\n  field 10 values are used and field 9 is ignored.\r\n\r\n\r\nProto wire format change; team vote may be needed.\r\n\r\n\r\n## Backward compatibility\r\n\r\n- Proto field numbers: field 9 is kept (deprecated, not removed). Field 10 is new. No field\r\n  number reuse.\r\n- Old readers: ignore unknown field 10; they only read field 9, which is now empty on new\r\n  commits. Old Lance versions deserializing commits written by this PR will not recover\r\n  offsets from the txn blob; that only affects audit/`readTransaction()` on historical\r\n  commits, not table data or OCC.\r\n- New readers: prefer field 10; fall back to field 9 for manifests written by older Lance\r\n  versions that predate this change.\r\n- No JNI or Java changes. The in-memory type (`UpdatedFragmentOffsets`) is unchanged; only\r\n  the proto wire encoding changes.\r\n\r\nIndependent of #6748 and lance-spark #528 (JNI wiring). No mutual merge dependencies.",
+    "author": "jerryjch",
+    "author_status": "infrequent",
     "files_changed": [
-      "rust/lance-index/src/scalar/expression.rs",
-      "rust/lance/src/io/exec/scalar_index.rs"
+      "protos/transaction.proto",
+      "rust/lance/src/dataset/transaction.rs"
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 157.2,
+    "age_in_state_hrs": 226.9,
     "lane": "fresh",
     "acuity": {
       "risk": "med",
@@ -21,9 +21,9 @@
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
-      "size_bucket": "XL",
-      "additions": 996,
-      "deletions": 1,
+      "size_bucket": "M",
+      "additions": 180,
+      "deletions": 8,
       "files": 2
     },
     "relevance": {
@@ -38,11 +38,17 @@
       "mergeable": true
     },
     "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
+      "forced": true,
+      "rule_ids": [
+        "public-api"
+      ],
+      "reason": "Public API surface \u2014 breaking-change risk for downstream users"
     },
-    "head_oid": "89cf08feee0eb53cc322d876d893747666b5971f"
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
+    "head_oid": "3ab1c20cd0d691b2565112c1c3df92d4ae5a57dd"
   },
   {
     "repo": "lance-format/lance",
@@ -57,7 +63,7 @@
     ],
     "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 1.6,
+    "age_in_state_hrs": 18.9,
     "lane": "housekeeping",
     "acuity": {
       "risk": "low",
@@ -79,12 +85,16 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": null
+      "mergeable": true
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "internal branch"
     },
     "head_oid": "9b39eb015ad65a571b9fdb3894b2c33ac1c974ea"
   },
@@ -104,7 +114,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 9.5,
+    "age_in_state_hrs": 26.8,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -136,12 +146,16 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": null
+      "mergeable": true
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "0bdf87036a5304b94f718a75424141fbebde131b"
   },
@@ -162,7 +176,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 2.2,
+    "age_in_state_hrs": 13.9,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -171,8 +185,8 @@
     },
     "effort": {
       "size_bucket": "L",
-      "additions": 261,
-      "deletions": 51,
+      "additions": 243,
+      "deletions": 52,
       "files": 5
     },
     "relevance": {
@@ -182,7 +196,7 @@
     "last_reviewed_sha": "7fef56a13b804187cbd2e6f1603392d4ac9287db",
     "delta": {
       "commits": [
-        "66f475cdf8703d69aec193d617a75748b8a7a61e"
+        "8ab25dec7afebe1b06da4fcd9f22dc17f370a702"
       ],
       "files_touched": [
         "rust/lance-index/src/scalar/bitmap.rs",
@@ -194,15 +208,19 @@
     },
     "conditions": [],
     "merge_state": {
-      "ci": "red",
-      "mergeable": null
+      "ci": "green",
+      "mergeable": true
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "66f475cdf8703d69aec193d617a75748b8a7a61e"
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
+    "head_oid": "8ab25dec7afebe1b06da4fcd9f22dc17f370a702"
   },
   {
     "repo": "lance-format/lance",
@@ -221,7 +239,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 2.9,
+    "age_in_state_hrs": 14.2,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -230,7 +248,7 @@
     },
     "effort": {
       "size_bucket": "L",
-      "additions": 399,
+      "additions": 397,
       "deletions": 3,
       "files": 5
     },
@@ -241,7 +259,7 @@
     "last_reviewed_sha": "1fc46c07db0ad96f557b65ee0b40cb3ec504b0db",
     "delta": {
       "commits": [
-        "855f0738294603bfa2cf5017b0b74dee12d2d491"
+        "96cab339f97a5b88f2e8966650b3401213bfa1fe"
       ],
       "files_touched": [
         "rust/lance-index/src/scalar.rs",
@@ -254,14 +272,18 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": null
+      "mergeable": true
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "855f0738294603bfa2cf5017b0b74dee12d2d491"
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
+    "head_oid": "96cab339f97a5b88f2e8966650b3401213bfa1fe"
   },
   {
     "repo": "lance-format/lance",
@@ -281,11 +303,11 @@
     ],
     "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 0.1,
+    "age_in_state_hrs": 17.3,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
-      "urgency": "high",
+      "urgency": "low",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
@@ -298,11 +320,11 @@
       "score": null,
       "requested": false
     },
-    "last_reviewed_sha": "100b078966075ea83aa8fd56bb8335e0fc035b62",
+    "last_reviewed_sha": "c7e8df50670d9743c7606d582309858e49056925",
     "delta": null,
     "conditions": [],
     "merge_state": {
-      "ci": "red",
+      "ci": "green",
       "mergeable": true
     },
     "escalation": {
@@ -310,7 +332,11 @@
       "rule_ids": [],
       "reason": ""
     },
-    "head_oid": "100b078966075ea83aa8fd56bb8335e0fc035b62"
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
+    "head_oid": "c7e8df50670d9743c7606d582309858e49056925"
   },
   {
     "repo": "lance-format/lance",
@@ -328,11 +354,11 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 2.1,
+    "age_in_state_hrs": 160.5,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
-      "urgency": "low",
+      "urgency": "high",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
@@ -366,6 +392,10 @@
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "686c79c1a4089de01296f16fe05405c815b04232"
   },
@@ -419,7 +449,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 224.3,
+    "age_in_state_hrs": 382.7,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -449,6 +479,10 @@
         "large-blast-radius"
       ],
       "reason": "Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "internal branch"
     },
     "head_oid": "429f89d1ca9f081cf8b93d8a1cf3c1f06ff56dff"
   },
@@ -481,7 +515,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 576.2,
+    "age_in_state_hrs": 734.6,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -503,7 +537,7 @@
     "conditions": [],
     "merge_state": {
       "ci": "red",
-      "mergeable": null
+      "mergeable": true
     },
     "escalation": {
       "forced": true,
@@ -511,6 +545,10 @@
         "public-api"
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "27aab24c0906e974dc7b59a6731dbcf9eebf8a4c"
   },
@@ -529,7 +567,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 687.9,
+    "age_in_state_hrs": 846.3,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -560,12 +598,16 @@
     "conditions": [],
     "merge_state": {
       "ci": "red",
-      "mergeable": null
+      "mergeable": false
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "ea8093f4206ba63d01a73fd14df5dde43612e235"
   },
@@ -586,7 +628,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 699.9,
+    "age_in_state_hrs": 858.3,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -615,6 +657,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "c8f94ceaaff26a8ae555994d58b9fdd1b320c7d3"
   },
   {
@@ -631,7 +677,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 332.9,
+    "age_in_state_hrs": 381.1,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -660,6 +706,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "aacbf22108d666e3081bf6ae313deaf85d8d3d83"
   },
   {
@@ -677,7 +727,7 @@
     ],
     "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 1857.1,
+    "age_in_state_hrs": 2015.5,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -699,12 +749,16 @@
     "conditions": [],
     "merge_state": {
       "ci": "red",
-      "mergeable": null
+      "mergeable": false
     },
     "escalation": {
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "de8977bc5959be13a2a703fd65b2c07b5ab4e21b"
   },
@@ -732,7 +786,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1524.8,
+    "age_in_state_hrs": 1683.2,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -772,7 +826,7 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": null
+      "mergeable": false
     },
     "escalation": {
       "forced": true,
@@ -780,6 +834,10 @@
         "public-api"
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "22dddee22a12458e0494deb3366a477128bdd251"
   },
@@ -801,7 +859,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 2262.4,
+    "age_in_state_hrs": 2310.5,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -843,6 +901,10 @@
         "large-blast-radius"
       ],
       "reason": "Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "9574665431ac01d019ce7229234842387d97ec1f"
   },
@@ -887,7 +949,7 @@
     ],
     "blocked_on": "author",
     "is_draft": true,
-    "age_in_state_hrs": 2671.0,
+    "age_in_state_hrs": 2829.4,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -944,7 +1006,7 @@
     "conditions": [],
     "merge_state": {
       "ci": "red",
-      "mergeable": null
+      "mergeable": false
     },
     "escalation": {
       "forced": true,
@@ -952,6 +1014,10 @@
         "large-blast-radius"
       ],
       "reason": "Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "773cdcc1e84107fd14cfe407860baaf7cad2ffac"
   },
@@ -978,7 +1044,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 4203.2,
+    "age_in_state_hrs": 4361.6,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -1010,6 +1076,10 @@
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
     },
+    "push": {
+      "eligible": true,
+      "reason": "internal branch"
+    },
     "head_oid": "30f05f58a2a03c4f5ac419496f662bfb36725a55"
   },
   {
@@ -1040,7 +1110,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1176.6,
+    "age_in_state_hrs": 1335.0,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1084,7 +1154,7 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": null
+      "mergeable": false
     },
     "escalation": {
       "forced": true,
@@ -1093,6 +1163,10 @@
         "large-blast-radius"
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "2ee3adeba8f45bb1515e6bec21a1c6595407f257"
   },
@@ -1115,7 +1189,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 4677.0,
+    "age_in_state_hrs": 4725.1,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -1144,152 +1218,11 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "09ba418f8065226c3c7abebfcff2887fef9958c7"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3599,
-    "url": "https://github.com/lancedb/lancedb/pull/3599",
-    "title": "fix(python): average MRR reciprocal ranks over all rankings",
-    "body": "## What\r\n\r\n`MRRReranker.rerank_multivector` averages each document's reciprocal ranks over the wrong denominator. It divides by the number of rankings the document *happens to appear in*, instead of the total number of rankings being fused.\r\n\r\n```python\r\n# python/python/lancedb/rerankers/mrr.py\r\nfor result_id, reciprocal_ranks in mrr_score_map.items():\r\n    mean_rr = np.mean(reciprocal_ranks)   # divides by len(present systems)\r\n```\r\n\r\n`mrr_score_map[doc]` only accumulates a reciprocal rank for the systems in which the document was returned, so `np.mean` never accounts for the systems that missed it.\r\n\r\n## Why it's wrong\r\n\r\nMean Reciprocal Rank fusion treats a system that didn't return a document as a reciprocal rank of `0` and averages across **all** systems. That's the exact mechanism by which it rewards cross-system consensus. Dividing by the appearance count removes that, so a document liked by a single ranking can beat one ranked highly by every ranking.\r\n\r\nConcretely, fusing 3 vector rankings:\r\n\r\n| Doc | Ranks | Current score | Correct score |\r\n|-----|-------|---------------|---------------|\r\n| A   | #1 in 1 system only          | `mean([1.0]) = 1.000` | `1.0 / 3 = 0.333` |\r\n| B   | #1, #1, #2 across all 3      | `mean([1, 1, .5]) = 0.833` | `2.5 / 3 = 0.833` |\r\n\r\nThe current code ranks **A above B** - a document two of three rankings ignored outranks one all three ranked at or near the top.\r\n\r\nThis also makes `rerank_multivector` inconsistent with `rerank_hybrid` in the same file, which already treats a missing system as `0` (`vector_rr = 0.0` / `fts_rr = 0.0`), and with the class docstring (\"average of reciprocal ranks across different search results\").\r\n\r\n## Fix\r\n\r\nDivide the summed reciprocal ranks by the total number of rankings:\r\n\r\n```python\r\nnum_systems = len(vector_results)\r\n...\r\nmean_rr = float(np.sum(reciprocal_ranks)) / num_systems\r\n```\r\n\r\n## Tests\r\n\r\nAdds `test_mrr_multivector_rewards_consensus`, which asserts the exact MRR scores and that the consensus document ranks first. It fails on `main` and passes with this change. Existing reranker tests are unaffected.",
-    "author": "Ar-maan05",
-    "author_status": "regular",
-    "files_changed": [
-      "python/python/lancedb/rerankers/mrr.py",
-      "python/python/tests/test_rerankers.py"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 34.7,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "low",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "S",
-      "additions": 40,
-      "deletions": 1,
-      "files": 2
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "cefe6435a69e3e276786f6413af5dd6c2a7021e9"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3526,
-    "url": "https://github.com/lancedb/lancedb/pull/3526",
-    "title": "feat: add Tencent COS and GooseFS object store support via new feature flags",
-    "body": "## Summary\r\n\r\nCloses #3525\r\n\r\nThis PR wires up two new optional object-store backends at the LanceDB layer, exposing capabilities that already exist upstream in `lance` / `lance-io`:\r\n\r\n| Backend | Cargo feature | Default in Rust crate | Default in Python wheel | Default in Node binding |\r\n| --- | --- | --- | --- | --- |\r\n| **Tencent COS** | `cos`     | \u274c off | \u2705 on | \u274c off |\r\n| **GooseFS**     | `goosefs` | \u274c off | \u2705 on | \u2705 on |\r\n\r\nBoth backends are additive and do not affect existing users who don't opt in.\r\n\r\n## Motivation\r\n\r\n- **Tencent COS** is the dominant object storage in the China region. Tencent Cloud users currently need an S3-compatible proxy or a private fork to use LanceDB against COS buckets.\r\n- **GooseFS** is Tencent Cloud's distributed cache acceleration layer that sits in front of COS/S3, a common pattern for vector search / AI training where the same hot dataset is read repeatedly.\r\n- This brings COS / GooseFS to feature parity with the existing first-class backends (`aws`, `gcs`, `azure`, `oss`, `huggingface`).\r\n\r\nSee the linked issue #3525 for the full discussion.\r\n\r\n## Changes\r\n\r\n### `rust/lancedb/Cargo.toml`\r\n\r\nAdd two new optional features that pull through the corresponding upstream feature flags:\r\n\r\n```toml\r\ncos = [\"lance/tencent\", \"lance-io/tencent\"]\r\ngoosefs = [\r\n    \"lance/goosefs\",\r\n    \"lance-io/goosefs\",\r\n    \"lance-namespace-impls/dir-goosefs\",\r\n]\r\n```\r\n\r\n### `python/Cargo.toml`\r\n\r\nEnable both `cos` and `goosefs` by default for the Python wheels, so `pip install lancedb` works against COS / GooseFS out of the box (consistent with how `aws` / `gcs` / `azure` / `oss` are bundled today):\r\n\r\n```diff\r\n-default = [\"remote\",  \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/cos\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `nodejs/Cargo.toml`\r\n\r\nEnable `goosefs` by default for the Node binding (COS kept opt-in to limit the default native binary size; can be revisited based on demand):\r\n\r\n```diff\r\n-default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\"]\r\n+default = [\"remote\", \"lancedb/aws\", \"lancedb/gcs\", \"lancedb/azure\", \"lancedb/dynamodb\", \"lancedb/oss\", \"lancedb/huggingface\", \"lancedb/goosefs\"]\r\n```\r\n\r\n### `Cargo.lock`\r\n\r\nRegenerated to reflect the transitive dependencies brought in by the new upstream features. No manual edits.\r\n\r\n## Example Usage\r\n\r\n### Rust\r\n\r\n```toml\r\n# Cargo.toml\r\nlancedb = { version = \"0.30\", features = [\"cos\", \"goosefs\"] }\r\n```\r\n\r\n```rust\r\n// Tencent COS\r\nlet db = lancedb::connect(\"cos://my-bucket/my-db\").execute().await?;\r\n\r\n// GooseFS\r\nlet db = lancedb::connect(\"goosefs://my-namespace/my-db\").execute().await?;\r\n```\r\n\r\n### Python\r\n\r\n```python\r\nimport lancedb\r\n\r\ndb = lancedb.connect(\r\n    \"cos://my-bucket/my-db\",\r\n    storage_options={\r\n        \"secret_id\": \"...\",\r\n        \"secret_key\": \"...\",\r\n        \"region\": \"ap-guangzhou\",\r\n    },\r\n)\r\n```\r\n\r\n## Backwards Compatibility\r\n\r\n- All new features are **opt-in** at the Rust crate level (`default = []` for `lancedb` itself is unchanged).\r\n- The Python wheel gains both backends by default, increasing wheel size slightly but matching the existing pattern of bundling all major cloud backends.\r\n- Node binding only adds `goosefs` to defaults; existing users see no behavior change.\r\n\r\n## Testing\r\n\r\n- `cargo check --all-features` \u2705\r\n- `cargo check -p lancedb --features cos` \u2705\r\n- `cargo check -p lancedb --features goosefs` \u2705\r\n- End-to-end COS / GooseFS smoke tests require Tencent Cloud credentials and are intentionally not added to CI in this PR (same approach used for `s3-test`). Happy to add a gated test feature in a follow-up if reviewers prefer.\r\n\r\n## Checklist\r\n\r\n- [x] Added `cos` and `goosefs` features to `rust/lancedb/Cargo.toml`\r\n- [x] Updated `python/Cargo.toml` default features\r\n- [x] Updated `nodejs/Cargo.toml` default features\r\n- [x] Regenerated `Cargo.lock`\r\n- [x] Verified build with `--all-features`\r\n- [ ] Documentation update (can be done in a follow-up PR once API stabilizes)\r\n\r\n## Related\r\n\r\n- Issue: #3525\r\n- Upstream support: [`lance/tencent`](https://github.com/lance-format/lance), [`lance/goosefs`](https://github.com/lance-format/lance)",
-    "author": "XuQianJin-Stars",
-    "author_status": "first_time",
-    "files_changed": [
-      "Cargo.lock",
-      "nodejs/Cargo.toml",
-      "python/Cargo.toml",
-      "rust/lancedb/Cargo.toml"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 158.7,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "low",
-      "urgency": "high",
-      "rationale": "docs/tests/config/deps only"
-    },
-    "effort": {
-      "size_bucket": "M",
-      "additions": 146,
-      "deletions": 2,
-      "files": 4
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "red",
-      "mergeable": true
-    },
-    "escalation": {
-      "forced": false,
-      "rule_ids": [],
-      "reason": ""
-    },
-    "head_oid": "6fe79fe727b7f77ae7995fef045b4d8bcb690a0a"
-  },
-  {
-    "repo": "lancedb/lancedb",
-    "number": 3509,
-    "url": "https://github.com/lancedb/lancedb/pull/3509",
-    "title": "feat: add an elastic dataloader as an iterable dataset",
-    "body": "# Elastic Streaming Dataloader\r\n\r\n## Motivation\r\n\r\nTraining large models on LanceDB tables today requires loading the entire dataset\r\ninto memory or writing bespoke batching logic. This PR introduces\r\n`StreamingDataset`, a PyTorch `IterableDataset` that streams directly from a\r\nLanceDB table with two hard guarantees that are difficult to achieve together:\r\n**elastic determinism** and **resumability**.\r\n\r\n## Goals\r\n\r\n### Elastic determinism\r\n\r\nThe dataset partitions the table into a fixed number of *splits* (controlled by\r\n`num_splits`, `shuffle_seed`, and `epoch`). Samples are yielded by round-robining\r\nover splits one sample per split per cycle. Because the split structure is fixed,\r\nthe set of samples that makes up each global training step is identical regardless\r\nof `world_size` or `num_workers`. You can scale your cluster up or down between\r\nruns and the model sees the same data in the same order \u2014 no re-sharding, no\r\ngradient variance from topology changes.\r\n\r\n### Resumability\r\n\r\n`state_dict()` / `load_state_dict()` capture how many samples each split has\r\nconsumed. Because all splits are the same size and the round-robin design keeps\r\nthem in lockstep, the state reduces to a single scalar (`samples_consumed_per_split`)\r\nthat is topology-independent. A checkpoint saved with 8 GPUs can resume correctly\r\non 4 GPUs or 16 GPUs without any adjustment.\r\n\r\n### PyTorch `IterableDataset` / streaming\r\n\r\n`StreamingDataset` implements the standard PyTorch `IterableDataset` interface, so\r\nit drops into any existing `DataLoader` pipeline without modification. Data is\r\nfetched lazily from Lance in chunks \u2014 only the rows needed for the current batch are\r\never in memory.\r\n\r\nCompared to the map dataset this takes more work from pytorch and puts it into the dataset itself (e.g. shuffling, filtering, etc.).  We do this because we cannot achieve things like elastic determinism or prefiltering otherwise.\r\n\r\n### Multi-worker support\r\n\r\nDataLoader workers are automatically assigned contiguous sub-blocks of splits (the\r\nrank's splits are divided evenly across workers). Each worker is independent:\r\nno shared state, no inter-process coordination. The only constraint is that\r\n`num_splits` must be divisible by `world_size * num_workers`.\r\n\r\nThat being said, multi-worker is highly discouraged as it relies on multiprocessing which is inefficient.  Still, we want to support it.\r\n\r\n### Filters as prefilters\r\n\r\nFilters are applied at *permutation-build time* via `PermutationBuilder.filter()`,\r\nnot re-evaluated on every fetch. The filtered row IDs are stored in the permutation\r\ntable so that subsequent reads see only the matching rows. This allows us to avoid loading rows that don't match the filter (which is the default pytorch behavior)\r\n\r\n### Prefetching\r\n\r\nTwo parameters control the I/O pipeline:\r\n\r\n- `read_batch_size` (default 64) \u2014 number of rows fetched per `take_offsets` call.\r\n  Larger values amortise per-request overhead, which is critical on object storage\r\n  where a single round-trip can cost ~100 ms.\r\n- `prefetch_batches` (default 4) \u2014 number of batches prefetched in parallel per\r\n  split via a `ThreadPoolExecutor`. While the model processes the current batch,\r\n  the next several batches are already in flight, hiding storage latency behind\r\n  compute.\r\n\r\nIf set correctly then you can get good performance even with num_workers=0 (unless you are bottlenecked on transform).\r\n\r\n### Transform parallelism *(planned)*\r\n\r\nThe underlying `Permutation` API supports a `with_transform()` callback for\r\ndecoding, augmentation, and format conversion.  Unfortunately, this is not parallelized.  Pytorch typically parallelizes this with num_workers which is multiprocessing which is highly inefficient.  For simple transforms we should be able to utilize multithreading and Rust based UDFs.  For complex python UDFs we could have a dedicated multiprocessing pipeline for just the transform.  Or we could just utilize multithreading.  In both cases we would exclude the I/O stage from the multiprocessing because that ends up being very memory hungry and inefficient.",
-    "author": "westonpace",
-    "author_status": "core",
-    "files_changed": [
-      "Cargo.lock",
-      "python/benchmarks/bench_streaming_dataloader.py",
-      "python/python/lancedb/streaming.py",
-      "python/python/tests/test_elastic_dataloader.py",
-      "rust/lancedb/Cargo.toml",
-      "rust/lancedb/examples/bench_streaming_dataloader.rs",
-      "rust/lancedb/src/dataloader/permutation/reader.rs",
-      "rust/lancedb/src/query.rs"
-    ],
-    "blocked_on": "me",
-    "is_draft": false,
-    "age_in_state_hrs": 171.8,
-    "lane": "fresh",
-    "acuity": {
-      "risk": "med",
-      "urgency": "high",
-      "rationale": "core library change; resident to refine from diff content"
-    },
-    "effort": {
-      "size_bucket": "XL",
-      "additions": 2536,
-      "deletions": 43,
-      "files": 8
-    },
-    "relevance": {
-      "score": null,
-      "requested": true
-    },
-    "last_reviewed_sha": null,
-    "delta": null,
-    "conditions": [],
-    "merge_state": {
-      "ci": "green",
-      "mergeable": false
-    },
-    "escalation": {
-      "forced": true,
-      "rule_ids": [
-        "large-blast-radius"
-      ],
-      "reason": "Large blast radius (XL diff)"
-    },
-    "head_oid": "b395948c28c9c0f616dd412171271fa3a05505d3"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1308,7 +1241,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 3825.2,
+    "age_in_state_hrs": 3873.4,
     "lane": "fresh",
     "acuity": {
       "risk": "med",
@@ -1339,6 +1272,10 @@
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users"
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "791e00315113c513c622e2fe0d0abbad51c0e283"
   },
   {
@@ -1356,7 +1293,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1770.1,
+    "age_in_state_hrs": 1928.5,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1394,6 +1331,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "e7d6a85754fa6c7c3f98d2befeaa9c8bb07f0241"
   },
   {
@@ -1422,7 +1363,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 135.6,
+    "age_in_state_hrs": 183.8,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -1444,7 +1385,7 @@
     "conditions": [],
     "merge_state": {
       "ci": "green",
-      "mergeable": true
+      "mergeable": false
     },
     "escalation": {
       "forced": true,
@@ -1453,6 +1394,10 @@
         "large-blast-radius"
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "a846e44e8e80bf8e12b667ca98eadc0f8a92a17e"
   },
@@ -1470,11 +1415,11 @@
     ],
     "blocked_on": "merge",
     "is_draft": false,
-    "age_in_state_hrs": 0.0,
+    "age_in_state_hrs": 17.2,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
-      "urgency": "low",
+      "urgency": "high",
       "rationale": "core library change; resident to refine from diff content"
     },
     "effort": {
@@ -1491,7 +1436,7 @@
     "delta": null,
     "conditions": [],
     "merge_state": {
-      "ci": "pending",
+      "ci": "red",
       "mergeable": true
     },
     "escalation": {
@@ -1499,7 +1444,92 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "25f8c6568f7072eebd5fd831164e0e0f877d444d"
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3509,
+    "url": "https://github.com/lancedb/lancedb/pull/3509",
+    "title": "feat: add an elastic dataloader as an iterable dataset",
+    "body": "# Elastic Streaming Dataloader\r\n\r\n## Motivation\r\n\r\nTraining large models on LanceDB tables today requires loading the entire dataset\r\ninto memory or writing bespoke batching logic. This PR introduces\r\n`StreamingDataset`, a PyTorch `IterableDataset` that streams directly from a\r\nLanceDB table with two hard guarantees that are difficult to achieve together:\r\n**elastic determinism** and **resumability**.\r\n\r\n## Goals\r\n\r\n### Elastic determinism\r\n\r\nThe dataset partitions the table into a fixed number of *splits* (controlled by\r\n`num_splits`, `shuffle_seed`, and `epoch`). Samples are yielded by round-robining\r\nover splits one sample per split per cycle. Because the split structure is fixed,\r\nthe set of samples that makes up each global training step is identical regardless\r\nof `world_size` or `num_workers`. You can scale your cluster up or down between\r\nruns and the model sees the same data in the same order \u2014 no re-sharding, no\r\ngradient variance from topology changes.\r\n\r\n### Resumability\r\n\r\n`state_dict()` / `load_state_dict()` capture how many samples each split has\r\nconsumed. Because all splits are the same size and the round-robin design keeps\r\nthem in lockstep, the state reduces to a single scalar (`samples_consumed_per_split`)\r\nthat is topology-independent. A checkpoint saved with 8 GPUs can resume correctly\r\non 4 GPUs or 16 GPUs without any adjustment.\r\n\r\n### PyTorch `IterableDataset` / streaming\r\n\r\n`StreamingDataset` implements the standard PyTorch `IterableDataset` interface, so\r\nit drops into any existing `DataLoader` pipeline without modification. Data is\r\nfetched lazily from Lance in chunks \u2014 only the rows needed for the current batch are\r\never in memory.\r\n\r\nCompared to the map dataset this takes more work from pytorch and puts it into the dataset itself (e.g. shuffling, filtering, etc.).  We do this because we cannot achieve things like elastic determinism or prefiltering otherwise.\r\n\r\n### Multi-worker support\r\n\r\nDataLoader workers are automatically assigned contiguous sub-blocks of splits (the\r\nrank's splits are divided evenly across workers). Each worker is independent:\r\nno shared state, no inter-process coordination. The only constraint is that\r\n`num_splits` must be divisible by `world_size * num_workers`.\r\n\r\nThat being said, multi-worker is highly discouraged as it relies on multiprocessing which is inefficient.  Still, we want to support it.\r\n\r\n### Filters as prefilters\r\n\r\nFilters are applied at *permutation-build time* via `PermutationBuilder.filter()`,\r\nnot re-evaluated on every fetch. The filtered row IDs are stored in the permutation\r\ntable so that subsequent reads see only the matching rows. This allows us to avoid loading rows that don't match the filter (which is the default pytorch behavior)\r\n\r\n### Prefetching\r\n\r\nTwo parameters control the I/O pipeline:\r\n\r\n- `read_batch_size` (default 64) \u2014 number of rows fetched per `take_offsets` call.\r\n  Larger values amortise per-request overhead, which is critical on object storage\r\n  where a single round-trip can cost ~100 ms.\r\n- `prefetch_batches` (default 4) \u2014 number of batches prefetched in parallel per\r\n  split via a `ThreadPoolExecutor`. While the model processes the current batch,\r\n  the next several batches are already in flight, hiding storage latency behind\r\n  compute.\r\n\r\nIf set correctly then you can get good performance even with num_workers=0 (unless you are bottlenecked on transform).\r\n\r\n### Transform parallelism *(planned)*\r\n\r\nThe underlying `Permutation` API supports a `with_transform()` callback for\r\ndecoding, augmentation, and format conversion.  Unfortunately, this is not parallelized.  Pytorch typically parallelizes this with num_workers which is multiprocessing which is highly inefficient.  For simple transforms we should be able to utilize multithreading and Rust based UDFs.  For complex python UDFs we could have a dedicated multiprocessing pipeline for just the transform.  Or we could just utilize multithreading.  In both cases we would exclude the I/O stage from the multiprocessing because that ends up being very memory hungry and inefficient.",
+    "author": "westonpace",
+    "author_status": "core",
+    "files_changed": [
+      "Cargo.lock",
+      "nodejs/src/permutation.rs",
+      "python/benchmarks/bench_streaming_dataloader.py",
+      "python/python/lancedb/permutation.py",
+      "python/python/lancedb/streaming.py",
+      "python/python/tests/test_elastic_dataloader.py",
+      "python/src/permutation.rs",
+      "rust/lancedb/Cargo.toml",
+      "rust/lancedb/examples/bench_streaming_dataloader.rs",
+      "rust/lancedb/src/dataloader/permutation/builder.rs",
+      "rust/lancedb/src/dataloader/permutation/reader.rs",
+      "rust/lancedb/src/dataloader/permutation/split.rs",
+      "rust/lancedb/src/query.rs"
+    ],
+    "blocked_on": "me",
+    "is_draft": false,
+    "age_in_state_hrs": 0.5,
+    "lane": "re_review",
+    "acuity": {
+      "risk": "med",
+      "urgency": "low",
+      "rationale": "core library change; resident to refine from diff content"
+    },
+    "effort": {
+      "size_bucket": "XL",
+      "additions": 2954,
+      "deletions": 48,
+      "files": 13
+    },
+    "relevance": {
+      "score": null,
+      "requested": false
+    },
+    "last_reviewed_sha": "b395948c28c9c0f616dd412171271fa3a05505d3",
+    "delta": {
+      "commits": [
+        "b79282c33cac6a0f9fc0d94668e77c89d6b84bdf"
+      ],
+      "files_touched": [
+        "Cargo.lock",
+        "nodejs/src/permutation.rs",
+        "python/benchmarks/bench_streaming_dataloader.py",
+        "python/python/lancedb/permutation.py",
+        "python/python/lancedb/streaming.py",
+        "python/python/tests/test_elastic_dataloader.py",
+        "python/src/permutation.rs",
+        "rust/lancedb/Cargo.toml",
+        "rust/lancedb/examples/bench_streaming_dataloader.rs",
+        "rust/lancedb/src/dataloader/permutation/builder.rs",
+        "rust/lancedb/src/dataloader/permutation/reader.rs",
+        "rust/lancedb/src/dataloader/permutation/split.rs",
+        "rust/lancedb/src/query.rs"
+      ]
+    },
+    "conditions": [],
+    "merge_state": {
+      "ci": "green",
+      "mergeable": false
+    },
+    "escalation": {
+      "forced": true,
+      "rule_ids": [
+        "large-blast-radius"
+      ],
+      "reason": "Large blast radius (XL diff)"
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
+    "head_oid": "b79282c33cac6a0f9fc0d94668e77c89d6b84bdf"
   },
   {
     "repo": "lancedb/lancedb",
@@ -1515,7 +1545,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 341.3,
+    "age_in_state_hrs": 499.7,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1551,6 +1581,10 @@
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "5808dd68b9409f7d138659acb3a8c363567660e9"
   },
@@ -1588,7 +1622,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1576.9,
+    "age_in_state_hrs": 1735.3,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1648,6 +1682,10 @@
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users; Large blast radius (XL diff)"
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "badb3679cd572d9144c9d93cdac4728639444d07"
   },
   {
@@ -1667,7 +1705,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1741.8,
+    "age_in_state_hrs": 1900.2,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1709,6 +1747,10 @@
       ],
       "reason": "Public API surface \u2014 breaking-change risk for downstream users"
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "9ec04acf973135d0bc068ef860f79cf39b027dda"
   },
   {
@@ -1725,7 +1767,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 1699.0,
+    "age_in_state_hrs": 1857.4,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1762,6 +1804,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "45963fab0c4f91d46f9001f408fd9889f7d91033"
   },
   {
@@ -1780,7 +1826,7 @@
     ],
     "blocked_on": "author",
     "is_draft": false,
-    "age_in_state_hrs": 1902.7,
+    "age_in_state_hrs": 2061.1,
     "lane": "housekeeping",
     "acuity": {
       "risk": "med",
@@ -1809,6 +1855,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "bd8866d6ae52d0df4347b1adfba8eea130bc5bc2"
   },
   {
@@ -1825,7 +1875,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 581.3,
+    "age_in_state_hrs": 739.7,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1862,6 +1912,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "ad2d1d93b253087fa3979f1a0d43f86b990bebeb"
   },
   {
@@ -1878,7 +1932,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 3505.3,
+    "age_in_state_hrs": 3663.7,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1915,6 +1969,10 @@
       "rule_ids": [],
       "reason": ""
     },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
+    },
     "head_oid": "b5971ddb4479a0a03c782060548598be50c99198"
   },
   {
@@ -1932,7 +1990,7 @@
     ],
     "blocked_on": "me",
     "is_draft": false,
-    "age_in_state_hrs": 9178.0,
+    "age_in_state_hrs": 9336.4,
     "lane": "re_review",
     "acuity": {
       "risk": "med",
@@ -1969,6 +2027,10 @@
       "forced": false,
       "rule_ids": [],
       "reason": ""
+    },
+    "push": {
+      "eligible": true,
+      "reason": "fork branch, maintainer edits on"
     },
     "head_oid": "cad75301c663380cc022915c6b978a8fc929d89b"
   }

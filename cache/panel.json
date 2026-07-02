@@ -51,28 +51,6 @@
     }
   },
   {
-    "repo": "lance-format/lance",
-    "number": 7565,
-    "title": "fix(index): translate address-domain scalar index results to row ids under stable row ids",
-    "url": "https://github.com/lance-format/lance/pull/7565",
-    "author": "charleshuang119",
-    "score": 97.0,
-    "base_score": 97.0,
-    "semantic": 0.0,
-    "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), rust/lance-index (reviewed 24\u00d7), python/python (reviewed 21\u00d7)",
-    "matched_areas": [
-      "rust/lance",
-      "rust/lance-index",
-      "python/python"
-    ],
-    "files_changed_count": 7,
-    "relevance": {
-      "score": 97.0,
-      "requested": false
-    }
-  },
-  {
     "repo": "lancedb/lancedb",
     "number": 3024,
     "title": "feat: support vector-only and FTS-only reranking",
@@ -116,50 +94,6 @@
   },
   {
     "repo": "lance-format/lance",
-    "number": 7440,
-    "title": "feat(index): expose vector index handle readers",
-    "url": "https://github.com/lance-format/lance/pull/7440",
-    "author": "summaryzb",
-    "score": 81.0,
-    "base_score": 81.0,
-    "semantic": 0.0,
-    "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7), python/src (reviewed 8\u00d7)",
-    "matched_areas": [
-      "rust/lance",
-      "python/python",
-      "python/src"
-    ],
-    "files_changed_count": 8,
-    "relevance": {
-      "score": 81.0,
-      "requested": false
-    }
-  },
-  {
-    "repo": "lance-format/lance",
-    "number": 7558,
-    "title": "feat: add blob write preparation API",
-    "url": "https://github.com/lance-format/lance/pull/7558",
-    "author": "Xuanwo",
-    "score": 81.0,
-    "base_score": 81.0,
-    "semantic": 0.0,
-    "mode": "affinity",
-    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7), python/src (reviewed 8\u00d7)",
-    "matched_areas": [
-      "rust/lance",
-      "python/python",
-      "python/src"
-    ],
-    "files_changed_count": 12,
-    "relevance": {
-      "score": 81.0,
-      "requested": false
-    }
-  },
-  {
-    "repo": "lance-format/lance",
     "number": 7442,
     "title": "feat: add blob v2 source id sharing",
     "url": "https://github.com/lance-format/lance/pull/7442",
@@ -177,6 +111,28 @@
     "files_changed_count": 5,
     "relevance": {
       "score": 80.0,
+      "requested": false
+    }
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7588,
+    "title": "fix: avoid scheduler deadlock on same-priority chunks",
+    "url": "https://github.com/lance-format/lance/pull/7588",
+    "author": "Xuanwo",
+    "score": 77.0,
+    "base_score": 77.0,
+    "semantic": 0.0,
+    "mode": "affinity",
+    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7), rust/lance-io (reviewed 4\u00d7)",
+    "matched_areas": [
+      "rust/lance",
+      "python/python",
+      "rust/lance-io"
+    ],
+    "files_changed_count": 5,
+    "relevance": {
+      "score": 77.0,
       "requested": false
     }
   },
@@ -219,6 +175,52 @@
     "files_changed_count": 3,
     "relevance": {
       "score": 76.0,
+      "requested": false
+    }
+  },
+  {
+    "repo": "lance-format/lance",
+    "number": 7550,
+    "title": "fix(dataset): support updating JSON columns via update_columns",
+    "url": "https://github.com/lance-format/lance/pull/7550",
+    "author": "xuxiaoqiang666",
+    "score": 73.0,
+    "base_score": 73.0,
+    "semantic": 0.0,
+    "mode": "affinity",
+    "rationale": "overlaps your review history: rust/lance (reviewed 52\u00d7), python/python (reviewed 21\u00d7)",
+    "matched_areas": [
+      "rust/lance",
+      "python/python"
+    ],
+    "files_changed_count": 2,
+    "relevance": {
+      "score": 73.0,
+      "requested": false
+    }
+  },
+  {
+    "repo": "lancedb/lancedb",
+    "number": 3247,
+    "title": "feat(web): serverless lancedb (WebAssembly) browser client for searching S3/CDN directly",
+    "url": "https://github.com/lancedb/lancedb/pull/3247",
+    "author": "justsml",
+    "score": 73.0,
+    "base_score": 73.0,
+    "semantic": 0.0,
+    "mode": "affinity",
+    "rationale": "overlaps your review history: rust/lancedb (reviewed 33\u00d7), Cargo.lock (reviewed 17\u00d7), docs/src (reviewed 15\u00d7)",
+    "matched_areas": [
+      "rust/lancedb",
+      "Cargo.lock",
+      "docs/src",
+      "Cargo.toml",
+      "docs",
+      ".gitignore"
+    ],
+    "files_changed_count": 32,
+    "relevance": {
+      "score": 73.0,
       "requested": false
     }
   }
