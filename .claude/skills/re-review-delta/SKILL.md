@@ -34,6 +34,14 @@ delta is **scoped to the PR's own changed files**: a long-lived branch that
 merged its base in would otherwise swamp the diff with the base branch's churn.
 `delta.files_off_branch_excluded` reports how many such files were dropped.
 
+**When `delta.anchor_orphaned: true`** (`compare_status` is `diverged`/`behind`,
+not `ahead`): the author rebased / force-pushed / squashed, so `last_reviewed_sha`
+is no longer an ancestor of head and there is **no honest "since you last looked"
+delta** — `delta.files` is the *full PR net diff* instead. Treat Section B as a
+fresh review of the whole PR, and for Section A your conditions ledger (rebuilt
+from review threads, which survive the rebase) can't be "confirmed unchanged by
+absence from the delta" — re-verify each condition against the full diff.
+
 ## Step 2 — Section A: closed-ended conditions ledger
 
 For **each** condition in the packet, assign a status by **verifying against the
