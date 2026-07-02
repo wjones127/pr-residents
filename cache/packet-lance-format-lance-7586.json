@@ -1,0 +1,58 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7586,
+    "title": "fix: respect PQ num_bits for numpy codebooks",
+    "url": "https://github.com/lance-format/lance/pull/7586",
+    "head": "1d620b4c91ad2e8954ab300c3bbeef849baa66e8",
+    "author": "ddupg",
+    "author_status": "core",
+    "body": "## Summary\n- validate numpy PQ codebooks against `2 ** num_bits` instead of always requiring 256 centroids\n- update the `pq_codebook` docstring to describe the `num_bits`-dependent shape\n- extend the existing PQ codebook test to cover 4-bit numpy codebooks and the mismatched-shape error\n\n## Reason\n`Dataset.create_index(..., index_type=\"IVF_PQ\", num_bits=4, pq_codebook=<numpy array>)` should accept a codebook with 16 centroids per sub-vector. The Python wrapper already exposes `num_bits`, and the Rust PQ implementation supports 4-bit and 8-bit PQ, but the numpy validation path was still hard-coded to the 8-bit shape with 256 centroids. This rejected a valid 4-bit user-supplied codebook before it reached the Rust layer.\n\n## Validation\n- `uv run --frozen --python 3.12 pytest python/tests/test_vector_index.py::test_index_with_pq_codebook python/tests/test_vector_index.py::test_index_with_pq_codebook_rejects_wrong_num_bits_shape`\n- `uv run --frozen --python 3.12 ruff format --check --diff python/lance/dataset.py python/tests/test_vector_index.py`\n- `uv run --frozen --python 3.12 ruff check python/lance/dataset.py python/tests/test_vector_index.py`\n- `git diff --check`\n\n## Local lint note\n- `uv run --frozen --python 3.12 make lint` was attempted. Ruff passed, but pyright failed in this local environment because optional imports such as `tensorflow` and `torch` are not installed.",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "M",
+    "additions": 44,
+    "deletions": 9,
+    "files": 2
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "python/python/lance/dataset.py",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 6,
+        "patch": "@@ -3670,13 +3670,17 @@ def _create_index_impl(\n                 if _check_for_numpy(pq_codebook) and isinstance(\n                     pq_codebook, np.ndarray\n                 ):\n+                    num_bits = kwargs.get(\"num_bits\", 8)\n+                    expected_centroids = 2**num_bits\n                     if (\n                         len(pq_codebook.shape) != 3\n                         or pq_codebook.shape[0] != num_sub_vectors\n-                        or pq_codebook.shape[1] != 256\n+                        or pq_codebook.shape[1] != expected_centroids\n                     ):\n                         raise ValueError(\n-                            f\"PQ codebook must be 3D array: (sub_vectors, 256, dim), \"\n+                            \"PQ codebook must be 3D array: \"\n+                            f\"(sub_vectors, {expected_centroids}, dim) \"\n+                            f\"for num_bits={num_bits}, \"\n                             f\"got {pq_codebook.shape}\"\n                         )\n                     if pq_codebook.dtype not in [np.float16, np.float32, np.float64]:\n@@ -3798,10 +3802,9 @@ def create_index(\n         pq_codebook : optional,\n             It can be :py:class:`np.ndarray`, :py:class:`pyarrow.FixedSizeListArray`,\n             or :py:class:`pyarrow.FixedShapeTensorArray`.\n-            A ``num_sub_vectors x (2 ^ nbits * dimensions // num_sub_vectors)``\n-            array of K-mean centroids for PQ codebook.\n-\n-            Note: ``nbits`` is always 8 for now.\n+            A ``num_sub_vectors x (2 ^ num_bits) x\n+            (dimensions // num_sub_vectors)`` array of K-mean centroids for PQ\n+            codebook. ``num_bits`` defaults to 8.\n             If not provided, a new PQ model will be trained.\n         num_sub_vectors : int, optional\n             The number of sub-vectors for PQ (Product Quantization).",
+        "patch_truncated": false
+      },
+      {
+        "path": "python/python/tests/test_vector_index.py",
+        "status": "modified",
+        "additions": 35,
+        "deletions": 3,
+        "patch": "@@ -563,10 +563,17 @@ def test_index_with_no_centroid_movement(tmp_path):\n     validate_vector_index(dataset, \"vector\")\n \n \n-def test_index_with_pq_codebook(tmp_path):\n+@pytest.mark.parametrize(\n+    \"index_kwargs,num_centroids,pass_threshold\",\n+    [\n+        pytest.param({}, 256, 0.99, id=\"default_num_bits\"),\n+        pytest.param({\"num_bits\": 4}, 16, 0.5, id=\"four_bit\"),\n+    ],\n+)\n+def test_index_with_pq_codebook(tmp_path, index_kwargs, num_centroids, pass_threshold):\n     tbl = create_table(nvec=1024, ndim=128)\n     dataset = lance.write_dataset(tbl, tmp_path)\n-    pq_codebook = np.random.randn(4, 256, 128 // 4).astype(np.float32)\n+    pq_codebook = np.random.randn(4, num_centroids, 128 // 4).astype(np.float32)\n \n     dataset = dataset.create_index(\n         \"vector\",\n@@ -575,9 +582,14 @@ def test_index_with_pq_codebook(tmp_path):\n         num_sub_vectors=4,\n         ivf_centroids=np.random.randn(1, 128).astype(np.float32),\n         pq_codebook=pq_codebook,\n+        **index_kwargs,\n+    )\n+    validate_vector_index(\n+        dataset, \"vector\", refine_factor=10, pass_threshold=pass_threshold\n     )\n-    validate_vector_index(dataset, \"vector\", refine_factor=10, pass_threshold=0.99)\n \n+    if index_kwargs:\n+        return\n     pq_codebook = pa.FixedShapeTensorArray.from_numpy_ndarray(pq_codebook)\n \n     dataset = dataset.create_index(\n@@ -592,6 +604,26 @@ def test_index_with_pq_codebook(tmp_path):\n     validate_vector_index(dataset, \"vector\", refine_factor=10, pass_threshold=0.99)\n \n \n+def test_index_with_pq_codebook_rejects_wrong_num_bits_shape(tmp_path):\n+    tbl = create_table(nvec=8, ndim=128)\n+    dataset = lance.write_dataset(tbl, tmp_path)\n+    pq_codebook = np.random.randn(4, 256, 128 // 4).astype(np.float32)\n+\n+    with pytest.raises(\n+        ValueError,\n+        match=r\"\\(sub_vectors, 16, dim\\) for num_bits=4, got \\(4, 256, 32\\)\",\n+    ):\n+        dataset.create_index(\n+            \"vector\",\n+            index_type=\"IVF_PQ\",\n+            num_partitions=1,\n+            num_sub_vectors=4,\n+            num_bits=4,\n+            ivf_centroids=np.random.randn(1, 128).astype(np.float32),\n+            pq_codebook=pq_codebook,\n+        )\n+\n+\n @pytest.mark.cuda\n @pytest.mark.parametrize(\"nullify\", [False, True])\n def test_create_index_using_cuda(tmp_path, nullify):",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 2,
+    "shown_files": 2
+  },
+  "lane_note": null
+}

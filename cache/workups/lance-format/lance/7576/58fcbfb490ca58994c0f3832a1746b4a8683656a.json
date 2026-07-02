@@ -1,0 +1,32 @@
+{
+  "repo": "lance-format/lance",
+  "number": 7576,
+  "sha": "58fcbfb490ca58994c0f3832a1746b4a8683656a",
+  "soap": "REVIEW \u00b7 lance-format/lance#7576 \u2014 perf(dataset): reuse session-cached manifest when opening a dataset\nzhangyue19921010 (core) \u00b7 M (+45/-36, 5 files) \u00b7 no escalation\n\nSUBJECTIVE\n  DatasetBuilder::load_by_uri always re-read the manifest from storage on the load-from-URI path, even when the same version was already resident on the session. Because lance-spark shares one Session per executor and every task opens the dataset independently, manifest reads scaled with task count, turning the manifest object into a read hotspot on object storage. This PR extracts a Dataset::get_manifest helper that consults the session metadata cache (keyed by version + e_tag) before loading, so the manifest is read once per executor and reused across tasks. CI green, mergeable.\n\nOBJECTIVE (each tied to ground truth)\n  - dataset.rs:753 (new get_manifest) \u2014 get-or-load-and-insert against session.metadata_cache.for_dataset(uri), keyed by ManifestKey { version, e_tag }. Exactly the logic previously inlined in load_new_transactions (base dataset.rs:2907-2930), hoisted verbatim. Behavior-preserving.\n  - dataset.rs:2947 \u2014 load_new_transactions now calls get_manifest. dataset.metadata_cache = session.metadata_cache.for_dataset(&uri) in checkout_manifest, so passing dataset.session + &dataset.uri reconstructs the identical cache namespace. Same cache, same key.\n  - builder.rs:869 \u2014 load-from-storage else branch routes through get_manifest; caller-supplied-manifest branch untouched. Return-type plumbing consistent: load_manifest returns owned Manifest, get_manifest wraps in Arc.\n  - Dictionary-population safety (main concern) \u2014 cleared. load_manifest already runs populate_schema_dictionary when should_use_legacy_format() (dataset.rs:727-729), plus feature-flag validation and index/transaction co-caching. Cache stores a fully-realized manifest; a hit returns it already-populated; a miss still goes through load_manifest.\n  - Cache-key soundness: ManifestKey.key() = manifest/{version}[/{e_tag}], namespaced per-URI via for_dataset's with_key_prefix(uri). Immutability-per-version is a pre-existing invariant; reuses the key load_new_transactions already used \u2014 no new keying risk.\n  - Call-site scoping deliberate: checkout_by_ref (short-circuited by already_checked_out) and io/commit.rs:171 (Session::default) intentionally left uncached. Confirmed via grep + child sweep.\n  - Tests: test_load_manifest_iops 2->1, commit test 5->4 \u2014 reflect manifest served from cache after a same-session write; residual IOP is the _versions list. index.rs adds session.file_metadata_cache().clear() \u2014 necessary so the newly-cached manifest doesn't defeat the forced-re-read assertion. No assertion loosened to hide a regression.\n\nASSESSMENT\n  risk: low (down from baseline med) \u00b7 urgency: low. A hoist of an already-proven caching block onto one more call path; the one real hazard (asymmetric dictionary population between builder branches) verified as a non-issue. escalation: none. could not read: none (0 omitted).\n\nPLAN\n  No blocking conditions. Optional follow-up (checkout_by_ref could reuse get_manifest) and a doc note on e_tag: None keying, both non-gating.\n\nRECOMMENDATION: approve\n  confidence: high \u00b7 what would make this wrong: if some load_by_uri caller depends on the manifest being a fresh distinct allocation per open \u2014 but checkout_manifest takes Arc<Manifest> as immutable and load_new_transactions already shared cached Arcs.\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "approve",
+  "summary": "Hoists the existing session-metadata-cache get-or-load block (from load_new_transactions) into a Dataset::get_manifest helper and routes the load_by_uri storage path through it, so a manifest is read once per session/executor and reused across tasks. Verified behavior-preserving: load_manifest already populates schema dictionaries + validates feature flags internally, so cache hits return fully-realized manifests; the two remaining direct load_manifest callers (checkout_by_ref short-circuits, commit.rs uses a throwaway Session::default) are correctly left uncached; test IOP-count deltas match the new caching and none were loosened to mask a regression. Low risk, approve.",
+  "comments": [
+    {
+      "path": "rust/lance/src/dataset.rs",
+      "line": 762,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: Good factoring. This is the exact get-or-load-and-insert block previously inlined in load_new_transactions, now hoisted into a single get_manifest helper and reused on the load_by_uri path \u2014 de-duplicates the cache logic and is behavior-preserving (same ManifestKey, same for_dataset(uri) namespace)."
+    },
+    {
+      "path": "rust/lance/src/dataset/builder.rs",
+      "line": 869,
+      "label": "question",
+      "blocking": false,
+      "body": "question (non-blocking): Confirming the dictionary-population invariant for the record \u2014 the caller-supplied-manifest branch above runs populate_schema_dictionary explicitly, while this load path relies on load_manifest doing it internally (dataset.rs:727-729). Since get_manifest caches the manifest returned after that population, cache hits are already-populated. Flagging only so a future reader doesn't re-derive it. No change requested."
+    },
+    {
+      "path": "rust/lance/src/dataset.rs",
+      "line": 594,
+      "label": "suggestion",
+      "blocking": false,
+      "body": "suggestion (non-blocking, out of scope): checkout_by_ref still calls load_manifest directly (bypassing the cache). The already_checked_out short-circuit covers the common case, but a checkout to a previously-loaded-but-not-current version would re-read. Could route through get_manifest in a follow-up. Leaving io/commit.rs:171 as-is is correct since it uses Session::default()."
+    }
+  ]
+}

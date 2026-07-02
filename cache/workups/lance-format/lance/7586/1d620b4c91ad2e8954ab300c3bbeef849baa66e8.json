@@ -1,0 +1,39 @@
+{
+  "repo": "lance-format/lance",
+  "number": 7586,
+  "sha": "1d620b4c91ad2e8954ab300c3bbeef849baa66e8",
+  "soap": "SOAP \u00b7 lance-format/lance#7586 \u2014 fix: respect PQ num_bits for numpy codebooks\n\nSubjective\n  PR #7586 (ddupg, core contributor) fixes a numpy-codebook validation bug in Dataset.create_index/_create_index_impl: the shape check for a user-supplied pq_codebook numpy array was hardcoded to require 256 centroids (shape[1] != 256), which is only correct for the 8-bit PQ default. Since num_bits=4 is a documented, Rust-supported option, any caller passing a numpy codebook with num_bits=4 (16 centroids/sub-vector) was rejected by Python-side validation before ever reaching Rust. The fix reads num_bits from kwargs (defaulting to 8) and validates against 2**num_bits centroids. It also fixes the docstring and extends the codebook test with a parametrized 4-bit case plus a negative test.\n\nObjective\n  - python/python/lance/dataset.py (+9/-6): only behavior change is the numpy-branch validation; num_bits = kwargs.get(\"num_bits\", 8) mirrors how num_bits is threaded through **kwargs into the Rust call. num_bits is never independently validated as {4,8} anywhere in this file \u2014 pre-existing looseness, not a regression.\n  - Non-numpy codebook inputs (FixedSizeListArray, FixedShapeTensorArray) skip this Python-side check entirely \u2014 unaffected/out of scope.\n  - Docstring update removes the stale \"nbits is always 8 for now\" note.\n  - Tests (test_vector_index.py, +35/-3): parametrizes over (default, 256, 0.99) and (num_bits=4, 16, 0.5). Lower 4-bit pass threshold is appropriate \u2014 coarser quantization legitimately yields lower recall. Real end-to-end create_index + validate_vector_index round-trip. New negative test asserts exact error message via regex.\n  - CI green, mergeable, no prior reviews.\n  - Could not independently verify Rust 4-bit centroid semantics locally; relied on the PR's pre-existing docstring already stating 4-bit is supported.\n\nAssessment\n  risk: low \u2014 narrow bug fix in one validation branch behind a rarely-used codepath. Relaxes an overly-strict check to match documented Rust behavior; still enforces 2**num_bits centroids. No concurrency/unsafe/wire-format change.\n  urgency: low \u00b7 escalation: none \u00b7 could not read: nothing (2/2 files, not truncated)\n\nPlan\n  No blocking conditions. Non-blocking: validate num_bits in (4,8) up front in the numpy branch so a typo'd num_bits=5 fails clearly rather than via a confusing shape error. Nit on docstring wording. Question on the empirical basis for 0.5 threshold.\n\nRECOMMENDATION: approve\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "approve",
+  "summary": "Fixes a real bug: numpy PQ codebook shape validation was hardcoded to 256 centroids (8-bit only), rejecting valid 4-bit codebooks that Rust already supports. Fix derives expected centroid count from num_bits, docstring updated, and new tests exercise the 4-bit happy path plus the negative shape-mismatch case with an exact error-message assertion. Low risk, narrow scope, CI green.",
+  "comments": [
+    {
+      "path": "python/python/lance/dataset.py",
+      "line": 3673,
+      "label": "suggestion",
+      "blocking": false,
+      "body": "suggestion: `num_bits` is read from `kwargs` but never validated against the supported set (docstring says only 4 and 8 are supported for IVF_PQ). A typo like `num_bits=5` will silently compute `expected_centroids=32` and raise a shape-mismatch error that doesn't mention `num_bits` is itself invalid. Consider `if num_bits not in (4, 8): raise ValueError(...)` before deriving `expected_centroids`. Not a regression (the old hardcoded-256 code had the same gap), so not blocking, but this PR is a natural place to close it."
+    },
+    {
+      "path": "python/python/lance/dataset.py",
+      "line": 3805,
+      "label": "nit",
+      "blocking": false,
+      "body": "nit: docstring reads \"A `num_sub_vectors x (2 ^ num_bits) x (dimensions // num_sub_vectors)` array\" \u2014 worth double-checking the `x`/`^` notation renders consistently with the rest of the file's docstring conventions. Purely cosmetic."
+    },
+    {
+      "path": "python/python/tests/test_vector_index.py",
+      "line": 610,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: the negative test asserts the exact new error message via regex, tying the fix to a concrete, re-verifiable acceptance criterion rather than just checking that some ValueError is raised."
+    },
+    {
+      "path": "python/python/tests/test_vector_index.py",
+      "line": 570,
+      "label": "question",
+      "blocking": false,
+      "body": "question: for the four_bit param, pass_threshold=0.5 vs 0.99 for default \u2014 can you confirm this was picked empirically (a real recall number for 4-bit PQ on this synthetic setup) rather than a placeholder loosened to make CI pass? If empirical, consider a one-line comment noting why 4-bit recall is expected lower."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "repo": "lance-format/lance",
+  "number": 7574,
+  "sha": "9151bc046a494f6300ecf7d7a8232bcbb77b230c",
+  "soap": "SOAP \u00b7 lance-format/lance#7574 \u2014 fix(index): exclude shared metadata cache from LanceIndexStore deep_size\n\nSubjective\n  Ali2Arslan (infrequent contributor, Cursor-assisted) removes self.metadata_cache.deep_size_of_children(context) from LanceIndexStore::deep_size_of_children. Motivation: metadata_cache is an Arc<LanceCache> session-scoped and shared across every index store in a session; Session::deep_size_of_children already accounts for it once, and because LanceCache::deep_size_of_children returns approx_size_bytes() without registering in the dedup Context, every store that also sizes it re-counts the entire cache, N-times inflating reported memory. Adds a regression test (4 MB blob; 276 vs 4,194,620 bytes pre-fix).\n\nObjective\n  - lance_format.rs:39-50 \u2014 metadata_cache: Arc<LanceCache>, confirming shared ownership.\n  - lance_format.rs:52-61 \u2014 one-line removal; sums only object_store and index_dir now.\n  - Verified against live repo at head SHA: (a) production call sites construct LanceIndexStore with the dataset's session-owned Arc<LanceCache>, not a private instance; (b) Session::deep_size_of_children already sums this same cache; (c) LanceCache's DeepSizeOf calls approx_size_bytes() and does NOT use Context for pointer dedup \u2014 confirming the double-count mechanism.\n  - Test test_store_deep_size_excludes_metadata_cache (610-648): real LanceIndexStore + shared cache, snapshot, insert 4 MB blob, force commit via size_bytes().await, assert store size unchanged. Genuine regression test that would fail pre-fix.\n  - object_store: Arc<ObjectStore> is also potentially shared and still summed unconditionally; whether ObjectStore's DeepSizeOf participates in Context dedup NOT checked \u2014 out of scope, flagged as similar-shaped risk.\n  - CI green, mergeable, single file +44/-1, no omitted files.\n\nAssessment\n  risk: low-to-med (down from baseline med) \u2014 pure accounting change (deep_size_of/memory telemetry), not data path/IO/concurrency/format. A wrong answer misleads memory metrics/eviction heuristics but doesn't corrupt data or panic.\n  urgency: low \u00b7 escalation: none \u00b7 could not read: none\n  Fix is correct and directly verified against the shared-cache architecture, but it is a point patch on a systemic issue: LanceCache::deep_size_of_children not participating in Context dedup means the same bug can resurface at any other holder of a shared Arc<LanceCache>. Worth a non-blocking root-cause ask.\n\nPlan\n  No blocking conditions. Non-blocking: fix the root cause in LanceCache's DeepSizeOf (Context-based dedup) so double-counting is fixed for every holder at once; sanity-check object_store for the same shape.\n\nRECOMMENDATION: approve\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "approve",
+  "summary": "Correct, narrowly-scoped fix: LanceIndexStore no longer double-counts the shared, session-scoped metadata_cache in deep_size_of_children. Verified against the live repo that the cache is genuinely shared across all index stores in a session and that Session already accounts for it once. Regression test is real and demonstrates the pre-fix bug with concrete before/after numbers. Non-blocking: the root cause (LanceCache::deep_size_of_children ignoring the dedup Context) is untouched, so the same double-counting can recur at any other future holder of the shared cache.",
+  "comments": [
+    {
+      "path": "rust/lance-index/src/scalar/lance_format.rs",
+      "line": 58,
+      "label": "suggestion",
+      "blocking": false,
+      "body": "suggestion: This fixes the symptom at this one call site. The actual root cause is that LanceCache::deep_size_of_children returns approx_size_bytes() without registering itself against the dedup Context \u2014 so any other current or future holder of the same shared Arc<LanceCache> will double-count it the same way. Consider a follow-up (or doing it here) to make LanceCache's DeepSizeOf impl participate in Context-based dedup, fixing double-counting for every holder at once rather than requiring each call site to remember to exclude it."
+    },
+    {
+      "path": "rust/lance-index/src/scalar/lance_format.rs",
+      "line": 613,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: Good regression test \u2014 it builds a real LanceIndexStore with a live shared cache, inserts a blob, and asserts the store's reported size doesn't move. A genuine before/after test (fails pre-fix with a concrete byte count), not just an assertion pinned to the fixed behavior."
+    },
+    {
+      "path": "rust/lance-index/src/scalar/lance_format.rs",
+      "line": 40,
+      "label": "question",
+      "blocking": false,
+      "body": "question: object_store: Arc<ObjectStore> is also potentially shared (across stores within a session or dataset). Does ObjectStore's DeepSizeOf participate in the dedup Context, or could it have the same double-counting problem this PR just fixed for metadata_cache? Not asking you to fix it here \u2014 flagging the same shape of risk in the line right above the one you removed."
+    }
+  ]
+}

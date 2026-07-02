@@ -1,0 +1,50 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7572,
+    "title": "test(bitpacking): actually exercise u64 unchecked round-trip for widths 1..=63",
+    "url": "https://github.com/lance-format/lance/pull/7572",
+    "head": "249f29dae1a6baa055dd0b695d7d28133ab6d617",
+    "author": "LuciferYang",
+    "author_status": "core",
+    "body": "## What\r\n\r\nFix `unchecked_pack_unpack_u64` so widths 1..=63 actually round-trip non-zero data.\r\n\r\n## Why\r\n\r\n`fn unchecked_pack_unpack_u64` in `rust/compression/bitpacking/src/lib.rs` filled random values only when `bit_width == 64`:\r\n\r\n```rust\r\nif bit_width == 64 {\r\n    for value in &mut values { *value = rng.next(); }\r\n}\r\n// \u2190 no else branch\r\nlet mut packed = vec![0; 1024 * bit_width / u64::T];\r\nunsafe { BitPacking::unchecked_pack(bit_width, &values, &mut packed); }\r\nlet mut output = [0; 1024];\r\nunsafe { BitPacking::unchecked_unpack(bit_width, &packed, &mut output) };\r\nassert_eq!(values, output);\r\n```\r\n\r\nFor every other width called at lines 2209-2271, `values` stayed `[0u64; 1024]`, `packed` started as `vec![0; ...]`, and `output` started as `[0; 1024]`. The `assert_eq!` therefore passed regardless of whether any of the 64 monomorphized `pack_64_N` / `unpack_64_N` fast-path kernels reached from `BitPacking::unchecked_{pack,unpack}` were actually correct.\r\n\r\nThis is the only test in the crate that covers the fast path for u64 widths 1..=63 \u2014 `lance-encoding::bitpacking` and `lance-index::scalar::inverted::{encoding,builder}` both hit that path.\r\n\r\n## Fix\r\n\r\nMirror the else branch already present in the sibling slow-path helper `pack_unpack_u64` (`lib.rs:1923-1927`):\r\n\r\n```rust\r\n} else {\r\n    for value in &mut values {\r\n        *value = rng.next() % (1 << bit_width);\r\n    }\r\n}\r\n```\r\n\r\nSame random seed, same modulo pattern \u2014 differs only in that this version drives the `BitPacking` trait dispatch (compile-time-known\r\nwidth) instead of the runtime-parameterized `pack!`/`unpack!` macros.\r\n\r\n## Test plan\r\n\r\n- [x] `cargo test -p lance-bitpacking` \u2014 11/11 pass with the fix; the previously-silent widths now actually exercise the fast-path kernels.\r\n- [x] `cargo fmt --all --check` on the touched file \u2014 clean.\r\n- [x] `cargo clippy -p lance-bitpacking --tests -- -D warnings` \u2014 clean.\r\n\r\n## Origin\r\n\r\nThe pattern was introduced in #2886 (2024-09) when the fastlanes code was migrated from spiraldb/fastlanes to Lance. Upstream fastlanes uses a different test skeleton (`seq!`-generated per-width `#[test] fn`) that does not have this shape, so this is not a vendor-side artifact, just a copy-paste omission when the sibling slow-path helper was adapted to the fast-path helper.",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "XS",
+    "additions": 4,
+    "deletions": 0,
+    "files": 1
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "red",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "rust/compression/bitpacking/src/lib.rs",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 0,
+        "patch": "@@ -2128,6 +2128,10 @@ mod test {\n             for value in &mut values {\n                 *value = rng.next();\n             }\n+        } else {\n+            for value in &mut values {\n+                *value = rng.next() % (1 << bit_width);\n+            }\n         }\n         let mut packed = vec![0; 1024 * bit_width / u64::T];\n         unsafe {",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 1,
+    "shown_files": 1
+  },
+  "lane_note": null
+}

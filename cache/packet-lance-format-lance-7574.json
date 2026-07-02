@@ -1,0 +1,50 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7574,
+    "title": "fix(index): exclude shared metadata cache from LanceIndexStore deep size",
+    "url": "https://github.com/lance-format/lance/pull/7574",
+    "head": "9151bc046a494f6300ecf7d7a8232bcbb77b230c",
+    "author": "Ali2Arslan",
+    "author_status": "infrequent",
+    "body": "## Summary\n\n`LanceIndexStore::deep_size_of_children` counted its `metadata_cache`:\n\n```rust\nself.object_store.deep_size_of_children(context)\n    + self.index_dir.as_ref().deep_size_of_children(context)\n    + self.metadata_cache.deep_size_of_children(context)   // <-- shared, session-scoped\n```\n\nBut that cache is **session-scoped and shared**. `Session::deep_size_of_children` already accounts for it once (`rust/lance/src/session.rs`), and `LanceCache::deep_size_of_children` returns `approx_size_bytes()` while **ignoring the dedup `Context`**. So the shared cache isn't deduplicated: every opened index that holds a store re-counts the *entire* cache as its own bytes, inflating and N-times double-counting reported memory (N = number of open index stores).\n\n## Change\n\nCount only the store's own footprint \u2014 the object store and index dir. The shared metadata cache is left to `Session` to report once.\n\n## Test plan\n\n- [x] `test_store_deep_size_excludes_metadata_cache` \u2014 inserting a 4 MB blob into the shared cache must not change `store.deep_size_of()`. Verified it **fails** before the fix (before: 276, after: 4,194,620) and passes after.\n- [x] `cargo fmt --all` and `cargo clippy -p lance-index --all-targets -- -D warnings` clean.\n\nMade with [Cursor](https://cursor.com)",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "S",
+    "additions": 44,
+    "deletions": 1,
+    "files": 1
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "rust/lance-index/src/scalar/lance_format.rs",
+        "status": "modified",
+        "additions": 44,
+        "deletions": 1,
+        "patch": "@@ -51,9 +51,12 @@ pub struct LanceIndexStore {\n \n impl DeepSizeOf for LanceIndexStore {\n     fn deep_size_of_children(&self, context: &mut lance_core::deepsize::Context) -> usize {\n+        // Exclude the shared, session-scoped `metadata_cache` (accounted once by\n+        // `Session::deep_size_of_children`): it is not this store's own footprint, and\n+        // sizing it here makes every opened index that holds a store report the whole\n+        // cache as its own bytes \u2014 inflating and N-times double-counting it.\n         self.object_store.deep_size_of_children(context)\n             + self.index_dir.as_ref().deep_size_of_children(context)\n-            + self.metadata_cache.deep_size_of_children(context)\n     }\n }\n \n@@ -606,6 +609,46 @@ mod tests {\n         Arc::new(LanceIndexStore::new(object_store, test_path, cache))\n     }\n \n+    #[tokio::test]\n+    async fn test_store_deep_size_excludes_metadata_cache() {\n+        // The metadata cache is session-scoped and shared; a store must not count\n+        // it as its own footprint, so growing the cache must not change store size.\n+        struct BlobKey;\n+        impl lance_core::cache::CacheKey for BlobKey {\n+            type ValueType = Vec<u8>;\n+            fn key(&self) -> std::borrow::Cow<'_, str> {\n+                std::borrow::Cow::Borrowed(\"blob\")\n+            }\n+            fn type_name() -> &'static str {\n+                \"Vec<u8>\"\n+            }\n+        }\n+\n+        let index_dir = TempDir::default();\n+        let test_path = index_dir.obj_path();\n+        let (object_store, test_path) = ObjectStore::from_uri(test_path.as_ref())\n+            .now_or_never()\n+            .unwrap()\n+            .unwrap();\n+        let cache = Arc::new(lance_core::cache::LanceCache::with_capacity(\n+            128 * 1024 * 1024,\n+        ));\n+        let store = LanceIndexStore::new(object_store, test_path, cache.clone());\n+\n+        let before = store.deep_size_of();\n+        cache\n+            .insert_with_key(&BlobKey, Arc::new(vec![0u8; 4 * 1024 * 1024]))\n+            .await;\n+        // Force moka to commit the write so a cache-inclusive size would grow.\n+        let _ = cache.size_bytes().await;\n+        let after = store.deep_size_of();\n+\n+        assert_eq!(\n+            before, after,\n+            \"store deep size must exclude the shared metadata cache\"\n+        );\n+    }\n+\n     async fn train_index(\n         index_store: &Arc<dyn IndexStore>,\n         data: impl RecordBatchReader + Send + Sync + 'static,",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 1,
+    "shown_files": 1
+  },
+  "lane_note": null
+}

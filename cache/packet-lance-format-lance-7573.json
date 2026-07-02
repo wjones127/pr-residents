@@ -1,0 +1,58 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7573,
+    "title": "fix(cache): count key footprint in MokaCacheBackend eviction weight",
+    "url": "https://github.com/lance-format/lance/pull/7573",
+    "head": "27f0172d45a244536e0b54965fe83856f8a3e00b",
+    "author": "Ali2Arslan",
+    "author_status": "infrequent",
+    "body": "## Summary\n\n`MokaCacheBackend`'s weigher charged only the value's `size_bytes` and ignored the key entirely:\n\n```rust\n.weigher(|_, v: &MokaCacheEntry| v.size_bytes.try_into().unwrap_or(u32::MAX))\n```\n\nSince moka evicts by weighted size, workloads that store **many small values under long, high-cardinality keys** under-count their memory and can grow past the configured `max_capacity`. The key (`InternalCacheKey`: two `Arc<str>` + a `&'static str`) was effectively free.\n\n## Change\n\nA per-entry weigher should approximate the **marginal, reclaimable** cost of an entry \u2014 what is freed when that one entry is evicted:\n\n- `key_footprint(key) = size_of::<InternalCacheKey>() + key.key().len()` \u2014 the struct plus the entry's unique `key` string.\n- Used in both the weigher (eviction) and the synchronous `approx_size_bytes` (`DeepSizeOf` reporting) so the two stay consistent.\n\nThe **`prefix` is deliberately excluded**. `build_key` clones the prefix `Arc<str>` (shared) and allocates a fresh `key` per entry (unique). The prefix is one shared allocation per cache handle and is *not* reclaimed when a single entry is evicted, so charging `prefix.len()` per entry would over-count in proportion to entry count (e.g. a 60-byte S3 prefix \u00d7 10k entries = 600 KB of phantom weight) and make the cache evict too early.\n\nAccounting stays in the backend that actually stores the key, so other `CacheBackend` impls are unaffected.\n\n## Test plan\n\n- [x] `test_cache_weighs_key_footprint` \u2014 a 10 KB key contributes to `size_bytes()`; fails before this change.\n- [x] `test_cache_shared_prefix_not_charged_per_entry` \u2014 100 entries under a 10 KB shared prefix stay well under the ~1 MB a per-entry prefix charge would produce.\n- [x] Existing cache tests still pass (`cargo test -p lance-core cache::`), incl. `test_cache_bytes`.\n- [x] `cargo fmt --all` and `cargo clippy --all --tests --benches -- -D warnings` clean.",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "M",
+    "additions": 49,
+    "deletions": 2,
+    "files": 2
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "rust/lance-core/src/cache/mod.rs",
+        "status": "modified",
+        "additions": 33,
+        "deletions": 0,
+        "patch": "@@ -688,6 +688,39 @@ mod tests {\n         assert!(cache.size_bytes().await <= capacity);\n     }\n \n+    #[tokio::test]\n+    async fn test_cache_weighs_key_footprint() {\n+        // Weighted size charges the key's unique bytes, not just the value.\n+        let cache = LanceCache::with_capacity(usize::MAX);\n+        let key = \"k\".repeat(10_000);\n+        let value = Arc::new(vec![1_i32]);\n+        let expected =\n+            std::mem::size_of::<InternalCacheKey>() + key.len() + cache_entry_size(&*value);\n+        cache\n+            .insert_with_key(&TestKey::<Vec<i32>>::new(&key), value)\n+            .await;\n+        assert_eq!(cache.size_bytes().await, expected);\n+    }\n+\n+    #[tokio::test]\n+    async fn test_cache_shared_prefix_not_charged_per_entry() {\n+        // The shared prefix contributes nothing per entry (it isn't freed on a\n+        // single eviction); only struct + unique key + value are charged.\n+        let cache = LanceCache::with_capacity(usize::MAX).with_key_prefix(&\"p\".repeat(10_000));\n+        for i in 0..100 {\n+            cache\n+                .insert_with_key(\n+                    &TestKey::<Vec<i32>>::new(&i.to_string()),\n+                    Arc::new(vec![1_i32]),\n+                )\n+                .await;\n+        }\n+        let value_cost = cache_entry_size(&vec![1_i32]);\n+        let key_bytes: usize = (0..100).map(|i| i.to_string().len()).sum();\n+        let expected = 100 * (std::mem::size_of::<InternalCacheKey>() + value_cost) + key_bytes;\n+        assert_eq!(cache.size_bytes().await, expected);\n+    }\n+\n     #[tokio::test]\n     async fn test_cache_trait_objects() {\n         #[derive(Debug, DeepSizeOf)]",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance-core/src/cache/moka.rs",
+        "status": "modified",
+        "additions": 16,
+        "deletions": 2,
+        "patch": "@@ -20,6 +20,12 @@ struct MokaCacheEntry {\n     size_bytes: usize,\n }\n \n+/// Per-entry key cost for eviction: the struct plus the unique `key` bytes.\n+/// Excludes the shared `prefix` `Arc<str>`, which isn't freed per eviction.\n+fn key_footprint(key: &InternalCacheKey) -> usize {\n+    std::mem::size_of::<InternalCacheKey>() + key.key().len()\n+}\n+\n /// Default [`CacheBackend`] backed by a [moka](https://crates.io/crates/moka) cache.\n ///\n /// Provides weighted-capacity eviction and concurrent-load deduplication\n@@ -40,7 +46,12 @@ impl MokaCacheBackend {\n     pub fn with_capacity(capacity: usize) -> Self {\n         let cache = moka::future::Cache::builder()\n             .max_capacity(capacity as u64)\n-            .weigher(|_, v: &MokaCacheEntry| v.size_bytes.try_into().unwrap_or(u32::MAX))\n+            .weigher(|key: &InternalCacheKey, entry: &MokaCacheEntry| {\n+                key_footprint(key)\n+                    .saturating_add(entry.size_bytes)\n+                    .try_into()\n+                    .unwrap_or(u32::MAX)\n+            })\n             .support_invalidation_closures()\n             .build();\n         Self { cache }\n@@ -148,6 +159,9 @@ impl CacheBackend for MokaCacheBackend {\n         // Iterate rather than using `weighted_size()` because moka's\n         // weighted_size can be stale without `run_pending_tasks()`, which\n         // is async and can't be called from this synchronous context.\n-        self.cache.iter().map(|(_, v)| v.size_bytes).sum()\n+        self.cache\n+            .iter()\n+            .map(|(key, entry)| key_footprint(key.as_ref()) + entry.size_bytes)\n+            .sum()\n     }\n }",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 2,
+    "shown_files": 2
+  },
+  "lane_note": null
+}

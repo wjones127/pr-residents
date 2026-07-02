@@ -1,0 +1,32 @@
+{
+  "repo": "lance-format/lance",
+  "number": 7573,
+  "sha": "27f0172d45a244536e0b54965fe83856f8a3e00b",
+  "soap": "REVIEW \u00b7 lance-format/lance#7573 \u2014 fix(cache): count key footprint in MokaCacheBackend eviction weight\nAli2Arslan (infrequent) \u00b7 M (+49/-2, 2 files) \u00b7 no escalation\n\nS (Subjective)\n  MokaCacheBackend's weigher charged only the value's size_bytes and ignored the key, so workloads storing many small values under long, high-cardinality keys under-count memory and grow past max_capacity. The fix charges a per-entry key_footprint = size_of::<InternalCacheKey>() + key.key().len() in both the eviction weigher and the synchronous approx_size_bytes, and deliberately excludes the shared prefix Arc<str> (not reclaimed per single eviction). CI green, mergeable.\n\nO (Objective) \u2014 verified against source at head 27f0172d:\n  - moka.rs:25-27 \u2014 key_footprint = size_of::<InternalCacheKey>() + key.key().len(). InternalCacheKey (backend.rs:37-41) is {prefix: Arc<str>, key: Arc<str>, type_name: &'static str}; key() returns the unique per-entry string. Correct.\n  - moka.rs:49-54 \u2014 weigher now key_footprint(key).saturating_add(entry.size_bytes).try_into().unwrap_or(u32::MAX). saturating_add prevents usize overflow; unwrap_or(u32::MAX) preserves the old per-entry u32 clamp.\n  - moka.rs:162-165 \u2014 approx_size_bytes sums key_footprint + size_bytes, so DeepSizeOf path and weigher use the same formula. Consistent.\n  - Prefix-exclusion confirmed: build_key (mod.rs:150-152) does prefix.clone() (shared Arc) + Arc::from(key) (fresh per-entry alloc); with_key_prefix stores one shared prefix per handle. Charging prefix.len() per entry would over-count \u2014 exclusion is correct.\n  - Weight source: insert_with_id sets size = cache_entry_size(&*metadata), so the weigher yields exactly key_footprint + cache_entry_size(value) \u2014 matching test_cache_weighs_key_footprint.\n  - Tests: test_cache_weighs_key_footprint uses with_capacity(usize::MAX) and asserts exact weighted size; test_cache_shared_prefix_not_charged_per_entry confirms a 10KB shared prefix \u00d7 100 entries is not multiplied. Pre-existing test_cache_bytes asserts size_bytes() <= capacity (a bound) \u2014 still holds.\n  - Repo sweep: MokaCacheBackend is the only production CacheBackend impl; HashMapBackend/SerializingBackend are test-only. No test asserts an exact size_bytes(). Only user-facing budgets are session.rs:109-110 (index_cache_size/metadata_cache_size).\n  - could not read: none (0 omitted).\n\nA (Assessment)\n  risk: low (down from baseline med) \u2014 self-contained accounting change in one backend, no unsafe, no wire/format change, no new panic path (narrowing conversions guarded). Formula correct; the two accounting paths kept in lockstep. urgency: low. escalation: none.\n  One behavioral shift: every entry now weighs ~48 bytes + key-len more, so a byte-configured cache holds slightly fewer value-bytes. Intended, negligible (<0.1%) against multi-KB entries. Worth a note for anyone who empirically tuned index_cache_size, not gating.\n\nP (Plan)\n  Clean, well-motivated, well-tested fix. No blocking conditions.\n\nRECOMMENDATION: approve\n  confidence: high \u00b7 what would make this wrong: if some production consumer read size_bytes()/weighted_size() as an exact value-byte total rather than an eviction weight \u2014 the sweep found no such consumer.\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "approve",
+  "summary": "Correct, well-motivated fix. The weigher and approx_size_bytes now both charge key_footprint = size_of::<InternalCacheKey>() + key.key().len() and stay in lockstep; the prefix exclusion is right (shared Arc<str> cloned in build_key, not reclaimed per eviction). saturating_add + unwrap_or(u32::MAX) guard the narrowing. Two new tests pin both the key charge and the prefix non-multiplication; the exact arithmetic matches cache_entry_size. Repo sweep confirms MokaCacheBackend is the only production CacheBackend impl and no test asserts an exact size_bytes(). Approve.",
+  "comments": [
+    {
+      "path": "rust/lance-core/src/cache/moka.rs",
+      "line": 49,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: Weigher correctly charges key footprint with saturating_add guarding usize overflow and unwrap_or(u32::MAX) preserving the prior per-entry clamp. Excluding the shared prefix is the right call \u2014 build_key clones the prefix Arc<str> (shared per handle) and allocates a fresh key per entry, so only key is reclaimed on a single eviction."
+    },
+    {
+      "path": "rust/lance-core/src/cache/moka.rs",
+      "line": 162,
+      "label": "nit",
+      "blocking": false,
+      "body": "nit (non-blocking): approx_size_bytes reuses key_footprint, keeping it consistent with the weigher \u2014 good. Both new tests assert through the async weighted_size() path, so the approx_size_bytes/DeepSizeOf path is only covered transitively. Low-value given the shared helper, but a one-line direct assertion would close the gap."
+    },
+    {
+      "path": "rust/lance-core/src/cache/moka.rs",
+      "line": 49,
+      "label": "suggestion",
+      "blocking": false,
+      "body": "suggestion (non-blocking): Every entry now weighs ~size_of::<InternalCacheKey>() (~48 bytes) + key length more than before, so a byte-budgeted cache holds slightly fewer value-bytes. Intended and negligible for multi-KB entries, but worth a note for the user-configurable budgets in session.rs (index_cache_size/metadata_cache_size) in case anyone tuned them empirically. No change required."
+    }
+  ]
+}

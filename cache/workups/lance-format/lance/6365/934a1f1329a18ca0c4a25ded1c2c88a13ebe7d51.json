@@ -1,0 +1,46 @@
+{
+  "repo": "lance-format/lance",
+  "number": 6365,
+  "sha": "934a1f1329a18ca0c4a25ded1c2c88a13ebe7d51",
+  "soap": "SOAP \u00b7 lance-format/lance#6365 \u2014 feat: compile-time feature-gated Rust backtrace for JNI errors\n\nSubjective\n  First-time contributor (summaryzb) proposes a compile-time feature-gated Rust backtrace surfaced through the JNI error boundary into Java exception messages. Two-tier switch: (1) #[cfg(feature=\"backtrace\")] swaps lance-core's implicit backtrace: MaybeBacktrace snafu field between a real Option<Backtrace> struct and a zero-sized unit struct, so default builds pay no cost; (2) even with the feature compiled in, capture is gated at runtime by RUST_BACKTRACE via std::backtrace::Backtrace. lance-jni's From<LanceError> for Error appends a \"Rust backtrace:\" suffix. PR body is candid about scope. Good tests on both sides. CI green, but GitHub reports mergeable_state: dirty \u2014 real conflicts against main.\n\nObjective\n  - rust/lance-core/src/error.rs: adds a backtrace_support module defined twice under complementary cfgs (satisfies snafu GenerateImplicitData/AsBacktrace, available in snafu 0.9). Adds #[snafu(implicit)] backtrace: MaybeBacktrace to struct-style variants, plus Error::backtrace() with two cfg-gated impls: feature-off returns None unconditionally; feature-on has an explicit, non-wildcard match over every named variant (intentional, so a new variant triggers a compile error if a backtrace field is forgotten).\n  - THIS EXHAUSTIVENESS GUARANTEE IS ALREADY VIOLATED. Current main's error.rs has two variants absent from this diff: Timeout {message, location} and DiskCapExceeded {cap_bytes, used_bytes, location}. Neither appears in the PR's feature-on match. With no _ wildcard, cargo build --features backtrace against main WILL NOT COMPILE (non-exhaustive match). mergeable_state: dirty + 3-month-old branch (opened 2026-03-31) confirm divergence. The Cargo.lock diff pulling in unrelated io-uring/libc/moka deps corroborates the branch predates workspace history and needs a real rebase.\n  - java/lance-jni/src/error.rs: From<LanceError> computes backtrace_suffix unconditionally, appends to every mapped message. Retains _ => runtime_error wildcard, so not exposed to the exhaustiveness trap.\n  - Tests: 9 new JNI unit tests (exception-class mapping + no-suffix-when-off); 3 new lance-core tests. test_backtrace_captured_when_feature_enabled honestly documents the RUST_BACKTRACE env-caching caveat.\n  - java/pom.xml: adds <rust.features> Maven property (default empty) threaded into cargo build/test \u2014 clean, backwards-compatible opt-in.\n  - Feature wiring across lance/lance-core/lance-jni Cargo.toml is consistent.\n  - Could not read: nothing (7/7 files, no truncation).\n\nAssessment\n  risk: HIGH (up from packet's med) \u2014 the PR's own stated safety invariant (exhaustive match => compiler-enforced coverage) is already violated by variants merged into main after the branch was cut. Guaranteed compile failure on rebase, under the exact feature flag the PR adds. Pure error-plumbing; no IO/concurrency surface. Blocking issue is staleness, not architecture \u2014 the design itself is sound and the zero-cost-when-disabled claim holds structurally.\n  urgency: high (first-time contributor, core crate) \u00b7 escalation: none forced \u00b7 could not read: none\n\nPlan\n  1. Rebase onto main; add #[snafu(implicit)] backtrace: MaybeBacktrace to Timeout and DiskCapExceeded (and any other new variant), add both to the backtrace() match arm.\n  2. Confirm cargo build/test -p lance-core --features backtrace succeed post-rebase \u2014 the real acceptance criterion (CI ran against the stale base and wouldn't catch this).\n  3. Non-blocking: consider whether the no-wildcard match is worth the recurring rebase-conflict tax vs a wildcard + debug_assert \u2014 author's tradeoff is defensible.\n\nRECOMMENDATION: block\n  confidence: high \u2014 exhaustiveness/compile-break finding independently verified against live main.\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "block",
+  "summary": "Design is sound and well-tested, but the PR is 3 months stale against main: mergeable_state is 'dirty' with real conflicts, and main has since added Error::Timeout and Error::DiskCapExceeded variants absent from the PR's intentionally-exhaustive (no wildcard) match in Error::backtrace(). Once rebased, cargo build --features backtrace will fail to compile with a non-exhaustive-match error under lance-core's own feature flag.",
+  "comments": [
+    {
+      "path": "rust/lance-core/src/error.rs",
+      "line": 509,
+      "label": "issue",
+      "blocking": true,
+      "body": "issue(blocking): This match is intentionally exhaustive with no wildcard arm (per the comment at line 538) so new variants force a compiler error here. That guarantee is already violated: current main has Error::Timeout { message, location } and Error::DiskCapExceeded { cap_bytes, used_bytes, location }, neither of which exists in this diff nor in this match. After rebasing onto main (mergeable_state is currently 'dirty'), cargo build -p lance-core --features backtrace will fail with a non-exhaustive-match compile error.\n\nAcceptance: add #[snafu(implicit)] backtrace: MaybeBacktrace to Timeout and DiskCapExceeded (and any variant added since 2026-03-31), add both to this match's backtrace-bearing arm, and confirm cargo build -p lance-core --features backtrace && cargo test -p lance-core --features backtrace succeed post-rebase."
+    },
+    {
+      "path": "rust/lance-core/src/error.rs",
+      "line": 556,
+      "label": "nit",
+      "blocking": false,
+      "body": "nit: this #[cfg(not(feature = \"backtrace\"))] arm unconditionally returns None regardless of variant count, so it isn't affected by the exhaustiveness issue above \u2014 only the feature-enabled match (line 509) needs the new variants added."
+    },
+    {
+      "path": "rust/lance-core/src/error.rs",
+      "line": 588,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: appreciate that test_backtrace_captured_when_feature_enabled's comment is upfront about the RUST_BACKTRACE env-caching limitation instead of presenting the test as stronger coverage than it is."
+    },
+    {
+      "path": "java/lance-jni/Cargo.lock",
+      "line": 9,
+      "label": "question",
+      "blocking": false,
+      "body": "question: this lockfile diff pulls in io-uring, libc, and moka as new transitive deps of lance-jni \u2014 none obviously related to backtraces. Is this purely lockfile drift from rebasing a stale branch (will resolve on rebase), or does something in this PR actually pull these in? Worth a sanity check that cargo update isn't silently over-bumping unrelated deps."
+    },
+    {
+      "path": "java/pom.xml",
+      "line": 42,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: threading -Drust.features through as an empty-default Maven property is a clean, backwards-compatible way to make the feature opt-in at build time without touching the default path."
+    }
+  ]
+}

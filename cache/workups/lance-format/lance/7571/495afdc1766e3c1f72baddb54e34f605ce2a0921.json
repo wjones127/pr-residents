@@ -1,0 +1,39 @@
+{
+  "repo": "lance-format/lance",
+  "number": 7571,
+  "sha": "495afdc1766e3c1f72baddb54e34f605ce2a0921",
+  "soap": "SOAP \u00b7 lance-format/lance#7571 \u2014 fix: preserve structural page load errors\n\nSubjective\n  ddupg (core) fixes a bug where a structural page-load I/O error (e.g. an object-store range-read timeout) gets masked by a subsequent unwrap() panic in the primitive decoder, producing a misleading PanicException in Python instead of the real OSError. StructuralBatchDecodeStream bumped rows_scheduled before awaiting the UnloadedPageShard; if that page future errored, the stream still returned an emitted error item but remained pollable, so .buffered(batch_readahead) consumers could poll again, at which point the primitive decoder saw rows \"scheduled\" that were never accepted and hit front_mut().unwrap() on an empty VecDeque. Two-file diff (+132/-46), CI green (30/30), mergeable.\n\nObjective (traced against code at 495afdc1 in a local worktree)\n  - decoder.rs:1916-1929 \u2014 into_stream's unfold now matches next_batch_task().await; on Err it sets rows_remaining = 0 and emits a synthetic ReadBatchTask resolving to Err(err), still returning slf so the stream is polled once more; on that poll next_batch_task returns Ok(None) (rows_remaining==0) and terminates cleanly. One-shot, no re-entry. Confirmed the bug source at line 1844 (rows_scheduled set before the per-message await/accept_page loop).\n  - primitive.rs:3663-3674 \u2014 front_mut().unwrap() replaced with a let-else returning Error::internal(...) including field name, data type, requested/remaining rows, rows_drained_in_current, and queued-page count. Error::internal is the correct existing variant.\n  - Consumer chain verified: io/exec/scan.rs:410-421 flattens via try_flatten().try_buffered(batch_readahead). Read futures-util 0.3.32 TryBuffered::poll_next \u2014 outer stream yields Ok(task), inner future's Err surfaces as a forwarded item without short-circuiting the outer poll, so the outer stream must self-terminate \u2014 which this fix does.\n  - Ran both new tests + full cargo test -p lance-encoding --lib: 397 passed, 0 failed, 5 ignored (pre-existing). fmt clean; clippy covered by CI's green run.\n  - Not covered: sibling legacy BatchDecodeStream::into_stream (decoder.rs:1509-1535, is_structural==false, v2.0 non-structural files) has the identical pre-fix shape \u2014 next_task.transpose() turns Err into Some((task, slf)) without adjusting rows_remaining. Same bug class, older path, left untouched.\n\nAssessment\n  risk: med (confirmed from content) \u2014 error-handling/control-flow fix in the streaming decode path; no on-disk format, no concurrency primitives, no unsafe; well-scoped, reasoning checks out against actual futures semantics.\n  urgency: low \u2014 no active incident, but resolves a confusing panic that surfaces in place of actionable I/O errors (timeouts), affecting production debuggability today.\n  escalation: none \u00b7 could not read: none (full diff, no omitted files).\n  Test coverage genuine: both regression tests run and confirmed to hit the intended paths with assertions on specific error content.\n\nPlan\n  Structural-path fix is correct, narrowly scoped, well-tested, matches its stated root cause. Substantive gap: the twin bug in the legacy (is_structural==false) decode stream is unaddressed \u2014 worth a non-blocking follow-up.\n\nRECOMMENDATION: approve\n  confidence: high \u2014 root cause verified line-by-line, new tests + full lance-encoding lib suite run green, futures try_buffered semantics confirmed against crate source, upstream CI 30/30. What would make this wrong: a caller polling into_stream() outside the try_flatten/try_buffered pattern expecting more batches after an error \u2014 grep confirms decoder.rs is the only construction/consumption site.\n",
+  "cached_at": "2026-07-02T15:56:07Z",
+  "recommendation": "approve",
+  "summary": "Fixes a real bug: structural page-load I/O errors (e.g. object-store timeouts) were masked by a later unwrap() panic in the primitive decoder because the decode stream stayed pollable after emitting an error. Root cause verified line-by-line (rows_scheduled bumped before the page future is awaited), fix verified against futures::try_buffered semantics, both new regression tests run and pass, full lance-encoding lib suite green (397 passed). One non-blocking gap: the identical bug pattern remains in the legacy (is_structural=false) BatchDecodeStream::into_stream, unaddressed by this PR.",
+  "comments": [
+    {
+      "path": "rust/lance-encoding/src/decoder.rs",
+      "line": 1509,
+      "label": "issue",
+      "blocking": false,
+      "body": "non-blocking: BatchDecodeStream::into_stream (the legacy/non-structural path, still live for v2.0 files via create_decode_stream at decoder.rs:2123 when is_structural is false) has the same pre-fix shape this PR corrects for the structural path: next_task.transpose() turns an Err from next_batch_task into Some((task, slf)) without touching rows_remaining, so the stream stays pollable and can resume against stale scheduler state after an error. Worth a follow-up applying the same rows_remaining = 0 + early-return pattern, or a comment noting why v2.0 files aren't exposed to the equivalent panic."
+    },
+    {
+      "path": "rust/lance-encoding/src/decoder.rs",
+      "line": 1844,
+      "label": "question",
+      "blocking": false,
+      "body": "question: self.rows_scheduled = scan_line.scheduled_so_far is set before the for message in scan_line.decoders loop that awaits each page and calls accept_page. If a scan_line carries multiple messages and an error occurs partway through, rows_scheduled reflects pages never accepted for the other fields too. This fix (killing the whole stream via rows_remaining = 0) papers over this since the stream terminates right after \u2014 confirming: is a scan_line with multiple decoders entries and a mid-way failure actually possible, or does the scheduler always emit one page per scan line? If possible, worth a one-line comment on why partial acceptance is safe here."
+    },
+    {
+      "path": "rust/lance-encoding/src/encodings/logical/primitive.rs",
+      "line": 3664,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: Good replacement of the panic-prone unwrap() with a diagnostic-rich Error::internal \u2014 field name, data type, requested/remaining rows, and queue depth make any future recurrence of this invariant violation actionable instead of an opaque panic."
+    },
+    {
+      "path": "rust/lance-encoding/src/decoder.rs",
+      "line": 2985,
+      "label": "praise",
+      "blocking": false,
+      "body": "praise: test_structural_decode_stream_stops_after_page_load_error verified \u2014 constructs a genuinely failing UnloadedPageShard and asserts both that the original error surfaces (not a panic) and that the stream terminates on the next poll. Ran it directly; passes and correctly exercises the .buffered(2) readahead scenario."
+    }
+  ]
+}

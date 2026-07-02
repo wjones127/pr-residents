@@ -1,0 +1,82 @@
+{
+  "pr": {
+    "repo": "lance-format/lance",
+    "number": 7576,
+    "title": "perf(dataset): reuse session-cached manifest when opening a dataset",
+    "url": "https://github.com/lance-format/lance/pull/7576",
+    "head": "58fcbfb490ca58994c0f3832a1746b4a8683656a",
+    "author": "zhangyue19921010",
+    "author_status": "core",
+    "body": "# What changed\r\nOpening a dataset by URI (`DatasetBuilder::load_by_uri`) always read the manifest from storage, even when the same version was already loaded on the session. \r\n\r\nThis path now checks the session metadata cache first (keyed by version + e_tag) and only reads + caches on a miss. Manifests are immutable per version, so a cache hit is always safe.\r\n\r\n# Why it matters\r\nTake distributed read/write for example\r\n\r\nlance-spark shares one Session per executor (`LanceRuntime.CATALOG_SESSIONS`), and every task opens the dataset on its own (`LanceFragmentScanner.create` \u2192 `Utils.openDatasetBuilder(...).build()`). Before this change, each task re-read the manifest, so manifest reads scaled with the number of tasks and turned the manifest object into a read hotspot on object storage (large tables, many fragments, wide backfills). After this change the manifest is read once per executor and reused across all tasks on that executor \u2014 dropping manifest reads from task-level to executor-level.\r\n",
+    "lane": "fresh",
+    "blocked_on": "me"
+  },
+  "acuity": {
+    "risk": "med",
+    "urgency": "low",
+    "rationale": "core library change; resident to refine from diff content"
+  },
+  "effort": {
+    "size_bucket": "M",
+    "additions": 45,
+    "deletions": 36,
+    "files": 5
+  },
+  "escalation": {
+    "forced": false,
+    "rule_ids": [],
+    "reason": ""
+  },
+  "merge_state": {
+    "ci": "green",
+    "mergeable": true
+  },
+  "diff": {
+    "files": [
+      {
+        "path": "rust/lance/src/dataset.rs",
+        "status": "modified",
+        "additions": 31,
+        "deletions": 24,
+        "patch": "@@ -750,6 +750,30 @@ impl Dataset {\n         Ok(manifest)\n     }\n \n+    /// Fetch the manifest for `manifest_location` from the session metadata\n+    /// cache, loading and caching it on a miss.\n+    pub(crate) async fn get_manifest(\n+        object_store: &ObjectStore,\n+        manifest_location: &ManifestLocation,\n+        uri: &str,\n+        session: &Session,\n+    ) -> Result<Arc<Manifest>> {\n+        let metadata_cache = session.metadata_cache.for_dataset(uri);\n+        let manifest_key = ManifestKey {\n+            version: manifest_location.version,\n+            e_tag: manifest_location.e_tag.as_deref(),\n+        };\n+        if let Some(cached) = metadata_cache.get_with_key(&manifest_key).await {\n+            return Ok(cached);\n+        }\n+        let loaded =\n+            Arc::new(Self::load_manifest(object_store, manifest_location, uri, session).await?);\n+        metadata_cache\n+            .insert_with_key(&manifest_key, loaded.clone())\n+            .await;\n+        Ok(loaded)\n+    }\n+\n     #[allow(clippy::too_many_arguments)]\n     fn checkout_manifest(\n         object_store: Arc<ObjectStore>,\n@@ -2923,30 +2947,13 @@ pub(crate) fn load_new_transactions(dataset: &Dataset) -> NewTransactionResult<'\n         .map_ok(move |location| {\n             let latest_tx = latest_tx.take();\n             async move {\n-                let manifest_key = ManifestKey {\n-                    version: location.version,\n-                    e_tag: location.e_tag.as_deref(),\n-                };\n-                let manifest = if let Some(cached) =\n-                    dataset.metadata_cache.get_with_key(&manifest_key).await\n-                {\n-                    cached\n-                } else {\n-                    let loaded = Arc::new(\n-                        Dataset::load_manifest(\n-                            dataset.object_store.as_ref(),\n-                            &location,\n-                            &dataset.uri,\n-                            dataset.session.as_ref(),\n-                        )\n-                        .await?,\n-                    );\n-                    dataset\n-                        .metadata_cache\n-                        .insert_with_key(&manifest_key, loaded.clone())\n-                        .await;\n-                    loaded\n-                };\n+                let manifest = Dataset::get_manifest(\n+                    dataset.object_store.as_ref(),\n+                    &location,\n+                    &dataset.uri,\n+                    dataset.session.as_ref(),\n+                )\n+                .await?;\n \n                 if let Some(latest_tx) = latest_tx {\n                     // We ignore the error, since we don't care if the receiver is dropped.",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/dataset/builder.rs",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 3,
+        "patch": "@@ -833,7 +833,7 @@ impl DatasetBuilder {\n                 let reader = object_store.open(&location.path).await?;\n                 populate_schema_dictionary(&mut manifest.schema, reader.as_ref()).await?;\n             }\n-            (manifest, location)\n+            (Arc::new(manifest), location)\n         } else {\n             let manifest_location = match version_number {\n                 Some(version) => {\n@@ -866,7 +866,8 @@ impl DatasetBuilder {\n                         _ => e,\n                     })?,\n             };\n-            let manifest = Dataset::load_manifest(\n+\n+            let manifest = Dataset::get_manifest(\n                 &object_store,\n                 &manifest_location,\n                 &table_uri,\n@@ -880,7 +881,7 @@ impl DatasetBuilder {\n             object_store,\n             base_path,\n             table_uri,\n-            Arc::new(manifest),\n+            manifest,\n             location,\n             session,\n             commit_handler,",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/dataset/tests/dataset_io.rs",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "patch": "@@ -692,12 +692,12 @@ async fn test_load_manifest_iops() {\n         .await\n         .unwrap();\n \n-    // There should be only two IOPS:\n-    // 1. List _versions directory to get the latest manifest location\n-    // 2. Read the manifest file. (The manifest is small enough to be read in one go.\n-    //    Larger manifests would result in more IOPS.)\n+    // The write above committed on this same Session, so the manifest is already\n+    // in the metadata cache. Opening therefore issues a single IOP:\n+    // 1. List _versions directory to resolve the latest manifest location.\n+    // The manifest body is served from the cache instead of being read from storage.\n     let io_stats = _dataset.object_store.as_ref().io_stats_incremental();\n-    assert_io_eq!(io_stats, read_iops, 2);\n+    assert_io_eq!(io_stats, read_iops, 1);\n }\n \n #[rstest]",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/dataset/write/commit.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 3,
+        "patch": "@@ -630,10 +630,9 @@ mod tests {\n             .unwrap();\n         assert_eq!(new_ds.manifest().version, 7);\n         // Session should still be re-used\n-        // However, the dataset needs to be loaded and the read version checked out,\n-        // so an additional 4 IOPs are needed.\n+        // However, the dataset needs to be loaded and the read version checked out.\n         let io_stats = dataset.object_store.as_ref().io_stats_incremental();\n-        assert_io_eq!(io_stats, read_iops, 5, \"load dataset + check version\");\n+        assert_io_eq!(io_stats, read_iops, 4, \"load dataset + check version\");\n         assert_io_eq!(io_stats, write_iops, 2, \"write txn + manifest\");\n \n         // Commit transaction with URI and new session. Re-use the store",
+        "patch_truncated": false
+      },
+      {
+        "path": "rust/lance/src/index.rs",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 1,
+        "patch": "@@ -4087,7 +4087,9 @@ mod tests {\n         assert_io_eq!(stats, read_bytes, 0);\n         assert_eq!(indices.len(), 1);\n \n-        session.index_cache.clear().await; // Clear the cache\n+        // Clear the cache\n+        session.index_cache.clear().await;\n+        session.file_metadata_cache().clear().await;\n \n         let dataset2 = DatasetBuilder::from_uri(test_uri)\n             .with_session(session.clone())",
+        "patch_truncated": false
+      }
+    ],
+    "omitted": [],
+    "total_files": 5,
+    "shown_files": 5
+  },
+  "lane_note": null
+}
