@@ -4,6 +4,10 @@
       <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
       <span class="meta">{{if .Escalated}}<span class="esc">ESCALATED</span>{{end}}<span>{{.Age}} in state</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
       <div class="note">{{.Rationale}}</div>
+      {{if .HasSOAP}}<details class="soap">
+        <summary><span class="rec rec-{{.Recommendation}}">{{.Recommendation}}</span> {{.BlockingCount}} blocking</summary>
+        <div class="soap-body">{{.SOAP}}</div>
+      </details>{{end}}
     </div>
 {{end}}
 

@@ -1,50 +1,68 @@
-// Package jobs runs named background jobs (refresh, later dispatch) and fans
-// their progress out to subscribers — the web server bridges those to SSE.
-// A job name runs at most once concurrently.
+// Package jobs runs named background jobs (refresh, dispatch) and fans their
+// progress out to subscribers — the web server bridges those to SSE. A job name
+// runs at most once concurrently, and a running job can be cancelled by name.
 package jobs
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // Event is a job progress update, JSON-serialized straight to SSE clients.
 type Event struct {
-	Job     string `json:"job"`
-	Phase   string `json:"phase"`
-	Repo    string `json:"repo"`
-	Done    int    `json:"done"`
-	Total   int    `json:"total"`
-	Message string `json:"message"`
-	Status  string `json:"status"` // "running" | "done" | "error"
+	Job       string `json:"job"`
+	Phase     string `json:"phase"`
+	Repo      string `json:"repo"`
+	Done      int    `json:"done"`
+	Total     int    `json:"total"`
+	TokensIn  int    `json:"tokens_in"`
+	TokensOut int    `json:"tokens_out"`
+	Message   string `json:"message"`
+	Status    string `json:"status"` // "running" | "done" | "error"
 }
 
 // Manager runs jobs and broadcasts their events.
 type Manager struct {
 	mu      sync.Mutex
-	running map[string]bool
+	running map[string]context.CancelFunc
 	subs    map[chan Event]struct{}
 }
 
 // New returns an empty Manager.
 func New() *Manager {
-	return &Manager{running: map[string]bool{}, subs: map[chan Event]struct{}{}}
+	return &Manager{running: map[string]context.CancelFunc{}, subs: map[chan Event]struct{}{}}
 }
 
 // Running reports whether a job with this name is in flight.
 func (m *Manager) Running(name string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.running[name]
+	_, ok := m.running[name]
+	return ok
+}
+
+// Cancel cancels a running job's context (no-op if it isn't running).
+func (m *Manager) Cancel(name string) {
+	m.mu.Lock()
+	cancel := m.running[name]
+	m.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }
 
 // Run starts fn in a goroutine under name and returns true; returns false
-// without starting if a job of that name is already running. fn receives an
-// emit callback for progress; a final done/error event is broadcast for it.
-func (m *Manager) Run(name string, fn func(emit func(Event)) error) bool {
+// without starting if a job of that name is already running. fn receives a
+// cancellable context and an emit callback; a final done/error event is
+// broadcast for it.
+func (m *Manager) Run(name string, fn func(ctx context.Context, emit func(Event)) error) bool {
 	m.mu.Lock()
-	if m.running[name] {
+	if _, ok := m.running[name]; ok {
 		m.mu.Unlock()
 		return false
 	}
-	m.running[name] = true
+	ctx, cancel := context.WithCancel(context.Background())
+	m.running[name] = cancel
 	m.mu.Unlock()
 
 	go func() {
@@ -55,7 +73,7 @@ func (m *Manager) Run(name string, fn func(emit func(Event)) error) bool {
 			}
 			m.broadcast(ev)
 		}
-		err := fn(emit)
+		err := fn(ctx, emit)
 		final := Event{Job: name, Status: "done", Message: "complete"}
 		if err != nil {
 			final.Status = "error"
@@ -64,6 +82,7 @@ func (m *Manager) Run(name string, fn func(emit func(Event)) error) bool {
 		m.broadcast(final)
 
 		m.mu.Lock()
+		cancel()
 		delete(m.running, name)
 		m.mu.Unlock()
 	}()

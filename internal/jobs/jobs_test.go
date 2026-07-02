@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ func TestRunEmitsProgressAndDone(t *testing.T) {
 	ch, unsub := m.Subscribe()
 	defer unsub()
 
-	if !m.Run("refresh", func(emit func(Event)) error {
+	if !m.Run("refresh", func(ctx context.Context, emit func(Event)) error {
 		emit(Event{Phase: "search", Done: 1, Total: 2})
 		return nil
 	}) {
@@ -44,7 +45,7 @@ func TestRunReportsError(t *testing.T) {
 	ch, unsub := m.Subscribe()
 	defer unsub()
 
-	m.Run("x", func(emit func(Event)) error { return errors.New("boom") })
+	m.Run("x", func(ctx context.Context, emit func(Event)) error { return errors.New("boom") })
 	ev := recv(t, ch)
 	if ev.Status != "error" || ev.Message != "boom" {
 		t.Errorf("error event: %+v", ev)
@@ -56,7 +57,7 @@ func TestRunDedupsWhileRunning(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
 
-	if !m.Run("job", func(emit func(Event)) error {
+	if !m.Run("job", func(ctx context.Context, emit func(Event)) error {
 		close(started)
 		<-release
 		return nil
@@ -64,7 +65,7 @@ func TestRunDedupsWhileRunning(t *testing.T) {
 		t.Fatal("first Run should start")
 	}
 	<-started
-	if m.Run("job", func(emit func(Event)) error { return nil }) {
+	if m.Run("job", func(ctx context.Context, emit func(Event)) error { return nil }) {
 		t.Error("second Run of a running job should return false")
 	}
 	if !m.Running("job") {
@@ -80,5 +81,24 @@ func TestRunDedupsWhileRunning(t *testing.T) {
 			t.Fatal("job never cleared running state")
 		case <-time.After(5 * time.Millisecond):
 		}
+	}
+}
+
+func TestCancelPropagates(t *testing.T) {
+	m := New()
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	m.Run("job", func(ctx context.Context, emit func(Event)) error {
+		close(started)
+		<-ctx.Done()
+		close(cancelled)
+		return ctx.Err()
+	})
+	<-started
+	m.Cancel("job")
+	select {
+	case <-cancelled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("cancel did not reach the job's context")
 	}
 }

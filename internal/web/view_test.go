@@ -19,7 +19,7 @@ func rec(lane, risk, urgency, ci string, ageHrs float64) *prr.Record {
 func TestBuildViewFreshOrdering(t *testing.T) {
 	med := rec("fresh", "med", "low", "green", 10)
 	high := rec("fresh", "high", "low", "green", 10)
-	view := BuildView([]*prr.Record{med, high}, "2026-07-02")
+	view := BuildView([]*prr.Record{med, high}, nil, "2026-07-02")
 	if len(view.Fresh) != 2 || view.Fresh[0].Risk != "HIGH" {
 		t.Errorf("fresh should be risk-ordered high first: %+v", view.Fresh)
 	}
@@ -28,7 +28,7 @@ func TestBuildViewFreshOrdering(t *testing.T) {
 func TestBuildViewRereviewOrdering(t *testing.T) {
 	red := rec("re_review", "med", "low", "red", 10)
 	green := rec("re_review", "med", "low", "green", 10)
-	view := BuildView([]*prr.Record{red, green}, "d")
+	view := BuildView([]*prr.Record{red, green}, nil, "d")
 	if len(view.Rereview) != 2 || view.Rereview[0].CI != "green" {
 		t.Errorf("re-review should be CI-ordered green first: %+v", view.Rereview)
 	}
@@ -44,7 +44,7 @@ func TestBuildViewHouseTags(t *testing.T) {
 	stale.BlockedOn = "author"
 	stale.Author = "carol"
 
-	view := BuildView([]*prr.Record{draft, merge, stale}, "d")
+	view := BuildView([]*prr.Record{draft, merge, stale}, nil, "d")
 	if len(view.House) != 3 {
 		t.Fatalf("expected 3 house rows, got %d", len(view.House))
 	}
