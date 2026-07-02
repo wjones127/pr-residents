@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/lancedb/pr-residents/internal/relevance"
 )
 
 // RowView is one PR rendered in a lane. Tag is used only in housekeeping;
@@ -36,10 +37,22 @@ type Workup struct {
 	BlockingCount  int
 }
 
+// TriageRow is one self-requested candidate in the triage panel.
+type TriageRow struct {
+	Score     string
+	Repo      string
+	Number    int
+	URL       string
+	Title     string
+	Author    string
+	Rationale string
+}
+
 // RoundsView is the whole page's data.
 type RoundsView struct {
 	DateLabel string
 	Total     int
+	Triage    []TriageRow
 	Fresh     []RowView
 	Rereview  []RowView
 	House     []RowView
@@ -130,7 +143,7 @@ func houseRow(r *prr.Record) RowView {
 // the Python render's lane ordering (fresh: acuity; re-review: proximity to
 // merge; housekeeping: batched in input order). workups (keyed by "repo#number")
 // attaches cached SOAP blocks to fresh/re-review rows.
-func BuildView(records []*prr.Record, workups map[string]Workup, dateLabel string) RoundsView {
+func BuildView(records []*prr.Record, workups map[string]Workup, panel []relevance.Candidate, dateLabel string) RoundsView {
 	var fresh, rereview, house []*prr.Record
 	for _, r := range records {
 		switch r.Lane {
@@ -161,6 +174,12 @@ func BuildView(records []*prr.Record, workups map[string]Workup, dateLabel strin
 	})
 
 	view := RoundsView{DateLabel: dateLabel, Total: len(records)}
+	for _, c := range panel {
+		view.Triage = append(view.Triage, TriageRow{
+			Score: fmt.Sprintf("%.1f", c.Score), Repo: c.Repo, Number: c.Number,
+			URL: c.URL, Title: c.Title, Author: c.Author, Rationale: c.Rationale,
+		})
+	}
 	for _, r := range fresh {
 		view.Fresh = append(view.Fresh, laneRow(r, workups))
 	}

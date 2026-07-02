@@ -20,6 +20,7 @@ import (
 	"github.com/lancedb/pr-residents/internal/jobs"
 	"github.com/lancedb/pr-residents/internal/pipeline"
 	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/lancedb/pr-residents/internal/relevance"
 	"github.com/lancedb/pr-residents/internal/store"
 )
 
@@ -109,9 +110,17 @@ func (s *Server) loadWorkups(records []*prr.Record) map[string]Workup {
 	return out
 }
 
+func (s *Server) loadPanel() []relevance.Candidate {
+	var panel []relevance.Candidate
+	if _, err := s.store.GetJSON(store.PanelKey, &panel); err != nil {
+		log.Printf("web: read panel: %v", err)
+	}
+	return panel
+}
+
 func (s *Server) view() RoundsView {
 	records := s.loadRecords()
-	return BuildView(records, s.loadWorkups(records), today())
+	return BuildView(records, s.loadWorkups(records), s.loadPanel(), today())
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +205,21 @@ func (s *Server) doRefresh(ctx context.Context, emit func(jobs.Event)) error {
 	if records == nil {
 		records = []*prr.Record{}
 	}
-	return s.store.PutJSON(store.RecordsKey, records)
+	if err := s.store.PutJSON(store.RecordsKey, records); err != nil {
+		return err
+	}
+
+	// Triage panel: self-requested relevance candidates.
+	emit(jobs.Event{Phase: "triage", Message: "ranking candidates", Status: "running"})
+	newRel := func(token string) relevance.API { return gh.NewClient(token) }
+	panel, pwarns := relevance.BuildPanel(s.cfg, newRel, s.store, relevance.Options{})
+	for _, warn := range pwarns {
+		log.Println(warn)
+	}
+	if panel == nil {
+		panel = []relevance.Candidate{}
+	}
+	return s.store.PutJSON(store.PanelKey, panel)
 }
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {

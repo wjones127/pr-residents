@@ -33,6 +33,26 @@ query($q: String!) {
   search(query: $q, type: ISSUE, first: 0) { issueCount }
 }`
 
+// Relevance pass: PRs carrying their changed paths + reviews, for scoring
+// triage candidates and building the review-history profile.
+const searchFilesQuery = `
+query($q: String!, $cursor: String) {
+  search(query: $q, type: ISSUE, first: 25, after: $cursor) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      ... on PullRequest {
+        number
+        title
+        url
+        author { login }
+        repository { nameWithOwner }
+        files(first: 100) { nodes { path } }
+        reviews(first: 20) { nodes { author { login __typename } state } }
+      }
+    }
+  }
+}`
+
 // Heavy pass: full detail for a single PR, fetched only on cache miss / change.
 const detailQuery = `
 query($owner: String!, $name: String!, $number: Int!) {
@@ -327,6 +347,103 @@ func (c *Client) SearchCount(query string) (int, error) {
 		return 0, err
 	}
 	return resp.Search.IssueCount, nil
+}
+
+// CandidateReview is a review on a relevance candidate (login + type + state).
+type CandidateReview struct {
+	Login string
+	Type  string
+	State string
+}
+
+// CandidatePR is a relevance candidate: identity, changed paths, and reviews.
+type CandidatePR struct {
+	Number  int
+	Title   string
+	URL     string
+	Author  string
+	Repo    string
+	Paths   []string
+	Reviews []CandidateReview
+}
+
+// SearchWithFiles returns candidate PRs (with changed paths + reviews) for a
+// search query, up to limit, following pagination.
+func (c *Client) SearchWithFiles(query string, limit int) ([]CandidatePR, error) {
+	var out []CandidatePR
+	var cursor any
+	for len(out) < limit {
+		data, err := c.graphql(searchFilesQuery, map[string]any{"q": query, "cursor": cursor})
+		if err != nil {
+			return nil, err
+		}
+		var resp struct {
+			Search struct {
+				PageInfo struct {
+					HasNextPage bool   `json:"hasNextPage"`
+					EndCursor   string `json:"endCursor"`
+				} `json:"pageInfo"`
+				Nodes []struct {
+					Number     int    `json:"number"`
+					Title      string `json:"title"`
+					URL        string `json:"url"`
+					Author     *Actor `json:"author"`
+					Repository struct {
+						NameWithOwner string `json:"nameWithOwner"`
+					} `json:"repository"`
+					Files struct {
+						Nodes []struct {
+							Path string `json:"path"`
+						} `json:"nodes"`
+					} `json:"files"`
+					Reviews struct {
+						Nodes []struct {
+							Author *struct {
+								Login    string `json:"login"`
+								Typename string `json:"__typename"`
+							} `json:"author"`
+							State string `json:"state"`
+						} `json:"nodes"`
+					} `json:"reviews"`
+				} `json:"nodes"`
+			} `json:"search"`
+		}
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return nil, err
+		}
+		for _, n := range resp.Search.Nodes {
+			if n.Repository.NameWithOwner == "" {
+				continue
+			}
+			cp := CandidatePR{
+				Number: n.Number, Title: n.Title, URL: n.URL,
+				Repo: n.Repository.NameWithOwner,
+			}
+			if n.Author != nil {
+				cp.Author = n.Author.Login
+			}
+			for _, f := range n.Files.Nodes {
+				cp.Paths = append(cp.Paths, f.Path)
+			}
+			for _, rv := range n.Reviews.Nodes {
+				cr := CandidateReview{State: rv.State}
+				if rv.Author != nil {
+					cr.Login = rv.Author.Login
+					cr.Type = rv.Author.Typename
+				}
+				cp.Reviews = append(cp.Reviews, cr)
+			}
+			out = append(out, cp)
+			if len(out) >= limit {
+				break
+			}
+		}
+		if !resp.Search.PageInfo.HasNextPage {
+			break
+		}
+		cursor = resp.Search.PageInfo.EndCursor
+	}
+	return out, nil
 }
 
 // FetchDetail fetches the full detail for one PR.

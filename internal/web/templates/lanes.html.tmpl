@@ -18,7 +18,18 @@
     </div>
 {{end}}
 
+{{define "triagerow"}}
+    <div class="trow">
+      <span class="score">{{.Score}}</span>
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span> <span class="by">{{.Author}}</span></span>
+      <span class="affinity">{{.Rationale}}</span>
+    </div>
+{{end}}
+
 {{define "lanes"}}
+  <section id="triage"><div class="lane-head"><h2>Triage</h2><span class="count">{{len .Triage}}</span><span class="desc">self-requested candidates — confirm / strike</span></div>
+{{range .Triage}}{{template "triagerow" .}}{{else}}    <div class="note">(none proposed)</div>{{end}}
+  </section>
   <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
 {{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
   </section>

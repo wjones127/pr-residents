@@ -22,6 +22,7 @@ import (
 	"github.com/lancedb/pr-residents/internal/gh"
 	"github.com/lancedb/pr-residents/internal/pipeline"
 	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/lancedb/pr-residents/internal/relevance"
 	"github.com/lancedb/pr-residents/internal/store"
 	"github.com/lancedb/pr-residents/internal/web"
 )
@@ -118,6 +119,21 @@ func runRefresh(args []string) int {
 			return 1
 		}
 		fmt.Fprintf(os.Stderr, "[ok] wrote %d records to %s\n", len(records), *out)
+	}
+
+	// Triage panel: self-requested relevance candidates (deterministic, no LLM).
+	newRel := func(token string) relevance.API { return gh.NewClient(token) }
+	panel, pwarns := relevance.BuildPanel(cfg, newRel, st, relevance.Options{})
+	for _, warn := range pwarns {
+		fmt.Fprintln(os.Stderr, warn)
+	}
+	if panel == nil {
+		panel = []relevance.Candidate{}
+	}
+	if err := st.PutJSON(store.PanelKey, panel); err != nil {
+		fmt.Fprintf(os.Stderr, "residents: write panel: %v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "[ok] wrote %d triage candidates to %s\n", len(panel), store.PanelKey)
 	}
 	return 0
 }

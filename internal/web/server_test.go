@@ -12,6 +12,7 @@ import (
 	"github.com/lancedb/pr-residents/internal/gh"
 	"github.com/lancedb/pr-residents/internal/jobs"
 	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/lancedb/pr-residents/internal/relevance"
 	"github.com/lancedb/pr-residents/internal/store"
 )
 
@@ -91,6 +92,23 @@ func TestRefreshReturns202(t *testing.T) {
 	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/refresh", nil))
 	if rr.Code != http.StatusAccepted {
 		t.Fatalf("status %d, want 202", rr.Code)
+	}
+}
+
+func TestTriagePanelRendered(t *testing.T) {
+	srv, st := newTestServer(t, nil)
+	if err := st.PutJSON(store.PanelKey, []relevance.Candidate{
+		{Repo: "o/r", Number: 7, Title: "Nice candidate", URL: "u", Author: "alice", Score: 4.5, Rationale: "overlaps your history"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	body := rr.Body.String()
+	for _, want := range []string{"Triage", "Nice candidate", "4.5", "overlaps your history", "o/r#7"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("triage render missing %q", want)
+		}
 	}
 }
 
