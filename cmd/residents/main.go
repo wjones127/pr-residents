@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/lancedb/pr-residents/internal/pipeline"
 	"github.com/lancedb/pr-residents/internal/prr"
 	"github.com/lancedb/pr-residents/internal/store"
+	"github.com/lancedb/pr-residents/internal/web"
 )
 
 const usage = `residents — local PR-review rounds
@@ -27,8 +29,8 @@ Usage:
   residents <command> [flags]
 
 Commands:
+  serve      run the local web app (rounds view + Refresh button)
   refresh    run the deterministic pipeline once (fetch + derive PRRecords)
-  serve      run the local web app (not yet implemented)
   dispatch   run a review round (not yet implemented)
   init       scaffold ~/.pr-residents/ (not yet implemented)
 
@@ -43,8 +45,10 @@ func main() {
 	switch os.Args[1] {
 	case "refresh":
 		os.Exit(runRefresh(os.Args[2:]))
-	case "serve", "dispatch", "init":
-		fmt.Fprintf(os.Stderr, "residents: %q not yet implemented (Phase 0 in progress)\n", os.Args[1])
+	case "serve":
+		os.Exit(runServe(os.Args[2:]))
+	case "dispatch", "init":
+		fmt.Fprintf(os.Stderr, "residents: %q not yet implemented\n", os.Args[1])
 		os.Exit(1)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
@@ -109,6 +113,33 @@ func runRefresh(args []string) int {
 			return 1
 		}
 		fmt.Fprintf(os.Stderr, "[ok] wrote %d records to %s\n", len(records), *out)
+	}
+	return 0
+}
+
+func runServe(args []string) int {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
+	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
+	port := fs.Int("port", 8787, "port to bind on localhost")
+	fs.Parse(args)
+
+	cfg, err := config.Load(*configDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "residents: load config: %v\n", err)
+		return 1
+	}
+	srv, err := web.NewServer(store.New(*stateDir), cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "residents: init server: %v\n", err)
+		return 1
+	}
+
+	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	fmt.Fprintf(os.Stderr, "residents: serving http://%s\n", addr)
+	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
+		fmt.Fprintf(os.Stderr, "residents: serve: %v\n", err)
+		return 1
 	}
 	return 0
 }

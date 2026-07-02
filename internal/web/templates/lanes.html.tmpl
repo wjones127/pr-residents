@@ -1,0 +1,27 @@
+{{define "row"}}
+    <div class="row{{if .Escalated}} escalated{{end}}">
+      <span class="badges"><span class="b acuity-{{.Risk}}">{{.Risk}}</span><span class="b size">{{.Size}}</span></span>
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+      <span class="meta">{{if .Escalated}}<span class="esc">ESCALATED</span>{{end}}<span>{{.Age}} in state</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
+      <div class="note">{{.Rationale}}</div>
+    </div>
+{{end}}
+
+{{define "houserow"}}
+    <div class="row">
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+      <span class="meta"><span>{{.Tag}} · {{.Age}}</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
+    </div>
+{{end}}
+
+{{define "lanes"}}
+  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
+{{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">{{len .Rereview}}</span><span class="desc">ordered by proximity to merge</span></div>
+{{range .Rereview}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{len .House}}</span><span class="desc">discharge planning, batched</span></div>
+{{range .House}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+{{end}}

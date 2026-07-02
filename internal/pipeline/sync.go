@@ -41,6 +41,17 @@ var categories = []searchCategory{
 	{"reviewed", "reviewed-by:@me -author:@me"},
 }
 
+// Event is a sync progress update. Total is 0 when not yet known.
+type Event struct {
+	Phase string // "search" | "detail"
+	Repo  string
+	Done  int
+	Total int
+}
+
+// ProgressFunc receives sync progress events (nil-safe: pass none to skip).
+type ProgressFunc func(Event)
+
 // Fingerprint is the cache-invalidation key: derivation inputs (escalation rules
 // + logic version). It need not match the Python bytes — the Go cache is its own
 // file — only change when the inputs change.
@@ -60,7 +71,12 @@ func splitRepo(repo string) (owner, name string) {
 // Sync fetches and derives PRRecords for the config's active repos. newClient
 // builds an API bound to a per-org token. Non-fatal problems are returned as
 // warnings (a failed repo or PR is reported, never aborts the run).
-func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, now time.Time) ([]*prr.Record, []string) {
+func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, now time.Time, progress ...ProgressFunc) ([]*prr.Record, []string) {
+	emit := func(Event) {}
+	if len(progress) > 0 && progress[0] != nil {
+		emit = progress[0]
+	}
+
 	var warns []string
 	if err := c.EnsureFingerprint(Fingerprint(cfg.Escalation)); err != nil {
 		warns = append(warns, fmt.Sprintf("[warn] cache fingerprint: %v", err))
@@ -71,7 +87,9 @@ func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, n
 	mergedCounts := map[string]int{} // "repo\x00author" -> merged PR count
 	var records []*prr.Record
 
-	for _, repo := range cfg.ActiveRepos() {
+	repos := cfg.ActiveRepos()
+	for repoIdx, repo := range repos {
+		emit(Event{Phase: "search", Repo: repo, Done: repoIdx, Total: len(repos)})
 		owner, name := splitRepo(repo)
 		token := cfg.TokenFor(owner)
 		if token == "" {
@@ -113,7 +131,9 @@ func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, n
 			continue
 		}
 
-		for _, number := range sortedNumbers(light) {
+		numbers := sortedNumbers(light)
+		for i, number := range numbers {
+			emit(Event{Phase: "detail", Repo: repo, Done: i + 1, Total: len(numbers)})
 			lr := light[number]
 			req := requested[number]
 
