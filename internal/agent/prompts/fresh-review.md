@@ -41,6 +41,8 @@ Emit three sections in this order and nothing else:
 
 ```
 RECOMMENDATION: approve | block | comment
+RISK: low | med | high
+ASSESSMENT: <one crisp line naming the risk driver, refined from the diff content (not the path baseline)>
 ===SUMMARY===
 <the human synthesis you'd paste as the top-level review comment: a one-liner,
 your key FINDINGS tied to ground truth, an ASSESSMENT (risk/urgency refined from

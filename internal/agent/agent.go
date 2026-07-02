@@ -21,9 +21,13 @@ type DraftComment struct {
 }
 
 // SOAP is a resident's review output: the human synthesis (Summary) plus the
-// actionable, postable draft Comments. Tokens are filled from usage metadata.
+// actionable, postable draft Comments. Risk/Assessment are the resident's
+// content-refined acuity that replaces the deterministic path-only baseline on
+// the row. Tokens are filled from usage metadata.
 type SOAP struct {
 	Recommendation string // approve | block | comment
+	Risk           string // low | med | high (refined from the diff; "" = unset)
+	Assessment     string // one-line risk rationale
 	Summary        string
 	Comments       []DraftComment
 	TokensIn       int

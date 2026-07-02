@@ -12,7 +12,7 @@ import (
 func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 	var gotArgs []string
 	var gotStdin string
-	result := "RECOMMENDATION: block\n===SUMMARY===\nLooks risky.\n===COMMENTS===\n" +
+	result := "RECOMMENDATION: block\nRISK: high\nASSESSMENT: unsafe pointer cast on the IO path\n===SUMMARY===\nLooks risky.\n===COMMENTS===\n" +
 		`{"path":"a.go","line":12,"label":"issue","blocking":true,"body":"guard nil"}` + "\n" +
 		`{"label":"praise","body":"nice test"}`
 	ag := &ClaudeAgent{Bin: "claude", Run: func(ctx context.Context, name string, args []string, stdin string) ([]byte, error) {
@@ -29,6 +29,9 @@ func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 	}
 	if soap.Recommendation != "block" || soap.Summary != "Looks risky." {
 		t.Errorf("soap header/summary: %+v", soap)
+	}
+	if soap.Risk != "high" || soap.Assessment != "unsafe pointer cast on the IO path" {
+		t.Errorf("risk/assessment: risk=%q assessment=%q", soap.Risk, soap.Assessment)
 	}
 	if len(soap.Comments) != 2 || soap.Comments[0].Path != "a.go" || soap.Comments[0].Line != 12 || !soap.Comments[0].Blocking {
 		t.Errorf("comments: %+v", soap.Comments)

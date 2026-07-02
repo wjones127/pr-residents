@@ -45,6 +45,8 @@ Emit three sections in this order and nothing else:
 
 ```
 RECOMMENDATION: approve | block | comment
+RISK: low | med | high
+ASSESSMENT: <one crisp line: the risk of what changed since you last looked>
 ===SUMMARY===
 <the human synthesis you'd paste as the top-level review comment: a header
 (reviewed <base8> → <head8>, N commits / M files), the CONDITIONS LEDGER (each

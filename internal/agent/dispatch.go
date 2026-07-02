@@ -18,6 +18,8 @@ type WorkupDoc struct {
 	Number         int            `json:"number"`
 	SHA            string         `json:"sha"`
 	Recommendation string         `json:"recommendation"`
+	Risk           string         `json:"risk"`
+	Assessment     string         `json:"assessment"`
 	Summary        string         `json:"summary"`
 	Comments       []DraftComment `json:"comments"`
 	CachedAt       string         `json:"cached_at"`
@@ -213,7 +215,8 @@ func reviewOne(ctx context.Context, ag WorkupAgent, st *store.FileStore, now tim
 	}
 	doc := WorkupDoc{
 		Repo: it.rec.Repo, Number: it.rec.Number, SHA: it.rec.HeadOid,
-		Recommendation: soap.Recommendation, Summary: soap.Summary, Comments: soap.Comments,
+		Recommendation: soap.Recommendation, Risk: soap.Risk, Assessment: soap.Assessment,
+		Summary: soap.Summary, Comments: soap.Comments,
 		CachedAt: now.Format(time.RFC3339), TokensIn: soap.TokensIn, TokensOut: soap.TokensOut,
 	}
 	if err := st.PutJSON(store.WorkupKey(it.rec.Repo, it.rec.Number, it.rec.HeadOid), doc); err != nil {

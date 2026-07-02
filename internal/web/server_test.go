@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lancedb/pr-residents/internal/agent"
 	"github.com/lancedb/pr-residents/internal/config"
@@ -15,6 +16,20 @@ import (
 	"github.com/lancedb/pr-residents/internal/relevance"
 	"github.com/lancedb/pr-residents/internal/store"
 )
+
+// waitJob blocks until an async job finishes, so its background writes complete
+// before t.TempDir() cleanup runs.
+func waitJob(t *testing.T, srv *Server, name string) {
+	t.Helper()
+	deadline := time.After(3 * time.Second)
+	for srv.jobs.Running(name) {
+		select {
+		case <-deadline:
+			t.Fatalf("job %q did not finish", name)
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+}
 
 func newTestServer(t *testing.T, records []*prr.Record) (*Server, *store.FileStore) {
 	t.Helper()
@@ -46,6 +61,8 @@ type fakeAgent struct{}
 func (fakeAgent) Workup(ctx context.Context, prompt string, model string) (agent.SOAP, error) {
 	return agent.SOAP{
 		Recommendation: "approve",
+		Risk:           "med",
+		Assessment:     "refined nil-deref risk",
 		Summary:        "REVIEW body here",
 		Comments: []agent.DraftComment{
 			{Path: "a.go", Line: 12, Side: "RIGHT", Label: "issue", Blocking: true, Body: "guard the nil case"},
@@ -110,6 +127,7 @@ func TestRefreshReturns202(t *testing.T) {
 	if rr.Code != http.StatusAccepted {
 		t.Fatalf("status %d, want 202", rr.Code)
 	}
+	waitJob(t, srv, "refresh")
 }
 
 func TestTriagePanelRendered(t *testing.T) {
@@ -138,6 +156,7 @@ func TestDispatchEndpointReturns202(t *testing.T) {
 	if rr.Code != http.StatusAccepted {
 		t.Fatalf("dispatch status %d, want 202", rr.Code)
 	}
+	waitJob(t, srv, "dispatch")
 }
 
 func TestCancelEndpointReturns202(t *testing.T) {
@@ -168,7 +187,7 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 		"guard the nil case",      // the draft comment body
 		"/o/r/pull/5/files#diff-", // deep link to the exact line
 		`class="copy-btn"`,        // a copy button
-		"guard the nil case",      // in the hidden copy-src too
+		"refined nil-deref risk",  // resident's refined rationale replaces the baseline on the row
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dispatch render missing %q", want)

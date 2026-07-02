@@ -249,6 +249,16 @@ func laneRow(r *prr.Record, workups map[string]agent.WorkupDoc) RowView {
 	}
 	if doc, ok := workups[key(r.Repo, r.Number)]; ok {
 		row.Workup = buildWorkupView(r.Repo, r.Number, doc)
+		// The resident's content-refined acuity replaces the path-only baseline
+		// on the row (the baseline's "resident to refine" is a placeholder).
+		if row.Workup != nil {
+			if doc.Risk != "" {
+				row.Risk = upper(doc.Risk)
+			}
+			if a := strings.TrimSpace(doc.Assessment); a != "" {
+				row.Rationale = a
+			}
+		}
 	}
 	return row
 }

@@ -104,8 +104,21 @@ func parseSOAP(result string) (SOAP, error) {
 		}
 	}
 	for _, line := range strings.Split(text[:headerEnd], "\n") {
-		if rec := parseRecommendation(line); rec != "" {
-			s.Recommendation = rec
+		if v, ok := headerValue(line, "recommendation"); ok {
+			switch v := strings.ToLower(v); {
+			case strings.HasPrefix(v, "approve"):
+				s.Recommendation = "approve"
+			case strings.HasPrefix(v, "block"):
+				s.Recommendation = "block"
+			case strings.HasPrefix(v, "comment"):
+				s.Recommendation = "comment"
+			}
+		} else if v, ok := headerValue(line, "risk"); ok {
+			if v := strings.ToLower(v); v == "low" || v == "med" || v == "high" {
+				s.Risk = v
+			}
+		} else if v, ok := headerValue(line, "assessment"); ok {
+			s.Assessment = v
 		}
 	}
 
@@ -162,19 +175,13 @@ func normalizeComment(c DraftComment) DraftComment {
 	return c
 }
 
-func parseRecommendation(line string) string {
+// headerValue returns the value of a "key: value" header line (case-insensitive
+// key, markdown decoration stripped), and whether the line was that key.
+func headerValue(line, key string) (string, bool) {
 	l := strings.TrimSpace(line)
-	if !strings.HasPrefix(strings.ToLower(l), "recommendation:") {
-		return ""
+	if !strings.HasPrefix(strings.ToLower(l), key+":") {
+		return "", false
 	}
-	v := strings.ToLower(strings.Trim(strings.TrimSpace(l[len("recommendation:"):]), "`* "))
-	switch {
-	case strings.HasPrefix(v, "approve"):
-		return "approve"
-	case strings.HasPrefix(v, "block"):
-		return "block"
-	case strings.HasPrefix(v, "comment"):
-		return "comment"
-	}
-	return ""
+	v := strings.TrimSpace(l[len(key)+1:])
+	return strings.Trim(v, "`* "), true
 }
