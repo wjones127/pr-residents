@@ -93,6 +93,8 @@ type LightPR struct {
 	HeadRefOid string
 }
 
+const defaultRESTBase = "https://api.github.com"
+
 // Client is a GitHub GraphQL client. Auth is a per-org token passed explicitly
 // (no gh keyring, no env magic) so behaviour is identical everywhere.
 type Client struct {
@@ -100,6 +102,7 @@ type Client struct {
 	http       *http.Client
 	maxRetries int
 	endpoint   string
+	restBase   string
 }
 
 // NewClient returns a client authenticated with token.
@@ -109,7 +112,77 @@ func NewClient(token string) *Client {
 		http:       &http.Client{Timeout: 30 * time.Second},
 		maxRetries: 3,
 		endpoint:   defaultEndpoint,
+		restBase:   defaultRESTBase,
 	}
+}
+
+// FileDiff is one changed file in a PR (REST pulls/{n}/files). Patch is empty
+// for binary/too-large files.
+type FileDiff struct {
+	Filename  string `json:"filename"`
+	Status    string `json:"status"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+	Patch     string `json:"patch"`
+}
+
+func (c *Client) restGet(path string) ([]byte, error) {
+	var lastErr error
+	for attempt := 0; attempt < c.maxRetries; attempt++ {
+		req, err := http.NewRequest(http.MethodGet, c.restBase+path, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("User-Agent", "pr-residents-sync")
+
+		resp, err := c.http.Do(req)
+		if err != nil {
+			lastErr = err
+			if attempt < c.maxRetries-1 {
+				time.Sleep(backoff(attempt))
+				continue
+			}
+			return nil, &Error{Msg: err.Error()}
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			if retryableStatus[resp.StatusCode] && attempt < c.maxRetries-1 {
+				lastErr = &Error{Msg: fmt.Sprintf("HTTP %d", resp.StatusCode)}
+				time.Sleep(backoff(attempt))
+				continue
+			}
+			return nil, &Error{Msg: fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body))}
+		}
+		return body, nil
+	}
+	if lastErr != nil {
+		return nil, &Error{Msg: lastErr.Error()}
+	}
+	return nil, &Error{Msg: "restGet: exhausted retries"}
+}
+
+// PullFiles returns a PR's net changed files with patches (the 3-dot diff vs the
+// merge base), following pagination. GitHub omits Patch for binary/large files.
+func (c *Client) PullFiles(owner, name string, number int) ([]FileDiff, error) {
+	var files []FileDiff
+	for page := 1; ; page++ {
+		body, err := c.restGet(fmt.Sprintf("/repos/%s/%s/pulls/%d/files?per_page=100&page=%d", owner, name, number, page))
+		if err != nil {
+			return nil, err
+		}
+		var batch []FileDiff
+		if err := json.Unmarshal(body, &batch); err != nil {
+			return nil, err
+		}
+		files = append(files, batch...)
+		if len(batch) < 100 {
+			break
+		}
+	}
+	return files, nil
 }
 
 var retryableStatus = map[int]bool{403: true, 429: true, 502: true, 503: true}

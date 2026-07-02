@@ -7,13 +7,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
+	"github.com/lancedb/pr-residents/internal/agent"
 	"github.com/lancedb/pr-residents/internal/cache"
 	"github.com/lancedb/pr-residents/internal/config"
 	"github.com/lancedb/pr-residents/internal/gh"
@@ -31,7 +34,7 @@ Usage:
 Commands:
   serve      run the local web app (rounds view + Refresh button)
   refresh    run the deterministic pipeline once (fetch + derive PRRecords)
-  dispatch   run a review round (not yet implemented)
+  dispatch   run review workups over the fresh/re-review PRs (uses your agent CLI)
   init       scaffold ~/.pr-residents/ (not yet implemented)
 
 Run 'residents <command> -h' for command-specific flags.
@@ -47,7 +50,9 @@ func main() {
 		os.Exit(runRefresh(os.Args[2:]))
 	case "serve":
 		os.Exit(runServe(os.Args[2:]))
-	case "dispatch", "init":
+	case "dispatch":
+		os.Exit(runDispatch(os.Args[2:]))
+	case "init":
 		fmt.Fprintf(os.Stderr, "residents: %q not yet implemented\n", os.Args[1])
 		os.Exit(1)
 	case "-h", "--help", "help":
@@ -141,5 +146,40 @@ func runServe(args []string) int {
 		fmt.Fprintf(os.Stderr, "residents: serve: %v\n", err)
 		return 1
 	}
+	return 0
+}
+
+func runDispatch(args []string) int {
+	fs := flag.NewFlagSet("dispatch", flag.ExitOnError)
+	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
+	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
+	fs.Parse(args)
+
+	cfg, err := config.Load(*configDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "residents: load config: %v\n", err)
+		return 1
+	}
+	st := store.New(*stateDir)
+	var records []*prr.Record
+	if found, err := st.GetJSON(store.RecordsKey, &records); err != nil || !found {
+		fmt.Fprintf(os.Stderr, "residents: no records at %s — run `residents refresh` first\n", store.RecordsKey)
+		return 1
+	}
+
+	// Ctrl-C cancels: in-flight reviews stop, completed SOAPs are kept.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	ag := agent.NewClaudeAgent()
+	newFetcher := func(token string) agent.FileFetcher { return gh.NewClient(token) }
+	progress := func(ev agent.DispatchEvent) {
+		fmt.Fprintf(os.Stderr, "[%d/%d] %s#%d %s %s (tok %d/%d)\n",
+			ev.Done, ev.Total, ev.Repo, ev.Number, ev.Phase, ev.Message, ev.TokensIn, ev.TokensOut)
+	}
+
+	res := agent.Dispatch(ctx, cfg, st, ag, newFetcher, records, time.Now().UTC(), progress)
+	fmt.Fprintf(os.Stderr, "[done] reviewed %d · cached %d · failed %d · skipped %d · tokens %d in / %d out\n",
+		res.Reviewed, res.Cached, res.Failed, res.Skipped, res.TokensIn, res.TokensOut)
 	return 0
 }

@@ -15,6 +15,14 @@ import (
 	"github.com/lancedb/pr-residents/internal/prr"
 )
 
+// Dispatch holds review-dispatch settings: which agent engine, how many run in
+// parallel, and the lane/size → model routing table.
+type Dispatch struct {
+	Engine       string            `yaml:"engine"`
+	Concurrency  int               `yaml:"concurrency"`
+	ModelRouting map[string]string `yaml:"model_routing"`
+}
+
 // Config is the resolved pr-residents configuration.
 type Config struct {
 	Repos           []string
@@ -23,6 +31,7 @@ type Config struct {
 	TokenPrefix     string
 	SubscribedRepos []string
 	Interests       []string
+	Dispatch        Dispatch
 }
 
 // ActiveRepos is the repos to sync: the subscribed subset if any, else all.
@@ -70,6 +79,7 @@ type userFile struct {
 	Env             struct {
 		GithubTokenPrefix string `yaml:"github_token_prefix"`
 	} `yaml:"env"`
+	Dispatch Dispatch `yaml:"dispatch"`
 }
 
 // loadYAML reads and parses a YAML file into out. A missing file is not an
@@ -105,6 +115,14 @@ func Load(configDir string) (*Config, error) {
 		tokenPrefix = user.Env.GithubTokenPrefix
 	}
 
+	dispatch := user.Dispatch
+	if dispatch.Engine == "" {
+		dispatch.Engine = "claude"
+	}
+	if dispatch.Concurrency <= 0 {
+		dispatch.Concurrency = 6
+	}
+
 	return &Config{
 		Repos:           repos.Repos,
 		ExcludePaths:    repos.ExcludePaths,
@@ -112,5 +130,6 @@ func Load(configDir string) (*Config, error) {
 		TokenPrefix:     tokenPrefix,
 		SubscribedRepos: user.SubscribedRepos,
 		Interests:       user.Interests,
+		Dispatch:        dispatch,
 	}, nil
 }
