@@ -49,12 +49,12 @@ type claudeEnvelope struct {
 
 // Workup runs one review. The prompt is passed on stdin (large), output is the
 // JSON SOAP contract embedded in the CLI's result envelope.
-func (a *ClaudeAgent) Workup(ctx context.Context, p Packet, model string) (SOAP, error) {
+func (a *ClaudeAgent) Workup(ctx context.Context, prompt string, model string) (SOAP, error) {
 	args := []string{"-p", "--output-format", "json"}
 	if model != "" {
 		args = append(args, "--model", model)
 	}
-	out, err := a.Run(ctx, a.Bin, args, buildPrompt(p))
+	out, err := a.Run(ctx, a.Bin, args, prompt)
 	if err != nil {
 		return SOAP{}, err
 	}

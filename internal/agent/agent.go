@@ -19,10 +19,11 @@ type SOAP struct {
 	TokensOut      int    `json:"-"`
 }
 
-// WorkupAgent produces a SOAP review for a packet, using the given model
-// (empty = the engine's default). The context cancels an in-flight run.
+// WorkupAgent produces a SOAP review from a fully-rendered prompt, using the
+// given model (empty = the engine's default). Lane-agnostic: the caller renders
+// the fresh or re-review prompt. The context cancels an in-flight run.
 type WorkupAgent interface {
-	Workup(ctx context.Context, p Packet, model string) (SOAP, error)
+	Workup(ctx context.Context, prompt string, model string) (SOAP, error)
 }
 
 // ModelFor picks the model for a record from the routing table, trying the most

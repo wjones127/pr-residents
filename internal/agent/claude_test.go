@@ -2,16 +2,11 @@ package agent
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/lancedb/pr-residents/internal/config"
 	"github.com/lancedb/pr-residents/internal/prr"
 )
-
-func testPacket() Packet {
-	return Packet{PR: PacketPR{Repo: "o/r", Number: 5, Title: "t"}}
-}
 
 func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 	var gotArgs []string
@@ -22,7 +17,7 @@ func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 		return []byte(`{"result":"{\"soap\":\"REVIEW ok\",\"recommendation\":\"approve\",\"blocking_count\":0}","usage":{"input_tokens":120,"output_tokens":45}}`), nil
 	}}
 
-	soap, err := ag.Workup(context.Background(), testPacket(), "sonnet")
+	soap, err := ag.Workup(context.Background(), "PROMPT-BODY", "sonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,8 +30,8 @@ func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 	if !contains(gotArgs, "--model") || !contains(gotArgs, "sonnet") || !contains(gotArgs, "-p") {
 		t.Errorf("args: %+v", gotArgs)
 	}
-	if !strings.Contains(gotStdin, "## Packet") {
-		t.Error("prompt should carry the packet")
+	if gotStdin != "PROMPT-BODY" {
+		t.Errorf("prompt should be passed verbatim on stdin, got %q", gotStdin)
 	}
 }
 
@@ -46,7 +41,7 @@ func TestClaudeWorkupOmitsModelWhenEmpty(t *testing.T) {
 		gotArgs = args
 		return []byte(`{"result":"{\"soap\":\"x\",\"recommendation\":\"comment\"}","usage":{}}`), nil
 	}}
-	if _, err := ag.Workup(context.Background(), testPacket(), ""); err != nil {
+	if _, err := ag.Workup(context.Background(), "PROMPT", ""); err != nil {
 		t.Fatal(err)
 	}
 	if contains(gotArgs, "--model") {
@@ -58,7 +53,7 @@ func TestClaudeWorkupErrorEnvelope(t *testing.T) {
 	ag := &ClaudeAgent{Bin: "claude", Run: func(ctx context.Context, name string, args []string, stdin string) ([]byte, error) {
 		return []byte(`{"result":"boom","is_error":true}`), nil
 	}}
-	if _, err := ag.Workup(context.Background(), testPacket(), ""); err == nil {
+	if _, err := ag.Workup(context.Background(), "PROMPT", ""); err == nil {
 		t.Error("expected error from is_error envelope")
 	}
 }

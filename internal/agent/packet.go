@@ -55,9 +55,12 @@ type Packet struct {
 	LaneNote   string         `json:"lane_note,omitempty"`
 }
 
-// FileFetcher fetches a PR's changed files with patches. *gh.Client satisfies it.
-type FileFetcher interface {
+// Fetcher is the GitHub surface packet building needs. *gh.Client satisfies it.
+type Fetcher interface {
+	ViewerLogin() (string, error)
 	PullFiles(owner, name string, number int) ([]gh.FileDiff, error)
+	Compare(owner, name, base, head string) (gh.CompareResult, error)
+	FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error)
 }
 
 func truncatePatch(patch string) (string, bool) {
@@ -74,7 +77,7 @@ func truncatePatch(patch string) (string, bool) {
 // BuildPacket assembles a review packet from an already-derived record plus the
 // PR's net diff fetched via ff. The record carries the deterministic baseline
 // (acuity/effort/escalation/merge_state) so no re-derivation happens here.
-func BuildPacket(ff FileFetcher, r *prr.Record) (Packet, error) {
+func BuildPacket(ff Fetcher, r *prr.Record) (Packet, error) {
 	owner, name := splitRepo(r.Repo)
 	files, err := ff.PullFiles(owner, name, r.Number)
 	if err != nil {

@@ -8,12 +8,19 @@ import (
 //go:embed prompts/fresh-review.md
 var freshReviewPrompt string
 
-// buildPrompt renders the full agent prompt: the review framework plus the
-// packet as JSON.
-func buildPrompt(p Packet) string {
-	pj, err := json.MarshalIndent(p, "", "  ")
+//go:embed prompts/re-review.md
+var reReviewFramework string
+
+func withPacket(framework string, packet any) string {
+	pj, err := json.MarshalIndent(packet, "", "  ")
 	if err != nil {
 		pj = []byte("{}")
 	}
-	return freshReviewPrompt + "\n\n## Packet\n\n```json\n" + string(pj) + "\n```\n"
+	return framework + "\n\n## Packet\n\n```json\n" + string(pj) + "\n```\n"
 }
+
+// freshPrompt renders the fresh-review framework plus the packet as JSON.
+func freshPrompt(p Packet) string { return withPacket(freshReviewPrompt, p) }
+
+// reReviewPrompt renders the re-review framework plus the delta packet as JSON.
+func reReviewPrompt(p ReReviewPacket) string { return withPacket(reReviewFramework, p) }

@@ -49,7 +49,8 @@ type DispatchResult struct {
 
 type workItem struct {
 	rec     *prr.Record
-	fetcher FileFetcher
+	fetcher Fetcher
+	viewer  string
 	model   string
 }
 
@@ -59,7 +60,7 @@ type workItem struct {
 // immediately, so cancelling ctx keeps finished reviews and discards only
 // in-flight partials.
 func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag WorkupAgent,
-	newFetcher func(token string) FileFetcher, records []*prr.Record, now time.Time,
+	newFetcher func(token string) Fetcher, records []*prr.Record, now time.Time,
 	progress func(DispatchEvent)) DispatchResult {
 
 	emit := func(DispatchEvent) {}
@@ -90,7 +91,9 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 		emit(ev)
 	}
 
-	fetchers := map[string]FileFetcher{}
+	fetchers := map[string]Fetcher{}
+	viewers := map[string]string{}
+	skippedOwner := map[string]bool{}
 	var work []workItem
 	for _, r := range needing {
 		var doc WorkupDoc
@@ -104,8 +107,16 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 		owner, _ := splitRepo(r.Repo)
 		ff, ok := fetchers[owner]
 		if !ok {
+			if skippedOwner[owner] {
+				mu.Lock()
+				res.Skipped++
+				mu.Unlock()
+				finish(r, "skipped", "owner "+owner+" unavailable")
+				continue
+			}
 			token := cfg.TokenFor(owner)
 			if token == "" {
+				skippedOwner[owner] = true
 				mu.Lock()
 				res.Skipped++
 				mu.Unlock()
@@ -113,9 +124,19 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 				continue
 			}
 			ff = newFetcher(token)
+			viewer, err := ff.ViewerLogin()
+			if err != nil {
+				skippedOwner[owner] = true
+				mu.Lock()
+				res.Skipped++
+				mu.Unlock()
+				finish(r, "skipped", "viewer failed for "+owner+": "+err.Error())
+				continue
+			}
 			fetchers[owner] = ff
+			viewers[owner] = viewer
 		}
-		work = append(work, workItem{rec: r, fetcher: ff, model: ModelFor(cfg.Dispatch, r)})
+		work = append(work, workItem{rec: r, fetcher: ff, viewer: viewers[owner], model: ModelFor(cfg.Dispatch, r)})
 	}
 
 	workers := cfg.Dispatch.Concurrency
@@ -171,11 +192,21 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 // reviewOne builds the packet, runs the agent, and persists the SOAP to the
 // workup cache (keyed on head SHA) before returning.
 func reviewOne(ctx context.Context, ag WorkupAgent, st *store.FileStore, now time.Time, it workItem) (SOAP, error) {
-	packet, err := BuildPacket(it.fetcher, it.rec)
-	if err != nil {
-		return SOAP{}, err
+	var prompt string
+	if it.rec.Lane == "re_review" {
+		pkt, err := BuildReReviewPacket(it.fetcher, it.rec, it.viewer)
+		if err != nil {
+			return SOAP{}, err
+		}
+		prompt = reReviewPrompt(pkt)
+	} else {
+		pkt, err := BuildPacket(it.fetcher, it.rec)
+		if err != nil {
+			return SOAP{}, err
+		}
+		prompt = freshPrompt(pkt)
 	}
-	soap, err := ag.Workup(ctx, packet, it.model)
+	soap, err := ag.Workup(ctx, prompt, it.model)
 	if err != nil {
 		return SOAP{}, err
 	}

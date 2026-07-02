@@ -188,7 +188,7 @@ func runDispatch(args []string) int {
 	defer stop()
 
 	ag := agent.NewClaudeAgent()
-	newFetcher := func(token string) agent.FileFetcher { return gh.NewClient(token) }
+	newFetcher := func(token string) agent.Fetcher { return gh.NewClient(token) }
 	progress := func(ev agent.DispatchEvent) {
 		fmt.Fprintf(os.Stderr, "[%d/%d] %s#%d %s %s (tok %d/%d)\n",
 			ev.Done, ev.Total, ev.Repo, ev.Number, ev.Phase, ev.Message, ev.TokensIn, ev.TokensOut)

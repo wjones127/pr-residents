@@ -43,7 +43,7 @@ func seedRecord() *prr.Record {
 
 type fakeAgent struct{}
 
-func (fakeAgent) Workup(ctx context.Context, p agent.Packet, model string) (agent.SOAP, error) {
+func (fakeAgent) Workup(ctx context.Context, prompt string, model string) (agent.SOAP, error) {
 	return agent.SOAP{Text: "REVIEW body here", Recommendation: "approve", BlockingCount: 0, TokensIn: 10, TokensOut: 5}, nil
 }
 
@@ -51,6 +51,16 @@ type fakeFetcher struct{}
 
 func (fakeFetcher) PullFiles(owner, name string, number int) ([]gh.FileDiff, error) {
 	return []gh.FileDiff{{Filename: "a.go", Patch: "@@ -1 +1 @@\n-x\n+y"}}, nil
+}
+
+func (fakeFetcher) ViewerLogin() (string, error) { return "me", nil }
+
+func (fakeFetcher) Compare(owner, name, base, head string) (gh.CompareResult, error) {
+	return gh.CompareResult{}, nil
+}
+
+func (fakeFetcher) FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error) {
+	return gh.ReReviewPR{}, nil
 }
 
 func TestIndexRendersPage(t *testing.T) {
@@ -115,7 +125,7 @@ func TestTriagePanelRendered(t *testing.T) {
 func TestDispatchEndpointReturns202(t *testing.T) {
 	srv, _ := newTestServer(t, nil)
 	srv.agent = fakeAgent{}
-	srv.newFetcher = func(string) agent.FileFetcher { return fakeFetcher{} }
+	srv.newFetcher = func(string) agent.Fetcher { return fakeFetcher{} }
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/dispatch", nil))
 	if rr.Code != http.StatusAccepted {
@@ -137,7 +147,7 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN_O", "tok")
 	srv, _ := newTestServer(t, []*prr.Record{seedRecord()})
 	srv.agent = fakeAgent{}
-	srv.newFetcher = func(string) agent.FileFetcher { return fakeFetcher{} }
+	srv.newFetcher = func(string) agent.Fetcher { return fakeFetcher{} }
 
 	if err := srv.doDispatch(context.Background(), func(jobs.Event) {}); err != nil {
 		t.Fatal(err)

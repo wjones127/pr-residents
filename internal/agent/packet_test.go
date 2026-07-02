@@ -17,6 +17,16 @@ func (f fakeFetcher) PullFiles(owner, name string, number int) ([]gh.FileDiff, e
 	return f.files, f.err
 }
 
+func (f fakeFetcher) ViewerLogin() (string, error) { return "me", nil }
+
+func (f fakeFetcher) Compare(owner, name, base, head string) (gh.CompareResult, error) {
+	return gh.CompareResult{}, nil
+}
+
+func (f fakeFetcher) FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error) {
+	return gh.ReReviewPR{}, nil
+}
+
 func TestBuildPacketPartitionsAndTruncates(t *testing.T) {
 	big := strings.Repeat("x\n", maxPatchLines+50)
 	ff := fakeFetcher{files: []gh.FileDiff{

@@ -18,12 +18,12 @@ type fakeAgent struct {
 	models []string
 }
 
-func (a *fakeAgent) Workup(ctx context.Context, p Packet, model string) (SOAP, error) {
+func (a *fakeAgent) Workup(ctx context.Context, prompt string, model string) (SOAP, error) {
 	a.mu.Lock()
 	a.calls++
 	a.models = append(a.models, model)
 	a.mu.Unlock()
-	return SOAP{Text: "REVIEW " + p.PR.Repo, Recommendation: "approve", TokensIn: 10, TokensOut: 5}, nil
+	return SOAP{Text: "REVIEW", Recommendation: "approve", TokensIn: 10, TokensOut: 5}, nil
 }
 
 func rec(repo string, number int, lane, head string) *prr.Record {
@@ -37,8 +37,8 @@ func testCfg(t *testing.T) *config.Config {
 	return &config.Config{TokenPrefix: "GITHUB_TOKEN", Dispatch: config.Dispatch{Concurrency: 2}}
 }
 
-func fetcherFactory() func(string) FileFetcher {
-	return func(string) FileFetcher {
+func fetcherFactory() func(string) Fetcher {
+	return func(string) Fetcher {
 		return fakeFetcher{files: []gh.FileDiff{{Filename: "a.go", Patch: "@@ -1 +1 @@\n-x\n+y", Additions: 1}}}
 	}
 }

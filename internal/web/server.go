@@ -34,7 +34,7 @@ type Server struct {
 	jobs       *jobs.Manager
 	tmpl       *template.Template
 	agent      agent.WorkupAgent
-	newFetcher func(token string) agent.FileFetcher
+	newFetcher func(token string) agent.Fetcher
 	now        func() time.Time
 }
 
@@ -60,7 +60,7 @@ func NewServer(st *store.FileStore, cfg *config.Config) (*Server, error) {
 	return &Server{
 		store: st, cfg: cfg, jobs: jobs.New(), tmpl: tmpl,
 		agent:      agent.NewClaudeAgent(),
-		newFetcher: func(token string) agent.FileFetcher { return gh.NewClient(token) },
+		newFetcher: func(token string) agent.Fetcher { return gh.NewClient(token) },
 		now:        time.Now,
 	}, nil
 }
