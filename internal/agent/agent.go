@@ -8,15 +8,37 @@ import (
 	"github.com/lancedb/pr-residents/internal/prr"
 )
 
-// SOAP is a resident's review output. Text is the full markdown review;
-// Recommendation and BlockingCount are the machine-readable summary. Tokens are
-// filled by the agent from usage metadata (not part of the JSON contract).
+// DraftComment is one anchored review comment (the schema render turns into a
+// copy-card + deep link). Matches config/comment-vocab.md conventional labels.
+type DraftComment struct {
+	Path       string `json:"path"`       // repo-relative; empty for a review-level comment
+	Line       int    `json:"line"`       // head-side line; 0 for file/review-level
+	Side       string `json:"side"`       // RIGHT (new, default) | LEFT (old)
+	Label      string `json:"label"`      // issue | suggestion | question | nitpick | praise | todo | thought | chore
+	Blocking   bool   `json:"blocking"`   // only meaningful for issue / question
+	Body       string `json:"body"`       // the comment text, in the attending's voice
+	Suggestion string `json:"suggestion"` // optional literal replacement -> ```suggestion``` block
+}
+
+// SOAP is a resident's review output: the human synthesis (Summary) plus the
+// actionable, postable draft Comments. Tokens are filled from usage metadata.
 type SOAP struct {
-	Text           string `json:"soap"`
-	Recommendation string `json:"recommendation"` // approve | block | comment
-	BlockingCount  int    `json:"blocking_count"`
-	TokensIn       int    `json:"-"`
-	TokensOut      int    `json:"-"`
+	Recommendation string // approve | block | comment
+	Summary        string
+	Comments       []DraftComment
+	TokensIn       int
+	TokensOut      int
+}
+
+// BlockingCount is the number of blocking issue/question comments.
+func (s SOAP) BlockingCount() int {
+	n := 0
+	for _, c := range s.Comments {
+		if c.Blocking && (c.Label == "issue" || c.Label == "question") {
+			n++
+		}
+	}
+	return n
 }
 
 // WorkupAgent produces a SOAP review from a fully-rendered prompt, using the

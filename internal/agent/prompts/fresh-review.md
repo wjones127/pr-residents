@@ -35,14 +35,32 @@ to co-sign — you never post to GitHub.
 3. **Recommend:** `approve`, `block` (on N conditions), or `comment` (needs
    another sitting / non-blocking notes only).
 
-## Output — STRICT
+## Output format — follow EXACTLY
 
-Return **only** a single JSON object, no prose around it, no markdown fence:
+Emit three sections in this order and nothing else:
 
-{
-  "soap": "<the full review as markdown text: a one-liner, FINDINGS (each tied to ground truth), ASSESSMENT (risk/urgency refined from the diff, escalation, what you could not read), and DRAFT COMMENTS (issue()/suggestion()/question with acceptance criteria)>",
-  "recommendation": "approve" | "block" | "comment",
-  "blocking_count": <number of issue(blocking) comments you drafted>
-}
+```
+RECOMMENDATION: approve | block | comment
+===SUMMARY===
+<the human synthesis you'd paste as the top-level review comment: a one-liner,
+your key FINDINGS tied to ground truth, an ASSESSMENT (risk/urgency refined from
+the diff, escalation named if forced, and what you could NOT read), free-form
+markdown, multi-line is fine>
+===COMMENTS===
+<zero or more anchored draft comments, ONE COMPACT JSON OBJECT PER LINE (JSONL)>
+```
+
+Each COMMENTS line is one JSON object on a single line (escape any newline in a
+string as \n):
+
+{"path":"rust/lance-index/src/x.rs","line":128,"side":"RIGHT","label":"issue","blocking":true,"body":"one crisp sentence in the attending's voice; for a blocking issue include the acceptance criterion","suggestion":"exact replacement text for the anchored line(s), only if it's a literal drop-in"}
+
+Field rules:
+- `path` + `line` must be **real** (head-side line for `side":"RIGHT"`; use
+  `"LEFT"` only for a removed/old line). Omit `path` for a review-level comment.
+- `label` ∈ issue | suggestion | question | nitpick | praise | todo | thought | chore.
+- `blocking` only meaningful for `issue` / `question`; it must match your prose.
+- `suggestion` only when it's a literal, correct drop-in for the anchored line(s).
+- Keep each `body` to one line (use \n if you truly must). One object per line.
 
 Verify against the patch, not your own prose. Surface what changes the decision.

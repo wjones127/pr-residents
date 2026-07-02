@@ -39,15 +39,32 @@ comments with acceptance criteria.
 
 `approve`, `block` (on N conditions), or `comment`.
 
-## Output — STRICT
+## Output format — follow EXACTLY
 
-Return **only** a single JSON object, no prose around it, no markdown fence:
+Emit three sections in this order and nothing else:
 
-{
-  "soap": "<the full re-review as markdown: a header (reviewed <base8> → <head8>, N commits/M files), CONDITIONS LEDGER (each condition with ✓met/✗not_met/~moot/open + a diff-anchored evidence line; flag resolved-but-not-confirmed), FRESH-EYES DELTA (new findings or 'no new concerns'), and DRAFT COMMENTS>",
-  "recommendation": "approve" | "block" | "comment",
-  "blocking_count": <number of conditions still blocking + new issue(blocking) drafted>
-}
+```
+RECOMMENDATION: approve | block | comment
+===SUMMARY===
+<the human synthesis you'd paste as the top-level review comment: a header
+(reviewed <base8> → <head8>, N commits / M files), the CONDITIONS LEDGER (each
+condition ✓met / ✗not_met / ~moot / open with a diff-anchored evidence line;
+flag resolved-but-not-confirmed), and the FRESH-EYES DELTA (new findings or "no
+new concerns"). Free-form markdown, multi-line is fine>
+===COMMENTS===
+<zero or more anchored draft comments, ONE COMPACT JSON OBJECT PER LINE (JSONL)>
+```
+
+Each COMMENTS line is one JSON object on a single line (escape any newline as \n):
+
+{"path":"rust/lance-index/src/x.rs","line":128,"side":"RIGHT","label":"issue","blocking":true,"body":"one crisp sentence in the attending's voice; for a blocking issue include the acceptance criterion","suggestion":"literal replacement for the anchored line(s), only if it's a drop-in"}
+
+Field rules:
+- `path` + `line` must be **real** (head-side line for `"side":"RIGHT"`; `"LEFT"`
+  only for a removed/old line). Omit `path` for a review-level comment.
+- `label` ∈ issue | suggestion | question | nitpick | praise | todo | thought | chore.
+- `blocking` only meaningful for `issue` / `question`; it must match your prose.
+- Draft a comment for each still-blocking condition and each new fresh-eyes issue.
 
 Every status needs a diff-anchored evidence line; an unsupported "met" must be
 conspicuous. Verify against the patch, not your own prose.

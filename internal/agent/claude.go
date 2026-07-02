@@ -76,22 +76,105 @@ func (a *ClaudeAgent) Workup(ctx context.Context, prompt string, model string) (
 	return soap, nil
 }
 
-// parseSOAP extracts the JSON SOAP contract from the model's result text,
-// tolerating a stray code fence or surrounding prose by taking the outermost
-// {...}. (One lenient parse rather than a costly re-invoke.)
+// The agent output is framed, not one big JSON object: a RECOMMENDATION header,
+// the free-form SUMMARY prose, then COMMENTS as one compact JSON object per line
+// (JSONL). This keeps the multi-line prose out of JSON (what broke JSON-in-JSON)
+// and lets a single malformed comment line be skipped instead of failing the
+// whole review.
+const (
+	summaryDelim  = "===SUMMARY==="
+	commentsDelim = "===COMMENTS==="
+)
+
+// parseSOAP reads the framed agent output. Deliberately lenient: missing
+// sections or bad comment lines never discard the rest.
 func parseSOAP(result string) (SOAP, error) {
-	raw := strings.TrimSpace(result)
-	if start := strings.IndexByte(raw, '{'); start >= 0 {
-		if end := strings.LastIndexByte(raw, '}'); end > start {
-			raw = raw[start : end+1]
+	text := strings.TrimSpace(result)
+	if text == "" {
+		return SOAP{}, fmt.Errorf("empty agent output")
+	}
+
+	var s SOAP
+
+	// RECOMMENDATION from the header (before the first delimiter).
+	headerEnd := len(text)
+	for _, d := range []string{summaryDelim, commentsDelim} {
+		if i := strings.Index(text, d); i >= 0 && i < headerEnd {
+			headerEnd = i
 		}
 	}
-	var s SOAP
-	if err := json.Unmarshal([]byte(raw), &s); err != nil {
-		return SOAP{}, fmt.Errorf("parse SOAP JSON: %w", err)
+	for _, line := range strings.Split(text[:headerEnd], "\n") {
+		if rec := parseRecommendation(line); rec != "" {
+			s.Recommendation = rec
+		}
 	}
-	if s.Text == "" {
-		return SOAP{}, fmt.Errorf("SOAP had empty soap text")
+
+	// SUMMARY between its delimiter and COMMENTS (or end).
+	if i := strings.Index(text, summaryDelim); i >= 0 {
+		rest := text[i+len(summaryDelim):]
+		if j := strings.Index(rest, commentsDelim); j >= 0 {
+			rest = rest[:j]
+		}
+		s.Summary = strings.TrimSpace(rest)
+	}
+
+	// COMMENTS as JSONL (one object per line); fall back to a JSON array.
+	if i := strings.Index(text, commentsDelim); i >= 0 {
+		section := text[i+len(commentsDelim):]
+		for _, line := range strings.Split(section, "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "{") {
+				continue
+			}
+			var c DraftComment
+			if err := json.Unmarshal([]byte(line), &c); err != nil {
+				continue // skip a malformed line, keep the rest
+			}
+			s.Comments = append(s.Comments, normalizeComment(c))
+		}
+		if len(s.Comments) == 0 {
+			if arr := strings.TrimSpace(section); strings.HasPrefix(arr, "[") {
+				var cs []DraftComment
+				if json.Unmarshal([]byte(arr), &cs) == nil {
+					for _, c := range cs {
+						s.Comments = append(s.Comments, normalizeComment(c))
+					}
+				}
+			}
+		}
+	}
+
+	// If the model ignored the framing entirely, keep everything as the summary
+	// so the review is never lost.
+	if s.Summary == "" && len(s.Comments) == 0 {
+		s.Summary = text
+	}
+	if s.Recommendation == "" {
+		s.Recommendation = "comment"
 	}
 	return s, nil
+}
+
+func normalizeComment(c DraftComment) DraftComment {
+	if c.Side == "" {
+		c.Side = "RIGHT"
+	}
+	return c
+}
+
+func parseRecommendation(line string) string {
+	l := strings.TrimSpace(line)
+	if !strings.HasPrefix(strings.ToLower(l), "recommendation:") {
+		return ""
+	}
+	v := strings.ToLower(strings.Trim(strings.TrimSpace(l[len("recommendation:"):]), "`* "))
+	switch {
+	case strings.HasPrefix(v, "approve"):
+		return "approve"
+	case strings.HasPrefix(v, "block"):
+		return "block"
+	case strings.HasPrefix(v, "comment"):
+		return "comment"
+	}
+	return ""
 }

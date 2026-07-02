@@ -44,7 +44,14 @@ func seedRecord() *prr.Record {
 type fakeAgent struct{}
 
 func (fakeAgent) Workup(ctx context.Context, prompt string, model string) (agent.SOAP, error) {
-	return agent.SOAP{Text: "REVIEW body here", Recommendation: "approve", BlockingCount: 0, TokensIn: 10, TokensOut: 5}, nil
+	return agent.SOAP{
+		Recommendation: "approve",
+		Summary:        "REVIEW body here",
+		Comments: []agent.DraftComment{
+			{Path: "a.go", Line: 12, Side: "RIGHT", Label: "issue", Blocking: true, Body: "guard the nil case"},
+		},
+		TokensIn: 10, TokensOut: 5,
+	}, nil
 }
 
 type fakeFetcher struct{}
@@ -155,11 +162,17 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
 	body := rr.Body.String()
-	if !strings.Contains(body, "REVIEW body here") {
-		t.Error("SOAP body not rendered after dispatch")
-	}
-	if !strings.Contains(body, "rec-approve") {
-		t.Error("recommendation badge not rendered")
+	for _, want := range []string{
+		"REVIEW body here",        // summary card
+		"rec-approve",             // recommendation badge
+		"guard the nil case",      // the draft comment body
+		"/o/r/pull/5/files#diff-", // deep link to the exact line
+		`class="copy-btn"`,        // a copy button
+		"guard the nil case",      // in the hidden copy-src too
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("dispatch render missing %q", want)
+		}
 	}
 }
 

@@ -91,10 +91,10 @@ func (s *Server) loadRecords() []*prr.Record {
 
 func today() string { return time.Now().UTC().Format("2006-01-02") }
 
-// loadWorkups returns cached SOAPs keyed by "repo#number" for the records whose
-// head SHA still matches (a moved head means the SOAP is stale, so it's skipped).
-func (s *Server) loadWorkups(records []*prr.Record) map[string]Workup {
-	out := map[string]Workup{}
+// loadWorkups returns cached reviews keyed by "repo#number" for the records
+// whose head SHA still matches (a moved head means the review is stale, skipped).
+func (s *Server) loadWorkups(records []*prr.Record) map[string]agent.WorkupDoc {
+	out := map[string]agent.WorkupDoc{}
 	for _, r := range records {
 		if r.HeadOid == "" {
 			continue
@@ -104,9 +104,7 @@ func (s *Server) loadWorkups(records []*prr.Record) map[string]Workup {
 		if err != nil || !found {
 			continue
 		}
-		out[key(r.Repo, r.Number)] = Workup{
-			SOAP: doc.SOAP, Recommendation: doc.Recommendation, BlockingCount: doc.BlockingCount,
-		}
+		out[key(r.Repo, r.Number)] = doc
 	}
 	return out
 }

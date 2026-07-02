@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/lancedb/pr-residents/internal/config"
@@ -11,18 +12,32 @@ import (
 func TestClaudeWorkupParsesEnvelope(t *testing.T) {
 	var gotArgs []string
 	var gotStdin string
+	result := "RECOMMENDATION: block\n===SUMMARY===\nLooks risky.\n===COMMENTS===\n" +
+		`{"path":"a.go","line":12,"label":"issue","blocking":true,"body":"guard nil"}` + "\n" +
+		`{"label":"praise","body":"nice test"}`
 	ag := &ClaudeAgent{Bin: "claude", Run: func(ctx context.Context, name string, args []string, stdin string) ([]byte, error) {
 		gotArgs = args
 		gotStdin = stdin
-		return []byte(`{"result":"{\"soap\":\"REVIEW ok\",\"recommendation\":\"approve\",\"blocking_count\":0}","usage":{"input_tokens":120,"output_tokens":45}}`), nil
+		env := map[string]any{"result": result, "usage": map[string]any{"input_tokens": 120, "output_tokens": 45}}
+		b, _ := json.Marshal(env)
+		return b, nil
 	}}
 
 	soap, err := ag.Workup(context.Background(), "PROMPT-BODY", "sonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if soap.Text != "REVIEW ok" || soap.Recommendation != "approve" {
-		t.Errorf("soap: %+v", soap)
+	if soap.Recommendation != "block" || soap.Summary != "Looks risky." {
+		t.Errorf("soap header/summary: %+v", soap)
+	}
+	if len(soap.Comments) != 2 || soap.Comments[0].Path != "a.go" || soap.Comments[0].Line != 12 || !soap.Comments[0].Blocking {
+		t.Errorf("comments: %+v", soap.Comments)
+	}
+	if soap.Comments[0].Side != "RIGHT" { // defaulted
+		t.Errorf("side should default to RIGHT: %+v", soap.Comments[0])
+	}
+	if soap.BlockingCount() != 1 {
+		t.Errorf("blocking count: %d", soap.BlockingCount())
 	}
 	if soap.TokensIn != 120 || soap.TokensOut != 45 {
 		t.Errorf("tokens: %d/%d", soap.TokensIn, soap.TokensOut)
@@ -39,7 +54,7 @@ func TestClaudeWorkupOmitsModelWhenEmpty(t *testing.T) {
 	var gotArgs []string
 	ag := &ClaudeAgent{Bin: "claude", Run: func(ctx context.Context, name string, args []string, stdin string) ([]byte, error) {
 		gotArgs = args
-		return []byte(`{"result":"{\"soap\":\"x\",\"recommendation\":\"comment\"}","usage":{}}`), nil
+		return []byte(`{"result":"RECOMMENDATION: comment\n===SUMMARY===\nok","usage":{}}`), nil
 	}}
 	if _, err := ag.Workup(context.Background(), "PROMPT", ""); err != nil {
 		t.Fatal(err)
@@ -58,21 +73,37 @@ func TestClaudeWorkupErrorEnvelope(t *testing.T) {
 	}
 }
 
-func TestParseSOAPLenient(t *testing.T) {
-	// Surrounding prose + a code fence around the JSON.
-	raw := "Here you go:\n```json\n{\"soap\":\"REVIEW\",\"recommendation\":\"block\",\"blocking_count\":2}\n```\n"
+func TestParseSOAPSkipsBadCommentLine(t *testing.T) {
+	// A malformed comment line must not discard the good ones.
+	raw := "RECOMMENDATION: approve\n===SUMMARY===\nAll good.\n===COMMENTS===\n" +
+		"{ this is not json\n" +
+		`{"path":"b.go","line":3,"label":"suggestion","body":"rename"}`
 	s, err := parseSOAP(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Recommendation != "block" || s.BlockingCount != 2 || s.Text != "REVIEW" {
-		t.Errorf("soap: %+v", s)
+	if s.Recommendation != "approve" || s.Summary != "All good." {
+		t.Errorf("header/summary: %+v", s)
+	}
+	if len(s.Comments) != 1 || s.Comments[0].Path != "b.go" {
+		t.Errorf("should keep the one valid comment: %+v", s.Comments)
+	}
+}
+
+func TestParseSOAPFallsBackToSummary(t *testing.T) {
+	// Model ignored the framing entirely — keep the whole thing as the summary.
+	s, err := parseSOAP("just some review prose with no framing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Summary != "just some review prose with no framing" || s.Recommendation != "comment" {
+		t.Errorf("fallback: %+v", s)
 	}
 }
 
 func TestParseSOAPRejectsEmpty(t *testing.T) {
-	if _, err := parseSOAP(`{"soap":"","recommendation":"approve"}`); err == nil {
-		t.Error("empty soap text should be rejected")
+	if _, err := parseSOAP("   "); err == nil {
+		t.Error("empty output should error")
 	}
 }
 

@@ -1,12 +1,23 @@
+{{define "commentcard"}}      <div class="cmt{{if .Blocking}} blk{{end}}">
+        <div class="cmt-h"><span class="clabel {{.LabelClass}}">{{.Label}}{{.LabelDeco}}</span>{{if .DeepLink}}<a class="cloc" href="{{.DeepLink}}" title="jump to the exact line in Files changed">{{.LocText}} ↗</a>{{else}}<span class="cloc">{{.LocText}}</span>{{end}}<button class="copy-btn" data-t="{{.CopyID}}">Copy</button></div>
+        <div class="cmt-b">{{.Body}}</div>
+        {{if .Suggestion}}<div class="csug"><span class="csug-h">suggested replacement</span><pre>{{.Suggestion}}</pre></div>{{end}}
+        <pre class="copy-src" id="{{.CopyID}}" hidden>{{.CopyText}}</pre>
+      </div>
+{{end}}
+
 {{define "row"}}
     <div class="row{{if .Escalated}} escalated{{end}}">
       <span class="badges"><span class="b acuity-{{.Risk}}">{{.Risk}}</span><span class="b size">{{.Size}}</span></span>
       <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
       <span class="meta">{{if .Escalated}}<span class="esc">ESCALATED</span>{{end}}<span>{{.Age}} in state</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
       <div class="note">{{.Rationale}}</div>
-      {{if .HasSOAP}}<details class="soap">
-        <summary><span class="rec rec-{{.Recommendation}}">{{.Recommendation}}</span> {{.BlockingCount}} blocking</summary>
-        <div class="soap-body">{{.SOAP}}</div>
+      {{with .Workup}}<details class="soap">
+        <summary>{{if .Recommendation}}<span class="rec rec-{{.Recommendation}}">{{.Recommendation}}</span> {{end}}{{.HeadLabel}}</summary>
+        <div class="soap-body">
+          {{if .Summary}}<div class="cmt summary"><div class="cmt-h"><span class="clabel l-summary">review summary</span><button class="copy-btn" data-t="{{.SummaryCopyID}}">Copy</button></div><div class="cmt-b">{{.Summary}}</div><pre class="copy-src" id="{{.SummaryCopyID}}" hidden>{{.Summary}}</pre></div>{{end}}
+          {{if .Comments}}<div class="cmts">{{range .Comments}}{{template "commentcard" .}}{{end}}</div>{{end}}
+        </div>
       </details>{{end}}
     </div>
 {{end}}

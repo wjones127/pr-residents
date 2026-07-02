@@ -10,18 +10,19 @@ import (
 	"github.com/lancedb/pr-residents/internal/store"
 )
 
-// WorkupDoc is a cached SOAP, keyed by the PR's head SHA (a force-push
-// invalidates it). Extends the Python cache shape with the summary + token cost.
+// WorkupDoc is a cached review, keyed by the PR's head SHA (a force-push
+// invalidates it). Mirrors the Python workup shape: the human summary plus the
+// structured draft comments the UI renders as anchored copy-cards.
 type WorkupDoc struct {
-	Repo           string `json:"repo"`
-	Number         int    `json:"number"`
-	SHA            string `json:"sha"`
-	SOAP           string `json:"soap"`
-	Recommendation string `json:"recommendation"`
-	BlockingCount  int    `json:"blocking_count"`
-	CachedAt       string `json:"cached_at"`
-	TokensIn       int    `json:"tokens_in"`
-	TokensOut      int    `json:"tokens_out"`
+	Repo           string         `json:"repo"`
+	Number         int            `json:"number"`
+	SHA            string         `json:"sha"`
+	Recommendation string         `json:"recommendation"`
+	Summary        string         `json:"summary"`
+	Comments       []DraftComment `json:"comments"`
+	CachedAt       string         `json:"cached_at"`
+	TokensIn       int            `json:"tokens_in"`
+	TokensOut      int            `json:"tokens_out"`
 }
 
 // DispatchEvent is a per-PR progress update. Done/Total track completed PRs;
@@ -212,7 +213,7 @@ func reviewOne(ctx context.Context, ag WorkupAgent, st *store.FileStore, now tim
 	}
 	doc := WorkupDoc{
 		Repo: it.rec.Repo, Number: it.rec.Number, SHA: it.rec.HeadOid,
-		SOAP: soap.Text, Recommendation: soap.Recommendation, BlockingCount: soap.BlockingCount,
+		Recommendation: soap.Recommendation, Summary: soap.Summary, Comments: soap.Comments,
 		CachedAt: now.Format(time.RFC3339), TokensIn: soap.TokensIn, TokensOut: soap.TokensOut,
 	}
 	if err := st.PutJSON(store.WorkupKey(it.rec.Repo, it.rec.Number, it.rec.HeadOid), doc); err != nil {

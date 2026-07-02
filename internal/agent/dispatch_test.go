@@ -23,7 +23,7 @@ func (a *fakeAgent) Workup(ctx context.Context, prompt string, model string) (SO
 	a.calls++
 	a.models = append(a.models, model)
 	a.mu.Unlock()
-	return SOAP{Text: "REVIEW", Recommendation: "approve", TokensIn: 10, TokensOut: 5}, nil
+	return SOAP{Recommendation: "approve", Summary: "REVIEW", TokensIn: 10, TokensOut: 5}, nil
 }
 
 func rec(repo string, number int, lane, head string) *prr.Record {
@@ -63,7 +63,7 @@ func TestDispatchReviewsAndCaches(t *testing.T) {
 	// SOAP cached for the fresh PR at its head SHA.
 	var doc WorkupDoc
 	found, _ := st.GetJSON(store.WorkupKey("o/r", 1, "h1"), &doc)
-	if !found || doc.SOAP == "" || doc.Recommendation != "approve" {
+	if !found || doc.Summary == "" || doc.Recommendation != "approve" {
 		t.Errorf("workup not cached: found=%v doc=%+v", found, doc)
 	}
 }
