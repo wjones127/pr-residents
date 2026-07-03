@@ -1,0 +1,54 @@
+{{define "commentcard"}}      <div class="cmt{{if .Blocking}} blk{{end}}">
+        <div class="cmt-h"><span class="clabel {{.LabelClass}}">{{.Label}}{{.LabelDeco}}</span>{{if .DeepLink}}<a class="cloc" href="{{.DeepLink}}" title="jump to the exact line in Files changed">{{.LocText}} ↗</a>{{else}}<span class="cloc">{{.LocText}}</span>{{end}}<button class="copy-btn" data-t="{{.CopyID}}">Copy</button></div>
+        <div class="cmt-b">{{.Body}}</div>
+        {{if .Suggestion}}<div class="csug"><span class="csug-h">suggested replacement</span><pre>{{.Suggestion}}</pre></div>{{end}}
+        <pre class="copy-src" id="{{.CopyID}}" hidden>{{.CopyText}}</pre>
+      </div>
+{{end}}
+
+{{define "row"}}
+    <div class="row{{if .Escalated}} escalated{{end}}">
+      <span class="badges"><span class="b acuity-{{.Risk}}">{{.Risk}}</span><span class="b size">{{.Size}}</span></span>
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+      <span class="meta">{{if .Escalated}}<span class="esc">ESCALATED</span>{{end}}<span>{{.Age}} in state</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
+      <div class="note">{{.Rationale}}</div>
+      {{with .Workup}}<details class="soap">
+        <summary>{{if .Recommendation}}<span class="rec rec-{{.Recommendation}}">{{.Recommendation}}</span> {{end}}{{.HeadLabel}}</summary>
+        <div class="soap-body">
+          {{if .Summary}}<div class="cmt summary"><div class="cmt-h"><span class="clabel l-summary">review summary</span><button class="copy-btn" data-t="{{.SummaryCopyID}}">Copy</button></div><div class="cmt-b">{{.Summary}}</div><pre class="copy-src" id="{{.SummaryCopyID}}" hidden>{{.Summary}}</pre></div>{{end}}
+          {{if .Comments}}<div class="cmts">{{range .Comments}}{{template "commentcard" .}}{{end}}</div>{{end}}
+        </div>
+      </details>{{end}}
+    </div>
+{{end}}
+
+{{define "houserow"}}
+    <div class="row">
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+      <span class="meta"><span>{{.Tag}} · {{.Age}}</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
+    </div>
+{{end}}
+
+{{define "triagerow"}}
+    <div class="trow">
+      <span class="score">{{.Score}}</span>
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span> <span class="by">{{.Author}}</span></span>
+      <span class="affinity">{{.Rationale}}</span>
+    </div>
+{{end}}
+
+{{define "lanes"}}
+  <section id="triage"><div class="lane-head"><h2>Triage</h2><span class="count">{{len .Triage}}</span><span class="desc">self-requested candidates — confirm / strike</span></div>
+{{range .Triage}}{{template "triagerow" .}}{{else}}    <div class="note">(none proposed)</div>{{end}}
+{{if .RepoLinks}}    <div class="repo-links">Find more on GitHub:{{range .RepoLinks}} <a href="{{.URL}}">{{.Name}}</a>{{end}}</div>{{end}}
+  </section>
+  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
+{{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">{{len .Rereview}}</span><span class="desc">ordered by proximity to merge</span></div>
+{{range .Rereview}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{len .House}}</span><span class="desc">discharge planning, batched</span></div>
+{{range .House}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  </section>
+{{end}}
