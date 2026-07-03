@@ -1,5 +1,7 @@
 # PR Residents
 
+![PR Review Rounds — triage, fresh, re-review, and housekeeping lanes with drafted SOAP reviews you co-sign](pr-review-rounds.png)
+
 A local app that assembles your daily PR-review rounds and drafts reviews with an
 AI agent — you co-sign every write. It runs entirely on your machine, under your
 own GitHub identity, on your Claude subscription.
