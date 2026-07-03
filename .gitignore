@@ -2,8 +2,11 @@
 state/*
 !state/.gitkeep
 
-# Per-user config (real copy); only user.example.yml is tracked
+# Per-user config (real copy); only config.example.yml is tracked. The live
+# config lives in ~/.pr-residents/ by default; these cover in-repo dogfooding.
+config/config.yml
 config/user.yml
+config/tokens/
 
 # Secrets — env files, tokens
 .env

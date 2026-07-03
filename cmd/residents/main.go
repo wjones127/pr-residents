@@ -1,9 +1,6 @@
 // Command residents is the PR-residents local app: it assembles daily PR-review
 // rounds and drafts reviews with an agent, entirely on your machine. See the
 // repo README for the workflow.
-//
-// This is the Phase-0 skeleton: the deterministic pipeline is being ported from
-// the Python skills. `refresh` is wired; serve/dispatch are stubs.
 package main
 
 import (
@@ -11,9 +8,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/lancedb/pr-residents/internal/agent"
@@ -33,10 +34,10 @@ Usage:
   residents <command> [flags]
 
 Commands:
-  serve      run the local web app (rounds view + Refresh button)
+  init       set up ~/.pr-residents/ (interactive; repos, tokens, engine)
+  serve      run the local web app (rounds view + Refresh/Dispatch)
   refresh    run the deterministic pipeline once (fetch + derive PRRecords)
   dispatch   run review workups over the fresh/re-review PRs (uses your agent CLI)
-  init       scaffold ~/.pr-residents/ (not yet implemented)
 
 Run 'residents <command> -h' for command-specific flags.
 `
@@ -47,15 +48,14 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "init":
+		os.Exit(runInit(os.Args[2:]))
 	case "refresh":
 		os.Exit(runRefresh(os.Args[2:]))
 	case "serve":
 		os.Exit(runServe(os.Args[2:]))
 	case "dispatch":
 		os.Exit(runDispatch(os.Args[2:]))
-	case "init":
-		fmt.Fprintf(os.Stderr, "residents: %q not yet implemented\n", os.Args[1])
-		os.Exit(1)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
@@ -66,11 +66,12 @@ func main() {
 
 func runRefresh(args []string) int {
 	fs := flag.NewFlagSet("refresh", flag.ExitOnError)
-	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
-	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
+	configDir := fs.String("config-dir", config.DefaultDir(), "config directory (config.yml / escalation.yml)")
+	stateDir := fs.String("state-dir", "", "state tree directory (default: <config-dir>/state)")
 	out := fs.String("out", "", "output path for records JSON; '-' for stdout; empty writes the state cache")
 	rebuildRelevance := fs.Bool("rebuild-relevance", false, "rebuild the review-history relevance profile from the API")
 	fs.Parse(args)
+	*stateDir = stateDirOf(*configDir, *stateDir)
 
 	cfg, err := config.Load(*configDir)
 	if err != nil {
@@ -141,10 +142,18 @@ func runRefresh(args []string) int {
 
 func runServe(args []string) int {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
-	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
-	port := fs.Int("port", 8787, "port to bind on localhost")
+	configDir := fs.String("config-dir", config.DefaultDir(), "config directory (config.yml / escalation.yml)")
+	stateDir := fs.String("state-dir", "", "state tree directory (default: <config-dir>/state)")
+	port := fs.Int("port", 0, "port to bind on localhost (default: config server.port, else 8787)")
+	open := fs.Bool("open", false, "open the web UI in your browser once it's listening")
 	fs.Parse(args)
+	*stateDir = stateDirOf(*configDir, *stateDir)
+
+	if !config.Exists(*configDir) {
+		fmt.Fprintf(os.Stderr, "residents: no config at %s\n", filepath.Join(*configDir, "config.yml"))
+		fmt.Fprintf(os.Stderr, "  run `residents init` to set up (repos, tokens, engine).\n")
+		return 1
+	}
 
 	cfg, err := config.Load(*configDir)
 	if err != nil {
@@ -157,9 +166,22 @@ func runServe(args []string) int {
 		return 1
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
-	fmt.Fprintf(os.Stderr, "residents: serving http://%s\n", addr)
-	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
+	bindPort := *port
+	if bindPort == 0 {
+		bindPort = cfg.Port
+	}
+	addr := fmt.Sprintf("127.0.0.1:%d", bindPort)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "residents: bind %s: %v\n", addr, err)
+		return 1
+	}
+	url := "http://" + addr
+	fmt.Fprintf(os.Stderr, "residents: serving %s\n", url)
+	if *open {
+		openBrowser(url)
+	}
+	if err := http.Serve(ln, srv.Handler()); err != nil {
 		fmt.Fprintf(os.Stderr, "residents: serve: %v\n", err)
 		return 1
 	}
@@ -168,9 +190,10 @@ func runServe(args []string) int {
 
 func runDispatch(args []string) int {
 	fs := flag.NewFlagSet("dispatch", flag.ExitOnError)
-	configDir := fs.String("config-dir", "config", "directory holding repos.yml / escalation.yml / user.yml")
-	stateDir := fs.String("state-dir", "state", "directory for the cache/ledger state tree")
+	configDir := fs.String("config-dir", config.DefaultDir(), "config directory (config.yml / escalation.yml)")
+	stateDir := fs.String("state-dir", "", "state tree directory (default: <config-dir>/state)")
 	fs.Parse(args)
+	*stateDir = stateDirOf(*configDir, *stateDir)
 
 	cfg, err := config.Load(*configDir)
 	if err != nil {
@@ -199,4 +222,28 @@ func runDispatch(args []string) int {
 	fmt.Fprintf(os.Stderr, "[done] reviewed %d · cached %d · failed %d · skipped %d · tokens %d in / %d out\n",
 		res.Reviewed, res.Cached, res.Failed, res.Skipped, res.TokensIn, res.TokensOut)
 	return 0
+}
+
+// stateDirOf resolves the state tree: the flag if given, else <config-dir>/state,
+// so all state lives under one directory by default.
+func stateDirOf(configDir, flagVal string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	return filepath.Join(configDir, "state")
+}
+
+// openBrowser best-effort opens url in the default browser; failures are silent
+// since the URL is already printed.
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	_ = cmd.Start()
 }

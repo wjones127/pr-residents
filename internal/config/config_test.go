@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/zalando/go-keyring"
 )
 
 func writeConfigDir(t *testing.T) string {
@@ -14,13 +16,21 @@ func writeConfigDir(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	write("repos.yml", `
+	write("config.yml", `
+github_login: wjones127
 repos:
   - lance-format/lance
   - lancedb/lancedb
 exclude_paths:
   - "java/**"
-self_login: wjones127
+subscribed_repos:
+  - lancedb/lancedb
+interests:
+  - rust/lance-index
+env:
+  github_token_prefix: GITHUB_TOKEN
+server:
+  port: 9191
 `)
 	write("escalation.yml", `
 path_rules:
@@ -32,15 +42,6 @@ size_rules:
   - id: large-blast-radius
     reason: "Large blast radius (XL diff)"
     min_total_lines: 1000
-`)
-	write("user.yml", `
-github_login: wjones127
-subscribed_repos:
-  - lancedb/lancedb
-interests:
-  - rust/lance-index
-env:
-  github_token_prefix: GITHUB_TOKEN
 `)
 	return dir
 }
@@ -65,6 +66,12 @@ func TestLoad(t *testing.T) {
 	if len(cfg.Interests) != 1 || cfg.Interests[0] != "rust/lance-index" {
 		t.Errorf("interests: %+v", cfg.Interests)
 	}
+	if cfg.GithubLogin != "wjones127" {
+		t.Errorf("github_login: %q", cfg.GithubLogin)
+	}
+	if cfg.Port != 9191 {
+		t.Errorf("server port: %d", cfg.Port)
+	}
 }
 
 func TestActiveRepos(t *testing.T) {
@@ -84,7 +91,8 @@ func TestActiveRepos(t *testing.T) {
 }
 
 func TestTokenResolution(t *testing.T) {
-	cfg := &Config{TokenPrefix: "GITHUB_TOKEN"}
+	keyring.MockInit() // hermetic: never touch the real OS keychain
+	cfg := &Config{TokenPrefix: "GITHUB_TOKEN", Dir: t.TempDir()}
 	if got := cfg.EnvVarFor("lance-format"); got != "GITHUB_TOKEN_LANCE_FORMAT" {
 		t.Errorf("env var name: %q", got)
 	}
@@ -97,9 +105,9 @@ func TestTokenResolution(t *testing.T) {
 	}
 }
 
-func TestLoadMissingUserFile(t *testing.T) {
+func TestLoadMissingConfigFile(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "repos.yml"), []byte("repos: [a/b]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "config.yml"), []byte("repos: [a/b]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(dir)
@@ -109,7 +117,23 @@ func TestLoadMissingUserFile(t *testing.T) {
 	if cfg.TokenPrefix != "GITHUB_TOKEN" {
 		t.Errorf("default token prefix: %q", cfg.TokenPrefix)
 	}
+	if cfg.Port != 8787 {
+		t.Errorf("default port: %d", cfg.Port)
+	}
 	if len(cfg.Repos) != 1 || cfg.Repos[0] != "a/b" {
 		t.Errorf("repos: %+v", cfg.Repos)
+	}
+}
+
+func TestExists(t *testing.T) {
+	dir := t.TempDir()
+	if Exists(dir) {
+		t.Error("empty dir should not be configured")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.yml"), []byte("repos: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !Exists(dir) {
+		t.Error("dir with config.yml should be configured")
 	}
 }

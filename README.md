@@ -34,10 +34,10 @@ Pure-Go binary, no runtime dependencies. Serves its own web UI on localhost.
 go install github.com/lancedb/pr-residents/cmd/residents@latest
 ```
 
-Then scaffold your config and start the server:
+Then run the one-time setup and start the server:
 
 ```sh
-residents init          # writes ~/.pr-residents/, materializes bundled skills
+residents init          # interactive setup: repos, tokens, engine → ~/.pr-residents/
 residents serve --open  # starts localhost:8787 and opens the browser
 ```
 
@@ -50,25 +50,30 @@ PR Residents is **strictly per-user**. It runs under *your* GitHub identity so e
 review you co-sign is your own. There is no shared bot account and no shared server;
 each teammate installs and runs their own instance.
 
-The first time you run `residents serve`, it sees there's no config yet and serves a
-**setup wizard** instead of the rounds view:
+`residents init` walks you through setup in the terminal (secrets stay in the
+terminal, never a browser form) and writes everything to `~/.pr-residents/`:
 
-1. **Repos** — pick the repos you review.
+1. **Repos** — the repos you review.
 2. **GitHub username** — your `github_login`.
-3. **Tokens** — one read-only, fine-grained PAT per org (Contents: Read, Pull
+3. **Interests** — optional path prefixes for cold-start relevance.
+4. **Tokens** — one read-only, fine-grained PAT per org (Contents: Read, Pull
    requests: Read, Metadata: Read — nothing writable, so a leaked token can't post or
-   merge as you). The wizard **validates each token live** against the API before
-   saving, so a bad or misscoped token fails now, not at 6am. Tokens go to your OS
-   keychain, never to a config file — see [Security](#security).
-4. **Engine** — confirms an agent CLI is on your PATH. Default is Claude Code
+   merge as you). Each token is **entered masked, validated live** against the API
+   (init prints who it authenticated as), then saved to your OS keychain — never to a
+   config file. See [Security](#security). Leave a token blank to skip an org and set
+   its `GITHUB_TOKEN_<ORG>` env var instead.
+5. **Engine** — init checks that an agent CLI is on your PATH. Default is Claude Code
    (`claude`), logged into your Pro/Max subscription — the app shells out to it so
-   reviews bill against your subscription, not API pricing. We store nothing here; the
-   CLI owns its own auth. See [Agent engines](#agent-engines).
-5. **Optional** — interests for cold-start relevance; a local Ollama for semantic
-   ranking (no key).
+   reviews bill against your subscription, not API pricing. The CLI owns its own auth;
+   the app stores nothing here. See [Agent engines](#agent-engines).
 
-For cron/headless use, `residents init` writes a config skeleton and
-`GITHUB_TOKEN_<ORG>` env vars are honored without the wizard.
+`residents init` also materializes the bundled policy files (`escalation.yml`,
+`comment-vocab.md`) into `~/.pr-residents/`, and never overwrites them once you've
+tuned them.
+
+For cron/headless use, run `residents init` with no TTY (e.g. `echo | residents
+init`): it writes a `config.yml` skeleton and skips the prompts, and
+`GITHUB_TOKEN_<ORG>` env vars are honored without any keychain entry.
 
 ## The workflow
 
@@ -224,8 +229,11 @@ Dispatch the only thing that spends tokens.
 ## CLI reference
 
 ```
-residents init                 scaffold ~/.pr-residents/ and bundled skills
+residents init                      interactive setup → ~/.pr-residents/ (repos, tokens, engine)
 residents serve [--port] [--open]   run the local web app
-residents refresh              run the pipeline once, headless (for cron)
-residents dispatch             run a round headless (for cron)
+residents refresh                   run the pipeline once, headless (for cron)
+residents dispatch                  run a round headless (for cron)
 ```
+
+All commands accept `--config-dir` (default `~/.pr-residents`) and `--state-dir`
+(default `<config-dir>/state`).

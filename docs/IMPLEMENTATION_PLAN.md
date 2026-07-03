@@ -98,10 +98,19 @@ cancel keeps completed, drops partials. Delete `freshreview.py`/`rereview.py`/
 `residents gc` prunes stale worktrees.
 *Done when:* button yields a working command that drops into a primed session.
 
-**Phase 4 — onboarding + secrets + polish.** First-run wizard (repos → username →
-live-validated tokens → engine detection → optional interests/Ollama); keychain write
-via go-keyring + `0600` fallback; `residents init`. Cross-platform check.
-*Done when:* a colleague goes install → wizard → first round with no hand-editing.
+**Phase 4 — onboarding + secrets + polish. [done]** `residents init` interactive CLI
+wizard (repos → username → interests → live-validated masked tokens → engine
+detection), writing a single `~/.pr-residents/config.yml` + materialized policy files
+(`escalation.yml`, `comment-vocab.md`, never clobbered). Secrets via `internal/secrets`
+(env → keychain → `0600` file) using go-keyring; `TokenFor` resolves through it.
+Default paths moved to `~/.pr-residents`; `serve --open` + missing-config guard.
+Non-TTY `init` writes a skeleton for cron.
+*Done when:* a colleague goes install → `init` → first round with no hand-editing.
+
+Decisions locked (was open Q4): **single** per-user `config.yml`; `escalation.yml` +
+`comment-vocab.md` stay separate shared-policy files, bundled and materialized by
+`init`. Wizard is **CLI**, not web (secrets stay in the terminal). Ollama/semantic
+relevance remains deferred, so it is not part of onboarding.
 
 ## Testing / parity strategy
 

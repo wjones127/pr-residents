@@ -1,0 +1,31 @@
+# EXAMPLE personal config. `residents init` writes this for you (to
+# ~/.pr-residents/config.yml); this copy is here for reference. Safe to read or
+# share — NO secrets live here. Tokens are in your OS keychain (see README).
+
+github_login: your-github-login
+
+repos:
+  - lance-format/lance
+  - lancedb/lancedb
+
+# Path prefixes for cold-start relevance, until your review history accrues.
+interests: []
+
+# Subset of your repos you actively review. Empty = all of them.
+subscribed_repos: []
+
+# Paths never surfaced for review (glob, matched against changed files).
+exclude_paths:
+  - "java/**"
+
+dispatch:
+  engine: claude        # claude | codex(planned) | copilot(planned)
+  concurrency: 6        # parallel resident agents; 4–8 is a sane range
+  model_routing:        # match model to lane/size; retune when pricing shifts
+    default: sonnet
+    fresh_xl: opus      # large core-library PRs get the strongest model
+    fresh_xs: haiku     # trivial version-bump / trailing-comma PRs go cheap
+    re_review: sonnet
+
+server:
+  port: 8787

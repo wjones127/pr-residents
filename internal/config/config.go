@@ -1,8 +1,8 @@
 // Package config loads pr-residents config and resolves per-org tokens.
 //
-// Nothing user-specific is hardcoded: config is read by path. Tokens live only
-// in the environment (GITHUB_TOKEN_<ORG>); config holds at most the var-name
-// prefix. This mirrors the Python config.py contract.
+// Config is a single personal config.yml plus a shared escalation.yml policy
+// file, read from a directory (default ~/.pr-residents). Secrets are never in
+// config: tokens resolve via the secrets package (env → keychain → 0600 file).
 package config
 
 import (
@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/lancedb/pr-residents/internal/secrets"
 )
 
 // Dispatch holds review-dispatch settings: which agent engine, how many run in
@@ -25,6 +26,8 @@ type Dispatch struct {
 
 // Config is the resolved pr-residents configuration.
 type Config struct {
+	Dir             string // the config directory; token file fallback lives under it
+	GithubLogin     string
 	Repos           []string
 	ExcludePaths    []string
 	Escalation      prr.EscalationRules
@@ -32,6 +35,7 @@ type Config struct {
 	SubscribedRepos []string
 	Interests       []string
 	Dispatch        Dispatch
+	Port            int
 }
 
 // ActiveRepos is the repos to sync: the subscribed subset if any, else all.
@@ -56,9 +60,11 @@ func orgEnvVar(owner, prefix string) string {
 	return prefix + "_" + strings.ReplaceAll(strings.ToUpper(owner), "-", "_")
 }
 
-// TokenFor returns the token for an org owner, or "" if unset.
+// TokenFor returns the token for an org owner, or "" if unset. It resolves via
+// the secrets package: env var → OS keychain → 0600 file under the config dir.
 func (c *Config) TokenFor(owner string) string {
-	return os.Getenv(orgEnvVar(owner, c.TokenPrefix))
+	tok, _ := secrets.Resolve(c.EnvVarFor(owner), owner, c.Dir)
+	return tok
 }
 
 // EnvVarFor returns the env var name a token for owner is read from.
@@ -66,20 +72,21 @@ func (c *Config) EnvVarFor(owner string) string {
 	return orgEnvVar(owner, c.TokenPrefix)
 }
 
-type reposFile struct {
-	Repos        []string `yaml:"repos"`
-	ExcludePaths []string `yaml:"exclude_paths"`
-	SelfLogin    string   `yaml:"self_login"`
-}
-
-type userFile struct {
+// configFile is the single per-user config.yml. Shared escalation policy lives
+// in a sibling escalation.yml (loaded separately).
+type configFile struct {
 	GithubLogin     string   `yaml:"github_login"`
+	Repos           []string `yaml:"repos"`
+	ExcludePaths    []string `yaml:"exclude_paths"`
 	SubscribedRepos []string `yaml:"subscribed_repos"`
 	Interests       []string `yaml:"interests"`
-	Env             struct {
+	Dispatch        Dispatch `yaml:"dispatch"`
+	Server          struct {
+		Port int `yaml:"port"`
+	} `yaml:"server"`
+	Env struct {
 		GithubTokenPrefix string `yaml:"github_token_prefix"`
 	} `yaml:"env"`
-	Dispatch Dispatch `yaml:"dispatch"`
 }
 
 // loadYAML reads and parses a YAML file into out. A missing file is not an
@@ -95,10 +102,25 @@ func loadYAML(path string, out any) error {
 	return yaml.Unmarshal(data, out)
 }
 
-// Load reads repos.yml, escalation.yml, and the optional user.yml from configDir.
+// DefaultDir is the config directory when none is given: ~/.pr-residents.
+func DefaultDir() string {
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, ".pr-residents")
+	}
+	return ".pr-residents"
+}
+
+// Exists reports whether a config.yml is present in configDir.
+func Exists(configDir string) bool {
+	_, err := os.Stat(filepath.Join(configDir, "config.yml"))
+	return err == nil
+}
+
+// Load reads config.yml and the shared escalation.yml from configDir. Missing
+// files are tolerated (empty config), so headless callers can rely on env.
 func Load(configDir string) (*Config, error) {
-	var repos reposFile
-	if err := loadYAML(filepath.Join(configDir, "repos.yml"), &repos); err != nil {
+	var cf configFile
+	if err := loadYAML(filepath.Join(configDir, "config.yml"), &cf); err != nil {
 		return nil, err
 	}
 	var escalation prr.EscalationRules
@@ -106,16 +128,12 @@ func Load(configDir string) (*Config, error) {
 		return nil, err
 	}
 
-	tokenPrefix := "GITHUB_TOKEN"
-	var user userFile
-	if err := loadYAML(filepath.Join(configDir, "user.yml"), &user); err != nil {
-		return nil, err
-	}
-	if user.Env.GithubTokenPrefix != "" {
-		tokenPrefix = user.Env.GithubTokenPrefix
+	tokenPrefix := cf.Env.GithubTokenPrefix
+	if tokenPrefix == "" {
+		tokenPrefix = "GITHUB_TOKEN"
 	}
 
-	dispatch := user.Dispatch
+	dispatch := cf.Dispatch
 	if dispatch.Engine == "" {
 		dispatch.Engine = "claude"
 	}
@@ -123,13 +141,21 @@ func Load(configDir string) (*Config, error) {
 		dispatch.Concurrency = 6
 	}
 
+	port := cf.Server.Port
+	if port <= 0 {
+		port = 8787
+	}
+
 	return &Config{
-		Repos:           repos.Repos,
-		ExcludePaths:    repos.ExcludePaths,
+		Dir:             configDir,
+		GithubLogin:     cf.GithubLogin,
+		Repos:           cf.Repos,
+		ExcludePaths:    cf.ExcludePaths,
 		Escalation:      escalation,
 		TokenPrefix:     tokenPrefix,
-		SubscribedRepos: user.SubscribedRepos,
-		Interests:       user.Interests,
+		SubscribedRepos: cf.SubscribedRepos,
+		Interests:       cf.Interests,
 		Dispatch:        dispatch,
+		Port:            port,
 	}, nil
 }
