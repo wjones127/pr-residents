@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lancedb/pr-residents/internal/config"
-	"github.com/lancedb/pr-residents/internal/derive"
-	"github.com/lancedb/pr-residents/internal/gh"
-	"github.com/lancedb/pr-residents/internal/store"
+	"github.com/wjones127/pr-residents/internal/config"
+	"github.com/wjones127/pr-residents/internal/derive"
+	"github.com/wjones127/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/store"
 )
 
 // API is the slice of the GitHub client relevance needs. *gh.Client satisfies it.

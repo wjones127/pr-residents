@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lancedb/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/gh"
 )
 
 // Condition is one reconstructed review condition. Status starts "open"; the

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lancedb/pr-residents/internal/gh"
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 // Version bumps when derivation logic changes in a way that should invalidate

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lancedb/pr-residents/internal/cache"
-	"github.com/lancedb/pr-residents/internal/config"
-	"github.com/lancedb/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/cache"
+	"github.com/wjones127/pr-residents/internal/config"
+	"github.com/wjones127/pr-residents/internal/gh"
 )
 
 var now = time.Date(2026, 6, 23, 12, 0, 0, 0, time.UTC)

@@ -3,9 +3,9 @@ package web
 import (
 	"testing"
 
-	"github.com/lancedb/pr-residents/internal/agent"
-	"github.com/lancedb/pr-residents/internal/prr"
-	"github.com/lancedb/pr-residents/internal/relevance"
+	"github.com/wjones127/pr-residents/internal/agent"
+	"github.com/wjones127/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/relevance"
 )
 
 func TestBuildWorkupViewLegacySOAP(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go sqlite driver
 
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 // Entry is a cached PR: the updatedAt it was fetched at and the derived record.

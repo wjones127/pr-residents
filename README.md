@@ -33,7 +33,7 @@ GitHub's review surface — no comments, reviews, labels, or merges. You do thos
 Pure-Go binary, no runtime dependencies. Serves its own web UI on localhost.
 
 ```sh
-go install github.com/lancedb/pr-residents/cmd/residents@latest
+go install github.com/wjones127/pr-residents/cmd/residents@latest
 ```
 
 Then run the one-time setup and start the server:

@@ -3,7 +3,7 @@ package agent
 import (
 	"testing"
 
-	"github.com/lancedb/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/gh"
 )
 
 func TestParseLabel(t *testing.T) {

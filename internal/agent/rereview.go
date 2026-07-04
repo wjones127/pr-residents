@@ -3,9 +3,9 @@ package agent
 import (
 	"fmt"
 
-	"github.com/lancedb/pr-residents/internal/derive"
-	"github.com/lancedb/pr-residents/internal/gh"
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/derive"
+	"github.com/wjones127/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 // ReReviewPR is the re-review packet's PR identity, spanning last-reviewed → head.

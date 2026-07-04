@@ -12,8 +12,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/lancedb/pr-residents/internal/prr"
-	"github.com/lancedb/pr-residents/internal/secrets"
+	"github.com/wjones127/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/secrets"
 )
 
 // Dispatch holds review-dispatch settings: which agent engine, how many run in

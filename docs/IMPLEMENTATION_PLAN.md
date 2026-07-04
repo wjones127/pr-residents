@@ -22,7 +22,7 @@ review/                   go:embed'd review prompts (fresh, re-review, conventio
 testdata/golden/          Python-captured fixtures for parity
 ```
 
-Module: `github.com/lancedb/pr-residents`. Deps kept minimal: `modernc.org/sqlite`
+Module: `github.com/wjones127/pr-residents`. Deps kept minimal: `modernc.org/sqlite`
 (pure-Go), `github.com/zalando/go-keyring`, `gopkg.in/yaml.v3`. htmx vendored/embedded
 (CSP-safe, no CDN).
 

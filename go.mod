@@ -1,4 +1,4 @@
-module github.com/lancedb/pr-residents
+module github.com/wjones127/pr-residents
 
 go 1.25.0
 

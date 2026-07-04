@@ -3,8 +3,8 @@ package agent
 import (
 	"testing"
 
-	"github.com/lancedb/pr-residents/internal/gh"
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 func TestBuildDeltaNoAnchor(t *testing.T) {

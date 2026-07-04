@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/lancedb/pr-residents/internal/config"
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/config"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 // DraftComment is one anchored review comment (the schema render turns into a

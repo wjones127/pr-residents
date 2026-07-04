@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lancedb/pr-residents/internal/agent"
-	"github.com/lancedb/pr-residents/internal/config"
-	"github.com/lancedb/pr-residents/internal/gh"
-	"github.com/lancedb/pr-residents/internal/jobs"
-	"github.com/lancedb/pr-residents/internal/prr"
-	"github.com/lancedb/pr-residents/internal/relevance"
-	"github.com/lancedb/pr-residents/internal/store"
+	"github.com/wjones127/pr-residents/internal/agent"
+	"github.com/wjones127/pr-residents/internal/config"
+	"github.com/wjones127/pr-residents/internal/gh"
+	"github.com/wjones127/pr-residents/internal/jobs"
+	"github.com/wjones127/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/relevance"
+	"github.com/wjones127/pr-residents/internal/store"
 )
 
 // waitJob blocks until an async job finishes, so its background writes complete

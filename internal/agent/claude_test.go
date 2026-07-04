@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/lancedb/pr-residents/internal/config"
-	"github.com/lancedb/pr-residents/internal/prr"
+	"github.com/wjones127/pr-residents/internal/config"
+	"github.com/wjones127/pr-residents/internal/prr"
 )
 
 func TestClaudeWorkupParsesEnvelope(t *testing.T) {
