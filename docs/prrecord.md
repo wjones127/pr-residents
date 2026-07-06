@@ -46,6 +46,7 @@ PRRecord {
                           evidence_ref: string,            # line ref / test / call site backing the status
                           author_resolved: bool } ]        # did author click "resolve"? (a CLAIM, not status)
 
+  review_decision   : APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED | null  # GitHub's aggregate; null when the repo requires no reviews
   merge_state       : { ci: green|red|pending, mergeable: bool }
 
   escalation        : { forced: bool, rule_ids: [string], reason: string }  # from config/escalation.yml
@@ -93,6 +94,21 @@ review submitted, author's last push, my approval), not from PR creation.
 
 Escalation does not change lane (see the `escalation` note above): it only
 blocks fast-tracking and sets the ⚠ flag.
+
+### Housekeeping sub-buckets
+
+Housekeeping is not a review lane; it's discharge planning, split by the action
+the PR needs (`derive.housekeeping_bucket`, rendered as ①②③):
+
+| bucket | action | condition |
+|---|---|---|
+| `ready` | merge it (mine) | `blocked_on=merge` · `mergeable=True` · `ci=green` · `review_decision` ∈ (`APPROVED`, null) |
+| `needs_author` | ping to rebase / fix CI, or wait on CI / a 2nd reviewer | `blocked_on=merge`, otherwise |
+| `stale_author` | nudge, or ignore | `blocked_on=author` (incl. stale drafts, shown with a `draft` marker) |
+
+`review_decision` null counts as ready because it means the repo enforces no
+required review — my approval alone can merge. Unknown mergeability (`null`)
+is *not* ready: never present a maybe-conflicted PR as mergeable.
 
 ## Correctness traps `pr-sync` must own (§8)
 
