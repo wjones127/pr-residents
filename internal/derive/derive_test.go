@@ -227,6 +227,72 @@ func TestBuildRecord(t *testing.T) {
 	}
 }
 
+func TestHousekeepingBucket(t *testing.T) {
+	// Approved-head PR (baseDetail: mergeable, CI green, no required review).
+	approved := func() *gh.Detail {
+		d := baseDetail()
+		d.Reviews.Nodes = []gh.Review{review("APPROVED", HEAD, 5)}
+		return d
+	}
+	build := func(d *gh.Detail) *prr.Record {
+		return BuildRecord(d, "wjones127", false, escalation, NOW, nil)
+	}
+
+	if b := HousekeepingBucket(build(approved())); b != "ready" {
+		t.Errorf("approved+green+mergeable should be ready, got %q", b)
+	}
+
+	d := approved()
+	d.ReviewDecision = "APPROVED"
+	rec := build(d)
+	if b := HousekeepingBucket(rec); b != "ready" {
+		t.Errorf("reviewDecision APPROVED should be ready, got %q", b)
+	}
+	if rec.ReviewDecision != "APPROVED" {
+		t.Errorf("record should carry review_decision, got %q", rec.ReviewDecision)
+	}
+
+	d = approved()
+	d.Mergeable = "CONFLICTING"
+	if b := HousekeepingBucket(build(d)); b != "needs_author" {
+		t.Errorf("conflict should be needs_author, got %q", b)
+	}
+
+	d = approved()
+	d.Commits.Nodes[0].Commit.StatusCheckRollup = &gh.Rollup{State: "FAILURE"}
+	if b := HousekeepingBucket(build(d)); b != "needs_author" {
+		t.Errorf("red CI should be needs_author, got %q", b)
+	}
+
+	d = approved()
+	d.Commits.Nodes[0].Commit.StatusCheckRollup = &gh.Rollup{State: "PENDING"}
+	if b := HousekeepingBucket(build(d)); b != "needs_author" {
+		t.Errorf("pending CI should be needs_author, got %q", b)
+	}
+
+	d = approved()
+	d.ReviewDecision = "REVIEW_REQUIRED"
+	if b := HousekeepingBucket(build(d)); b != "needs_author" {
+		t.Errorf("review-required should be needs_author, got %q", b)
+	}
+
+	// Stale changes-requested -> author's court.
+	d = baseDetail()
+	d.Reviews.Nodes = []gh.Review{review("CHANGES_REQUESTED", HEAD, 72)}
+	if b := HousekeepingBucket(build(d)); b != "stale_author" {
+		t.Errorf("stale changes-requested should be stale_author, got %q", b)
+	}
+
+	// Parked stale draft.
+	d = baseDetail()
+	d.IsDraft = true
+	d.Reviews.Nodes = []gh.Review{review("COMMENTED", OLD, 72)}
+	d.Commits.Nodes = []gh.CommitNode{{Commit: gh.Commit{Oid: HEAD, CommittedDate: hoursAgo(72), StatusCheckRollup: &gh.Rollup{State: "SUCCESS"}}}}
+	if b := HousekeepingBucket(build(d)); b != "stale_author" {
+		t.Errorf("stale draft should be stale_author, got %q", b)
+	}
+}
+
 func TestAuthorStatus(t *testing.T) {
 	cases := []struct {
 		n    int

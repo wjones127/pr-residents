@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/wjones127/pr-residents/internal/agent"
+	"github.com/wjones127/pr-residents/internal/derive"
 	"github.com/wjones127/pr-residents/internal/prr"
 	"github.com/wjones127/pr-residents/internal/relevance"
 )
@@ -194,7 +195,16 @@ type RoundsView struct {
 	RepoLinks []RepoLink
 	Fresh     []RowView
 	Rereview  []RowView
-	House     []RowView
+	// Housekeeping is split by the action each PR needs (see HousekeepingBucket).
+	HouseReady   []RowView // ① mergeable now — merge it
+	HouseNeeds   []RowView // ② approved but blocked on author / CI / another approval
+	HouseWaiting []RowView // ③ my changes unaddressed, or a parked draft
+}
+
+// HouseCount is the total across the three housekeeping sub-buckets (for the
+// lane header), since templates can't sum lengths.
+func (v RoundsView) HouseCount() int {
+	return len(v.HouseReady) + len(v.HouseNeeds) + len(v.HouseWaiting)
 }
 
 var (
@@ -270,19 +280,38 @@ func laneRow(r *prr.Record, workups map[string]agent.WorkupDoc) RowView {
 	return row
 }
 
-func houseRow(r *prr.Record) RowView {
-	var tag string
-	switch {
-	case r.IsDraft:
-		tag = "draft, waiting on " + r.Author
-	case r.BlockedOn == "merge":
-		tag = "approved, not merged"
-	default:
-		tag = "stale, waiting on " + r.Author
-	}
+func houseRow(r *prr.Record, tag string) RowView {
 	row := laneRow(r, nil)
 	row.Tag = tag
 	return row
+}
+
+// needsAuthorReason names why an approved PR isn't ready, ordered by which
+// blocker to surface first (conflict wins — a rebase re-runs CI anyway).
+func needsAuthorReason(r *prr.Record) string {
+	if r.MergeState.Mergeable != nil && !*r.MergeState.Mergeable {
+		return "needs rebase (conflict)"
+	}
+	switch r.MergeState.CI {
+	case "red":
+		return "CI failing"
+	case "pending":
+		return "CI running"
+	}
+	if r.ReviewDecision == "REVIEW_REQUIRED" || r.ReviewDecision == "CHANGES_REQUESTED" {
+		return "awaiting other approvals"
+	}
+	if r.MergeState.Mergeable == nil {
+		return "checking mergeability"
+	}
+	return "not mergeable yet"
+}
+
+func waitingTag(r *prr.Record) string {
+	if r.IsDraft {
+		return "draft, waiting on " + r.Author
+	}
+	return "stale, waiting on " + r.Author
 }
 
 // BuildView sorts records into lanes and formats them for display, mirroring
@@ -333,7 +362,14 @@ func BuildView(records []*prr.Record, workups map[string]agent.WorkupDoc, panel 
 		view.Rereview = append(view.Rereview, laneRow(r, workups))
 	}
 	for _, r := range house {
-		view.House = append(view.House, houseRow(r))
+		switch derive.HousekeepingBucket(r) {
+		case "ready":
+			view.HouseReady = append(view.HouseReady, houseRow(r, "ready"))
+		case "needs_author":
+			view.HouseNeeds = append(view.HouseNeeds, houseRow(r, needsAuthorReason(r)))
+		default: // stale_author
+			view.HouseWaiting = append(view.HouseWaiting, houseRow(r, waitingTag(r)))
+		}
 	}
 	return view
 }

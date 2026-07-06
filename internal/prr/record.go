@@ -78,6 +78,7 @@ type Record struct {
 	LastReviewedSHA *string     `json:"last_reviewed_sha"`
 	Delta           *Delta      `json:"delta"`
 	Conditions      []Condition `json:"conditions"`
+	ReviewDecision  string      `json:"review_decision"`
 	MergeState      MergeState  `json:"merge_state"`
 	Escalation      Escalation  `json:"escalation"`
 	HeadOid         string      `json:"head_oid"`
