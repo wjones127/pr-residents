@@ -207,6 +207,64 @@ class TestBuildRecord(unittest.TestCase):
         self.assertEqual(rec["acuity"]["risk"], "low")
 
 
+def commits(oid=HEAD, hrs=2, ci="SUCCESS"):
+    return {"nodes": [{"commit": {"oid": oid, "committedDate": hours_ago(hrs),
+                                  "statusCheckRollup": {"state": ci}}}]}
+
+
+class TestHousekeepingBucket(unittest.TestCase):
+    def _rec(self, **kw):
+        return derive.build_record(detail(**kw), "wjones127", False, ESCALATION, now=NOW)
+
+    def test_approved_green_mergeable_is_ready(self):
+        # Approved by me, CI green, no conflict, no required-review rule (None).
+        rec = self._rec(reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(rec["lane"], "housekeeping")
+        self.assertEqual(derive.housekeeping_bucket(rec), "ready")
+
+    def test_approved_decision_approved_is_ready(self):
+        rec = self._rec(reviewDecision="APPROVED",
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(derive.housekeeping_bucket(rec), "ready")
+
+    def test_conflict_is_needs_author(self):
+        rec = self._rec(mergeable="CONFLICTING",
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(derive.housekeeping_bucket(rec), "needs_author")
+
+    def test_red_ci_is_needs_author(self):
+        rec = self._rec(commits=commits(ci="FAILURE"),
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(derive.housekeeping_bucket(rec), "needs_author")
+
+    def test_pending_ci_is_needs_author(self):
+        rec = self._rec(commits=commits(ci="PENDING"),
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(derive.housekeeping_bucket(rec), "needs_author")
+
+    def test_review_required_is_needs_author(self):
+        # I approved, but branch protection still wants another approval.
+        rec = self._rec(reviewDecision="REVIEW_REQUIRED",
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(derive.housekeeping_bucket(rec), "needs_author")
+
+    def test_stale_changes_requested_is_stale_author(self):
+        rec = self._rec(reviews={"nodes": [review("CHANGES_REQUESTED", HEAD, 72)]})
+        self.assertEqual(rec["lane"], "housekeeping")
+        self.assertEqual(derive.housekeeping_bucket(rec), "stale_author")
+
+    def test_stale_draft_is_stale_author(self):
+        rec = self._rec(isDraft=True,
+                        reviews={"nodes": [review("COMMENTED", OLD, 72)]},
+                        commits=commits(hrs=72))
+        self.assertEqual(derive.housekeeping_bucket(rec), "stale_author")
+
+    def test_record_carries_review_decision(self):
+        rec = self._rec(reviewDecision="APPROVED",
+                        reviews={"nodes": [review("APPROVED", HEAD, 5)]})
+        self.assertEqual(rec["review_decision"], "APPROVED")
+
+
 class TestAuthorStatus(unittest.TestCase):
     def test_buckets(self):
         self.assertEqual(derive.derive_author_status(0), "first_time")

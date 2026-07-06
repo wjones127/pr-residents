@@ -10,7 +10,8 @@ import re
 
 # Bump when derivation logic changes in a way that should invalidate the cache.
 # 6: drafts route to the author path (housekeeping-if-stale, never fresh/re_review).
-DERIVE_VERSION = "6"
+# 7: record carries review_decision (for the housekeeping ready/needs-author split).
+DERIVE_VERSION = "7"
 from datetime import datetime, timezone
 from typing import Any
 
@@ -248,6 +249,31 @@ def derive_lane(blocked_on: str, last_reviewed_sha: str | None,
     return None  # other_reviewer: not surfaced
 
 
+def housekeeping_bucket(record: dict) -> str:
+    """Sub-classify a housekeeping PR by the action it needs (see render.py):
+
+    - "ready"        — approved and mergeable now: the action is mine (merge it).
+    - "needs_author" — approved, but a conflict / red-or-pending CI / a required
+                       further approval keeps it out of my hands for now.
+    - "stale_author" — my requested changes are unaddressed, or a parked draft;
+                       the action is a nudge (or nothing).
+
+    `review_decision` in (APPROVED, None) both count as ready: None means the
+    repo has no required-review rule, so my approval alone can merge. Unknown
+    mergeability (None) is treated as not-ready — never show a maybe-conflicted
+    PR as mergeable.
+    """
+    if record["blocked_on"] != "merge":
+        return "stale_author"
+    ms = record.get("merge_state") or {}
+    ready = (
+        ms.get("mergeable") is True
+        and ms.get("ci") == "green"
+        and record.get("review_decision") in ("APPROVED", None)
+    )
+    return "ready" if ready else "needs_author"
+
+
 # --- top-level ------------------------------------------------------------
 
 def build_record(detail: dict, viewer: str, requested: bool,
@@ -315,6 +341,7 @@ def build_record(detail: dict, viewer: str, requested: bool,
         "last_reviewed_sha": last_reviewed_sha,
         "delta": delta,
         "conditions": [],  # reconstructed in slice 2 (re-review-delta)
+        "review_decision": detail.get("reviewDecision"),
         "merge_state": ms,
         "escalation": escalation,
     }

@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import sys
 
+import derive
+
 _RISK_RANK = {"high": 0, "med": 1, "low": 2}
 _URGENCY_RANK = {"high": 0, "med": 1, "low": 2}
 _CI_RANK = {"green": 0, "pending": 1, "red": 2}
@@ -34,6 +36,23 @@ def _age(hrs: float) -> str:
     if hrs >= 48:
         return f"{hrs / 24:.0f}d"
     return f"{hrs:.0f}h"
+
+
+def _needs_author_reason(r: dict) -> str:
+    """Why an approved PR isn't ready — ordered by which blocker to name first.
+    Conflict wins over CI (a rebase re-runs CI anyway)."""
+    ms = r["merge_state"]
+    if ms.get("mergeable") is False:
+        return "needs rebase (conflict)"
+    if ms.get("ci") == "red":
+        return "CI failing"
+    if ms.get("ci") == "pending":
+        return "CI running"
+    if r.get("review_decision") in ("REVIEW_REQUIRED", "CHANGES_REQUESTED"):
+        return "awaiting other approvals"
+    if ms.get("mergeable") is None:
+        return "checking mergeability"
+    return "not mergeable yet"
 
 
 def _line(r: dict) -> str:
@@ -67,18 +86,32 @@ def render(records: list[dict]) -> str:
         out.append("  (none)")
 
     out.append(f"\n▌HOUSEKEEPING ({len(house)}) — discharge planning, batched")
-    for r in house:
-        blocked = r["blocked_on"]
-        if r.get("is_draft"):
-            tag = f"draft, waiting on {r['author']}"
-        elif blocked == "merge":
-            tag = "approved, not merged"
-        else:
-            tag = f"stale, waiting on {r['author']}"
-        out.append(f"  {r['repo']}#{r['number']}  {r['title'][:60]}  "
-                   f"[{tag} · {_age(r['age_in_state_hrs'])} · CI {r['merge_state']['ci']}]")
     if not house:
         out.append("  (none)")
+    else:
+        buckets = {"ready": [], "needs_author": [], "stale_author": []}
+        for r in house:
+            buckets[derive.housekeeping_bucket(r)].append(r)
+
+        def _house_line(r: dict, tag: str) -> str:
+            return (f"    {r['repo']}#{r['number']}  {r['title'][:60]}  "
+                    f"[{tag} · {_age(r['age_in_state_hrs'])} · CI {r['merge_state']['ci']}]")
+
+        def _subsection(label: str, rows: list, tag_of) -> None:
+            out.append(f"\n  {label} ({len(rows)})")
+            for r in rows:
+                out.append(_house_line(r, tag_of(r)))
+            if not rows:
+                out.append("    (none)")
+
+        _subsection("① Ready to merge", buckets["ready"], lambda r: "ready")
+        _subsection("② Approved — needs author", buckets["needs_author"],
+                    _needs_author_reason)
+        _subsection(
+            "③ Waiting on author", buckets["stale_author"],
+            lambda r: (f"draft, waiting on {r['author']}" if r.get("is_draft")
+                       else f"stale, waiting on {r['author']}"),
+        )
 
     return "\n".join(out)
 
