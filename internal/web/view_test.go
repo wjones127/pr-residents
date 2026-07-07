@@ -68,28 +68,46 @@ func TestBuildViewRereviewOrdering(t *testing.T) {
 	}
 }
 
-func TestBuildViewHouseTags(t *testing.T) {
-	draft := rec("housekeeping", "low", "low", "green", 50)
-	draft.IsDraft = true
-	draft.Author = "bob"
-	merge := rec("housekeeping", "low", "low", "green", 50)
-	merge.BlockedOn = "merge"
+func TestBuildViewHouseSubsections(t *testing.T) {
+	tru := true
+	fal := false
+
+	ready := rec("housekeeping", "low", "low", "green", 50)
+	ready.BlockedOn = "merge"
+	ready.MergeState.Mergeable = &tru // approved, mergeable, CI green -> ①
+
+	conflict := rec("housekeeping", "low", "low", "green", 50)
+	conflict.BlockedOn = "merge"
+	conflict.MergeState.Mergeable = &fal // -> ② needs rebase
+
 	stale := rec("housekeeping", "low", "low", "green", 50)
 	stale.BlockedOn = "author"
 	stale.Author = "carol"
 
-	view := BuildView([]*prr.Record{draft, merge, stale}, nil, nil, "d")
-	if len(view.House) != 3 {
-		t.Fatalf("expected 3 house rows, got %d", len(view.House))
+	draft := rec("housekeeping", "low", "low", "green", 50)
+	draft.BlockedOn = "author"
+	draft.IsDraft = true
+	draft.Author = "bob"
+
+	view := BuildView([]*prr.Record{ready, conflict, stale, draft}, nil, nil, "d")
+
+	if view.HouseCount() != 4 {
+		t.Fatalf("expected 4 house rows total, got %d", view.HouseCount())
 	}
-	if view.House[0].Tag != "draft, waiting on bob" {
-		t.Errorf("draft tag: %q", view.House[0].Tag)
+	if len(view.HouseReady) != 1 || view.HouseReady[0].Tag != "ready" {
+		t.Errorf("ready bucket: %+v", view.HouseReady)
 	}
-	if view.House[1].Tag != "approved, not merged" {
-		t.Errorf("merge tag: %q", view.House[1].Tag)
+	if len(view.HouseNeeds) != 1 || view.HouseNeeds[0].Tag != "needs rebase (conflict)" {
+		t.Errorf("needs-author bucket: %+v", view.HouseNeeds)
 	}
-	if view.House[2].Tag != "stale, waiting on carol" {
-		t.Errorf("stale tag: %q", view.House[2].Tag)
+	if len(view.HouseWaiting) != 2 {
+		t.Fatalf("expected 2 waiting rows, got %d", len(view.HouseWaiting))
+	}
+	if view.HouseWaiting[0].Tag != "stale, waiting on carol" {
+		t.Errorf("stale tag: %q", view.HouseWaiting[0].Tag)
+	}
+	if view.HouseWaiting[1].Tag != "draft, waiting on bob" {
+		t.Errorf("draft tag: %q", view.HouseWaiting[1].Tag)
 	}
 }
 

@@ -17,7 +17,8 @@ import (
 
 // Version bumps when derivation logic changes in a way that should invalidate
 // the cache. Kept in lock-step with the Python DERIVE_VERSION for parity.
-const Version = "6"
+// 7: record carries ReviewDecision (for the housekeeping ready/needs-author split).
+const Version = "7"
 
 const staleAuthorHrs = 48.0
 
@@ -325,6 +326,31 @@ func DeriveLane(blockedOn string, lastReviewedSHA *string, delta *prr.Delta, age
 	return "", false // other_reviewer: not surfaced
 }
 
+// HousekeepingBucket sub-classifies a housekeeping PR by the action it needs:
+//
+//   - "ready"        — approved and mergeable now: the action is mine (merge it).
+//   - "needs_author" — approved, but a conflict / red-or-pending CI / a required
+//     further approval keeps it out of my hands for now.
+//   - "stale_author" — my requested changes are unaddressed, or a parked draft;
+//     the action is a nudge (or nothing).
+//
+// A ReviewDecision of "APPROVED" or "" both count as ready: "" means the repo
+// enforces no required review, so my approval alone can merge. Unknown
+// mergeability (nil) is treated as not-ready — never present a maybe-conflicted
+// PR as mergeable.
+func HousekeepingBucket(r *prr.Record) string {
+	if r.BlockedOn != "merge" {
+		return "stale_author"
+	}
+	ready := r.MergeState.Mergeable != nil && *r.MergeState.Mergeable &&
+		r.MergeState.CI == "green" &&
+		(r.ReviewDecision == "APPROVED" || r.ReviewDecision == "")
+	if ready {
+		return "ready"
+	}
+	return "needs_author"
+}
+
 // MergeStateFromDetail reads CI rollup + mergeability from a PR detail.
 func MergeStateFromDetail(d *gh.Detail) prr.MergeState {
 	ci := "pending"
@@ -421,6 +447,7 @@ func BuildRecord(d *gh.Detail, viewer string, requested bool, rules prr.Escalati
 		LastReviewedSHA: lastReviewed,
 		Delta:           delta,
 		Conditions:      []prr.Condition{},
+		ReviewDecision:  d.ReviewDecision,
 		MergeState:      ms,
 		Escalation:      escalation,
 	}

@@ -48,7 +48,12 @@
   <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">{{len .Rereview}}</span><span class="desc">ordered by proximity to merge</span></div>
 {{range .Rereview}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
   </section>
-  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{len .House}}</span><span class="desc">discharge planning, batched</span></div>
-{{range .House}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{.HouseCount}}</span><span class="desc">discharge planning, batched</span></div>
+    <div class="subhead">① Ready to merge <span class="count">{{len .HouseReady}}</span></div>
+{{range .HouseReady}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+    <div class="subhead">② Approved — needs author <span class="count">{{len .HouseNeeds}}</span></div>
+{{range .HouseNeeds}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+    <div class="subhead">③ Waiting on author <span class="count">{{len .HouseWaiting}}</span></div>
+{{range .HouseWaiting}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
   </section>
 {{end}}

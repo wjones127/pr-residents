@@ -9,7 +9,7 @@
 <body>
   <div class="wrap">
     <h1>PR Review Rounds</h1>
-    <p class="sub"><b>{{.DateLabel}}</b> · <b>{{.Total}} PRs</b> — {{len .Fresh}} fresh · {{len .Rereview}} re-review · {{len .House}} housekeeping</p>
+    <p class="sub"><b>{{.DateLabel}}</b> · <b>{{.Total}} PRs</b> — {{len .Fresh}} fresh · {{len .Rereview}} re-review · {{.HouseCount}} housekeeping</p>
     <div class="controls">
       <button id="refresh" type="button">↻ Refresh</button>
       <button id="dispatch" type="button">▶ Dispatch</button>
