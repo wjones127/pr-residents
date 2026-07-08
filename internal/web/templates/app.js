@@ -22,7 +22,46 @@
   function reloadLanes() {
     fetch("/lanes")
       .then(function (r) { return r.text(); })
-      .then(function (html) { lanes.innerHTML = html; });
+      .then(function (html) { lanes.innerHTML = html; applyAllSorts(); });
+  }
+
+  // Per-section sort cycle. The server always renders default order, so we
+  // capture it as data-i on (re)load and re-apply the active mode after each
+  // /lanes swap. Modes are keyed by section id and persist across reloads.
+  var SORT_CYCLE = ["default", "oldest", "recent"];
+  var SORT_LABEL = { default: "↕ default", oldest: "↕ oldest in state", recent: "↕ recently updated" };
+  var sortModes = {};
+
+  function tagOrder() {
+    document.querySelectorAll(".lane-rows").forEach(function (g) {
+      var i = 0;
+      g.querySelectorAll(":scope > .row").forEach(function (row) { row.dataset.i = i++; });
+    });
+  }
+
+  function applySort(section) {
+    var mode = sortModes[section.id] || "default";
+    var btn = section.querySelector(".sort-btn");
+    if (btn) {
+      btn.textContent = SORT_LABEL[mode];
+      btn.classList.toggle("active", mode !== "default");
+    }
+    section.querySelectorAll(".lane-rows").forEach(function (g) {
+      var rows = Array.prototype.slice.call(g.querySelectorAll(":scope > .row"));
+      rows.sort(function (a, b) {
+        if (mode === "default") return (+a.dataset.i) - (+b.dataset.i);
+        var d = (+a.dataset.age) - (+b.dataset.age);
+        return mode === "oldest" ? -d : d; // oldest: longest in state first
+      });
+      rows.forEach(function (r) { g.appendChild(r); });
+    });
+  }
+
+  function applyAllSorts() {
+    tagOrder();
+    document.querySelectorAll("section .sort-btn").forEach(function (btn) {
+      applySort(btn.closest("section"));
+    });
   }
 
   var es = new EventSource("/events");
@@ -52,6 +91,17 @@
       setBusy(false);
     }
   };
+
+  // Sort-cycle buttons. Delegated so they survive lanes fragment swaps.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".sort-btn");
+    if (!b) return;
+    var section = b.closest("section");
+    if (!section) return;
+    var cur = sortModes[section.id] || "default";
+    sortModes[section.id] = SORT_CYCLE[(SORT_CYCLE.indexOf(cur) + 1) % SORT_CYCLE.length];
+    applySort(section);
+  });
 
   // Copy buttons on draft-comment cards. Delegated on document so it keeps
   // working after the lanes fragment is swapped in.
@@ -95,4 +145,6 @@
     status.textContent = "cancelling…";
     fetch("/cancel", { method: "POST" });
   });
+
+  applyAllSorts();
 })();

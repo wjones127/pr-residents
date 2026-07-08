@@ -50,6 +50,9 @@ section{margin-bottom:30px}
 .lane-head h2{font-size:16px;margin:0;letter-spacing:.02em}
 .lane-head .count{font-size:12px;color:var(--bg);font-weight:700;padding:1px 8px;border-radius:10px}
 .lane-head .desc{color:var(--faint);font-size:12px;margin-left:auto}
+.sort-btn{margin-left:12px;background:var(--panel-2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font:600 11px/1.4 inherit;letter-spacing:.02em;cursor:pointer;white-space:nowrap}
+.sort-btn:hover{border-color:#3a4150;color:var(--text)}
+.sort-btn.active{color:var(--text);border-color:#3a4150;background:#232833}
 #triage .count{background:#a371f7}#triage h2{color:#a371f7}
 #fresh .count{background:var(--fresh)}#rereview .count{background:var(--rereview)}#house .count{background:var(--house)}
 #fresh h2{color:var(--fresh)}#rereview h2{color:var(--rereview)}#house h2{color:var(--house)}
@@ -79,5 +82,6 @@ section{margin-bottom:30px}
 .note{flex-basis:100%;color:var(--faint);font-size:12px;padding-left:2px}
 .subhead{display:flex;align-items:baseline;gap:8px;margin:16px 0 8px;font-size:12.5px;font-weight:700;color:var(--muted);letter-spacing:.02em}
 .subhead:first-of-type{margin-top:4px}
-.subhead .count{font-size:11px;font-weight:600;color:var(--faint);background:none;padding:0}
+/* specific enough to beat #house .count (id) so the pill/color don't leak in */
+#house .subhead .count{font-size:12px;font-weight:600;color:var(--muted);background:none;padding:0}
 footer{color:var(--faint);font-size:12px;margin-top:36px;border-top:1px solid var(--border);padding-top:14px}
