@@ -7,9 +7,9 @@
 {{end}}
 
 {{define "row"}}
-    <div class="row{{if .Escalated}} escalated{{end}}">
+    <div class="row{{if .Escalated}} escalated{{end}}" data-age="{{.AgeHrs}}">
       <span class="badges"><span class="b acuity-{{.Risk}}">{{.Risk}}</span><span class="b size">{{.Size}}</span></span>
-      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span> <span class="by">{{.Author}}</span></span>
       <span class="meta">{{if .Escalated}}<span class="esc">ESCALATED</span>{{end}}<span>{{.Age}} in state</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
       <div class="note">{{.Rationale}}</div>
       {{with .Workup}}<details class="soap">
@@ -23,8 +23,8 @@
 {{end}}
 
 {{define "houserow"}}
-    <div class="row">
-      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span></span>
+    <div class="row" data-age="{{.AgeHrs}}">
+      <span class="title"><a href="{{.URL}}">{{.Title}}</a> <span class="num">{{.Repo}}#{{.Number}}</span> <span class="by">{{.Author}}</span></span>
       <span class="meta"><span>{{.Tag}} · {{.Age}}</span><span class="ci {{.CIClass}}"><span class="dot"></span>CI {{.CI}}</span></span>
     </div>
 {{end}}
@@ -42,18 +42,18 @@
 {{range .Triage}}{{template "triagerow" .}}{{else}}    <div class="note">(none proposed)</div>{{end}}
 {{if .RepoLinks}}    <div class="repo-links">Find more on GitHub:{{range .RepoLinks}} <a href="{{.URL}}">{{.Name}}</a>{{end}}</div>{{end}}
   </section>
-  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span></div>
-{{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  <section id="fresh"><div class="lane-head"><h2>Fresh</h2><span class="count">{{len .Fresh}}</span><span class="desc">acuity-ordered · never reviewed, assigned to you</span><button type="button" class="sort-btn" title="cycle sort order">↕ default</button></div>
+    <div class="lane-rows">{{range .Fresh}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}</div>
   </section>
-  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">{{len .Rereview}}</span><span class="desc">ordered by proximity to merge</span></div>
-{{range .Rereview}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  <section id="rereview"><div class="lane-head"><h2>Re-review</h2><span class="count">{{len .Rereview}}</span><span class="desc">ordered by proximity to merge</span><button type="button" class="sort-btn" title="cycle sort order">↕ default</button></div>
+    <div class="lane-rows">{{range .Rereview}}{{template "row" .}}{{else}}    <div class="note">(none)</div>{{end}}</div>
   </section>
-  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{.HouseCount}}</span><span class="desc">discharge planning, batched</span></div>
-    <div class="subhead">① Ready to merge <span class="count">{{len .HouseReady}}</span></div>
-{{range .HouseReady}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
-    <div class="subhead">② Approved — needs author <span class="count">{{len .HouseNeeds}}</span></div>
-{{range .HouseNeeds}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
-    <div class="subhead">③ Waiting on author <span class="count">{{len .HouseWaiting}}</span></div>
-{{range .HouseWaiting}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}
+  <section id="house"><div class="lane-head"><h2>Housekeeping</h2><span class="count">{{.HouseCount}}</span><span class="desc">discharge planning, batched</span><button type="button" class="sort-btn" title="cycle sort order">↕ default</button></div>
+    <div class="subhead">① Ready to merge <span class="count">({{len .HouseReady}})</span></div>
+    <div class="lane-rows">{{range .HouseReady}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}</div>
+    <div class="subhead">② Approved — needs author <span class="count">({{len .HouseNeeds}})</span></div>
+    <div class="lane-rows">{{range .HouseNeeds}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}</div>
+    <div class="subhead">③ Waiting on author <span class="count">({{len .HouseWaiting}})</span></div>
+    <div class="lane-rows">{{range .HouseWaiting}}{{template "houserow" .}}{{else}}    <div class="note">(none)</div>{{end}}</div>
   </section>
 {{end}}

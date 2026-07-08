@@ -21,11 +21,13 @@ type RowView struct {
 	Number    int
 	URL       string
 	Title     string
+	Author    string
 	Risk      string // upper-cased
 	Size      string
 	CI        string
 	CIClass   string
 	Age       string
+	AgeHrs    float64 // raw hours-in-state, for client-side sorting
 	Rationale string
 	Tag       string
 	Escalated bool
@@ -256,11 +258,13 @@ func laneRow(r *prr.Record, workups map[string]agent.WorkupDoc) RowView {
 		Number:    r.Number,
 		URL:       r.URL,
 		Title:     r.Title,
+		Author:    r.Author,
 		Risk:      upper(r.Acuity.Risk),
 		Size:      r.Effort.SizeBucket,
 		CI:        r.MergeState.CI,
 		CIClass:   ciClass(r.MergeState.CI),
 		Age:       ageLabel(r.AgeInStateHrs),
+		AgeHrs:    r.AgeInStateHrs,
 		Rationale: r.Acuity.Rationale,
 		Escalated: r.Escalation.Forced,
 	}
