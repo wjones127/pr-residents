@@ -72,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /lanes", s.handleLanes)
 	mux.HandleFunc("POST /refresh", s.handleRefresh)
+	mux.HandleFunc("POST /triage", s.handleTriage)
 	mux.HandleFunc("POST /dispatch", s.handleDispatch)
 	mux.HandleFunc("POST /cancel", s.handleCancel)
 	mux.HandleFunc("GET /events", s.handleEvents)
@@ -163,6 +164,16 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "refresh started")
 }
 
+func (s *Server) handleTriage(w http.ResponseWriter, r *http.Request) {
+	if !s.jobs.Run("triage", s.doTriage) {
+		w.WriteHeader(http.StatusConflict)
+		fmt.Fprint(w, "triage already running")
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+	fmt.Fprint(w, "triage started")
+}
+
 func (s *Server) handleDispatch(w http.ResponseWriter, r *http.Request) {
 	if !s.jobs.Run("dispatch", s.doDispatch) {
 		w.WriteHeader(http.StatusConflict)
@@ -213,7 +224,9 @@ func (s *Server) doDispatch(ctx context.Context, emit func(jobs.Event)) error {
 }
 
 // doRefresh runs the deterministic pipeline and persists records, emitting
-// progress. Errors abort the job (surfaced as an SSE error event).
+// progress. Errors abort the job (surfaced as an SSE error event). The triage
+// panel is refreshed separately (doTriage) so the review lanes can be updated
+// without waiting on relevance ranking.
 func (s *Server) doRefresh(ctx context.Context, emit func(jobs.Event)) error {
 	dbPath, err := s.store.LocalPath(store.PRDetailDBKey, true)
 	if err != nil {
@@ -233,11 +246,12 @@ func (s *Server) doRefresh(ctx context.Context, emit func(jobs.Event)) error {
 	if records == nil {
 		records = []*prr.Record{}
 	}
-	if err := s.store.PutJSON(store.RecordsKey, records); err != nil {
-		return err
-	}
+	return s.store.PutJSON(store.RecordsKey, records)
+}
 
-	// Triage panel: self-requested relevance candidates.
+// doTriage rebuilds the triage panel (self-requested relevance candidates) and
+// persists it. Independent of doRefresh so it can run on its own.
+func (s *Server) doTriage(ctx context.Context, emit func(jobs.Event)) error {
 	emit(jobs.Event{Phase: "triage", Message: "ranking candidates", Status: "running"})
 	newRel := func(token string) relevance.API { return gh.NewClient(token) }
 	panel, pwarns := relevance.BuildPanel(s.cfg, newRel, s.store, relevance.Options{})
