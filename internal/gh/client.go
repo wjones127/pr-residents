@@ -87,7 +87,14 @@ query($owner: String!, $name: String!, $number: Int!) {
         nodes { author { login } state submittedAt commit { oid } }
       }
       commits(last: 1) {
-        nodes { commit { oid committedDate statusCheckRollup { state } } }
+        nodes { commit { oid committedDate statusCheckRollup {
+          state
+          contexts(first: 100) { nodes {
+            __typename
+            ... on CheckRun { name conclusion }
+            ... on StatusContext { context state }
+          } }
+        } } }
       }
       timelineItems(last: 15, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT, PULL_REQUEST_COMMIT]) {
         nodes {

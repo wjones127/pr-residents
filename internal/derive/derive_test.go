@@ -56,6 +56,45 @@ func review(state, oid string, hrs float64) gh.Review {
 
 func intptr(n int) *int { return &n }
 
+func TestMergeStateFailingChecks(t *testing.T) {
+	d := baseDetail()
+	d.Commits.Nodes[0].Commit.StatusCheckRollup = &gh.Rollup{
+		State: "FAILURE",
+		Contexts: gh.RollupContexts{Nodes: []gh.RollupContext{
+			{Typename: "CheckRun", Name: "build", Conclusion: "SUCCESS"},
+			{Typename: "CheckRun", Name: "unit-tests", Conclusion: "FAILURE"},
+			{Typename: "CheckRun", Name: "flaky-e2e", Conclusion: "TIMED_OUT"},
+			{Typename: "CheckRun", Name: "skipped-job", Conclusion: "SKIPPED"},
+			{Typename: "StatusContext", Context: "legacy/lint", State: "ERROR"},
+			{Typename: "StatusContext", Context: "legacy/ok", State: "SUCCESS"},
+		}},
+	}
+	ms := MergeStateFromDetail(d)
+	if ms.CI != "red" {
+		t.Fatalf("CI = %q, want red", ms.CI)
+	}
+	got := map[string]string{}
+	for _, c := range ms.FailingChecks {
+		got[c.Name] = c.Conclusion
+	}
+	want := map[string]string{"unit-tests": "FAILURE", "flaky-e2e": "TIMED_OUT", "legacy/lint": "ERROR"}
+	if len(got) != len(want) {
+		t.Fatalf("failing checks = %v, want %v", ms.FailingChecks, want)
+	}
+	for name, concl := range want {
+		if got[name] != concl {
+			t.Errorf("check %q = %q, want %q", name, got[name], concl)
+		}
+	}
+}
+
+func TestMergeStateNoFailingChecksWhenGreen(t *testing.T) {
+	ms := MergeStateFromDetail(baseDetail())
+	if ms.CI != "green" || len(ms.FailingChecks) != 0 {
+		t.Fatalf("green rollup should have no failing checks, got CI=%q checks=%v", ms.CI, ms.FailingChecks)
+	}
+}
+
 func TestGlob(t *testing.T) {
 	if !PathMatches("a/b/secret.rs", "**/*secret*") {
 		t.Error("expected a/b/secret.rs to match **/*secret*")

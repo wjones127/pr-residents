@@ -35,6 +35,24 @@ last looked introduce something new and bad?** A fix to one condition can break
 something that was never on the list. Surface new findings as draft `issue(...)`
 comments with acceptance criteria.
 
+When you draft a fresh-eyes comment and the fix is a small, unambiguous drop-in
+(a simplification, a redundant branch, a stdlib one-liner), fill the `suggestion`
+field so it renders as a committable GitHub ```suggestion``` block — show the
+better code, don't just describe it.
+
+## CI is context, not a review condition
+
+The attending can already see whether CI is green or red. Do **not** treat CI
+status as a condition in the ledger or a blocker, and don't let it drive the
+recommendation. Reason instead about `merge_state.failing_checks`:
+
+- If a failing check plausibly traces to the delta, raise it anchored to the
+  `file:line` you suspect ("`unit-tests` fails, likely from the change at
+  foo.rs:88").
+- If the failing checks look unrelated to what changed, say so in one line and
+  don't gate on it.
+- If you can't tell, say so.
+
 ## Recommend
 
 `approve`, `block` (on N conditions), or `comment`.
@@ -52,7 +70,8 @@ ASSESSMENT: <one crisp line: the risk of what changed since you last looked>
 (reviewed <base8> → <head8>, N commits / M files), the CONDITIONS LEDGER (each
 condition ✓met / ✗not_met / ~moot / open with a diff-anchored evidence line;
 flag resolved-but-not-confirmed), and the FRESH-EYES DELTA (new findings or "no
-new concerns"). Free-form markdown, multi-line is fine>
+new concerns"). Free-form markdown, multi-line is fine. Do NOT list CI status as
+a blocker; mention CI only to tie a failing check to a line, or note it's unrelated>
 ===COMMENTS===
 <zero or more anchored draft comments, ONE COMPACT JSON OBJECT PER LINE (JSONL)>
 ```

@@ -169,7 +169,10 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacke
 	// CI/mergeability computed with the same mapping as the synced record.
 	msDetail := &gh.Detail{
 		Mergeable: pr.Mergeable,
-		Commits:   gh.Commits{Nodes: []gh.CommitNode{{Commit: gh.Commit{StatusCheckRollup: &gh.Rollup{State: pr.RollupState}}}}},
+		Commits: gh.Commits{Nodes: []gh.CommitNode{{Commit: gh.Commit{StatusCheckRollup: &gh.Rollup{
+			State:    pr.RollupState,
+			Contexts: gh.RollupContexts{Nodes: pr.RollupContexts},
+		}}}}},
 	}
 
 	return ReReviewPacket{
