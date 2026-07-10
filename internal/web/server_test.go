@@ -63,7 +63,7 @@ func (fakeAgent) Workup(ctx context.Context, prompt string, model string) (agent
 		Recommendation: "approve",
 		Risk:           "med",
 		Assessment:     "refined nil-deref risk",
-		Summary:        "REVIEW body here",
+		Summary:        "## Findings\n\nREVIEW body here\n\n- one item",
 		Comments: []agent.DraftComment{
 			{Path: "a.go", Line: 12, Side: "RIGHT", Label: "issue", Blocking: true, Body: "guard the nil case"},
 		},
@@ -236,6 +236,8 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 	body := rr.Body.String()
 	for _, want := range []string{
 		"REVIEW body here",        // summary card
+		"<h2>Findings</h2>",       // summary markdown rendered to HTML, not raw "##"
+		"<li>one item</li>",       // list rendered
 		"rec-approve",             // recommendation badge
 		"guard the nil case",      // the draft comment body
 		"/o/r/pull/5/files#diff-", // deep link to the exact line
@@ -245,6 +247,10 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("dispatch render missing %q", want)
 		}
+	}
+	// The copy source keeps the raw markdown for pasting into GitHub.
+	if !strings.Contains(body, "## Findings") {
+		t.Error("copy source should retain raw markdown")
 	}
 }
 

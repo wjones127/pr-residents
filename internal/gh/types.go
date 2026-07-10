@@ -39,7 +39,24 @@ type Reviews struct {
 }
 
 type Rollup struct {
-	State string `json:"state"`
+	State    string         `json:"state"`
+	Contexts RollupContexts `json:"contexts"`
+}
+
+// RollupContexts is the individual checks behind a status rollup. A node is
+// either a CheckRun (Name + Conclusion) or a StatusContext (Context + State).
+type RollupContexts struct {
+	Nodes []RollupContext `json:"nodes"`
+}
+
+type RollupContext struct {
+	Typename string `json:"__typename"`
+	// CheckRun
+	Name       string `json:"name"`
+	Conclusion string `json:"conclusion"`
+	// StatusContext
+	Context string `json:"context"`
+	State   string `json:"state"`
 }
 
 type Commit struct {

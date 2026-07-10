@@ -45,9 +45,20 @@ type Condition struct {
 }
 
 // MergeState is the CI rollup plus mergeability. Mergeable is nil when unknown.
+// FailingChecks names the individual checks in a non-passing state so the
+// resident can judge whether a red CI relates to the diff — it is context, not
+// a review-blocking condition.
 type MergeState struct {
-	CI        string `json:"ci"`
-	Mergeable *bool  `json:"mergeable"`
+	CI            string  `json:"ci"`
+	Mergeable     *bool   `json:"mergeable"`
+	FailingChecks []Check `json:"failing_checks,omitempty"`
+}
+
+// Check is one CI check in a non-passing state (Conclusion is the raw GitHub
+// conclusion/state, e.g. FAILURE | TIMED_OUT | CANCELLED | ERROR).
+type Check struct {
+	Name       string `json:"name"`
+	Conclusion string `json:"conclusion"`
 }
 
 // Escalation is the result of matching a PR against the bright-line rules.

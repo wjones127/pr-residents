@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,23 +36,28 @@ type RowView struct {
 }
 
 // WorkupView is a cached review rendered for display: the recommendation, the
-// human summary, and the anchored draft-comment copy-cards.
+// human summary, and the anchored draft-comment copy-cards. SummaryHTML is the
+// rendered markdown shown on the card; Summary is the raw markdown the copy
+// button yields (for pasting into a GitHub review).
 type WorkupView struct {
 	Recommendation string // approve | block | comment ("" = none)
 	HeadLabel      string // e.g. "3 comments · 1 blocking"
-	Summary        string
+	Summary        string // raw markdown, for the copy button
+	SummaryHTML    template.HTML
 	SummaryCopyID  string
 	Comments       []CommentCard
 }
 
-// CommentCard is one draft comment with a copy button and deep link.
+// CommentCard is one draft comment with a copy button and deep link. BodyHTML is
+// the rendered markdown shown on the card; CopyText is the raw markdown yielded
+// by the copy button.
 type CommentCard struct {
 	Label      string
 	LabelClass string
 	LabelDeco  string // " (blocking)" / " (non-blocking)" / ""
 	LocText    string // "path:L123" or "review-level"
 	DeepLink   string // "" when no path
-	Body       string
+	BodyHTML   template.HTML
 	Suggestion string
 	Blocking   bool
 	CopyID     string
@@ -136,6 +142,7 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 		Recommendation: doc.Recommendation,
 		HeadLabel:      head,
 		Summary:        summary,
+		SummaryHTML:    renderMarkdown(summary),
 		SummaryCopyID:  "s-" + base,
 	}
 	for i, c := range doc.Comments {
@@ -143,7 +150,7 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 			Label:      c.Label,
 			LabelClass: labelClassOf(c.Label),
 			LabelDeco:  labelDeco(c),
-			Body:       strings.TrimSpace(c.Body),
+			BodyHTML:   renderMarkdown(strings.TrimSpace(c.Body)),
 			Suggestion: c.Suggestion,
 			Blocking:   c.Blocking && (c.Label == "issue" || c.Label == "question"),
 			CopyID:     fmt.Sprintf("c-%s-%d", base, i),

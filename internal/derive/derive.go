@@ -351,14 +351,48 @@ func HousekeepingBucket(r *prr.Record) string {
 	return "needs_author"
 }
 
+// failingCheckConclusions are CheckRun conclusions that count as not-passing.
+var failingCheckConclusions = map[string]bool{
+	"FAILURE": true, "TIMED_OUT": true, "CANCELLED": true,
+	"STARTUP_FAILURE": true, "ACTION_REQUIRED": true,
+}
+
+// failingStatusStates are legacy StatusContext states that count as failing.
+var failingStatusStates = map[string]bool{"FAILURE": true, "ERROR": true}
+
+// failingChecks pulls the individual non-passing checks out of a rollup, so the
+// resident can judge whether a red CI relates to the diff. Passing / pending /
+// skipped checks are omitted.
+func failingChecks(rollup *gh.Rollup) []prr.Check {
+	if rollup == nil {
+		return nil
+	}
+	var out []prr.Check
+	for _, c := range rollup.Contexts.Nodes {
+		switch c.Typename {
+		case "CheckRun":
+			if failingCheckConclusions[c.Conclusion] {
+				out = append(out, prr.Check{Name: c.Name, Conclusion: c.Conclusion})
+			}
+		case "StatusContext":
+			if failingStatusStates[c.State] {
+				out = append(out, prr.Check{Name: c.Context, Conclusion: c.State})
+			}
+		}
+	}
+	return out
+}
+
 // MergeStateFromDetail reads CI rollup + mergeability from a PR detail.
 func MergeStateFromDetail(d *gh.Detail) prr.MergeState {
 	ci := "pending"
+	var failing []prr.Check
 	if len(d.Commits.Nodes) > 0 {
 		if rollup := d.Commits.Nodes[0].Commit.StatusCheckRollup; rollup != nil {
 			if v, ok := ciMap[rollup.State]; ok {
 				ci = v
 			}
+			failing = failingChecks(rollup)
 		}
 	}
 	var mergeable *bool
@@ -370,7 +404,7 @@ func MergeStateFromDetail(d *gh.Detail) prr.MergeState {
 		f := false
 		mergeable = &f
 	}
-	return prr.MergeState{CI: ci, Mergeable: mergeable}
+	return prr.MergeState{CI: ci, Mergeable: mergeable, FailingChecks: failing}
 }
 
 // --- top-level ------------------------------------------------------------

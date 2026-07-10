@@ -12,7 +12,14 @@ query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
       number title url headRefOid mergeable
-      commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+      commits(last: 1) { nodes { commit { statusCheckRollup {
+        state
+        contexts(first: 100) { nodes {
+          __typename
+          ... on CheckRun { name conclusion }
+          ... on StatusContext { context state }
+        } }
+      } } } }
       reviews(last: 50) {
         nodes { author { login } state submittedAt commit { oid } }
       }
@@ -40,14 +47,15 @@ type ReviewThread struct {
 
 // ReReviewPR is the data a re-review packet is built from.
 type ReReviewPR struct {
-	Number      int
-	Title       string
-	URL         string
-	Head        string
-	Mergeable   string
-	RollupState string
-	Reviews     []Review
-	Threads     []ReviewThread
+	Number         int
+	Title          string
+	URL            string
+	Head           string
+	Mergeable      string
+	RollupState    string
+	RollupContexts []RollupContext
+	Reviews        []Review
+	Threads        []ReviewThread
 }
 
 // FetchReReviewData fetches reviews + review threads + head/CI for one PR.
@@ -98,7 +106,9 @@ func (c *Client) FetchReReviewData(owner, name string, number int) (ReReviewPR, 
 		Mergeable: pr.Mergeable, Reviews: pr.Reviews.Nodes,
 	}
 	if len(pr.Commits.Nodes) > 0 && pr.Commits.Nodes[0].Commit.StatusCheckRollup != nil {
-		out.RollupState = pr.Commits.Nodes[0].Commit.StatusCheckRollup.State
+		rollup := pr.Commits.Nodes[0].Commit.StatusCheckRollup
+		out.RollupState = rollup.State
+		out.RollupContexts = rollup.Contexts.Nodes
 	}
 	for _, t := range pr.ReviewThreads.Nodes {
 		th := ReviewThread{
