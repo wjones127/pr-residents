@@ -130,6 +130,59 @@ func TestRefreshReturns202(t *testing.T) {
 	waitJob(t, srv, "refresh")
 }
 
+func TestTriageEndpointReturns202(t *testing.T) {
+	srv, _ := newTestServer(t, nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/triage", nil))
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("status %d, want 202", rr.Code)
+	}
+	waitJob(t, srv, "triage")
+}
+
+// doTriage with no configured repos writes an empty panel without touching the
+// records list — the review lanes are refreshed by doRefresh independently.
+func TestDoTriageWritesPanelOnly(t *testing.T) {
+	srv, st := newTestServer(t, []*prr.Record{seedRecord()})
+	if err := srv.doTriage(context.Background(), func(jobs.Event) {}); err != nil {
+		t.Fatal(err)
+	}
+	var panel []relevance.Candidate
+	found, err := st.GetJSON(store.PanelKey, &panel)
+	if err != nil || !found {
+		t.Fatalf("panel not written: found=%v err=%v", found, err)
+	}
+
+	// Records are left untouched by a triage refresh.
+	var records []*prr.Record
+	if _, err := st.GetJSON(store.RecordsKey, &records); err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 {
+		t.Errorf("expected records untouched (1), got %d", len(records))
+	}
+}
+
+// doRefresh no longer builds the triage panel; that is doTriage's job.
+func TestDoRefreshLeavesPanelUntouched(t *testing.T) {
+	srv, st := newTestServer(t, nil)
+	if err := st.PutJSON(store.PanelKey, []relevance.Candidate{
+		{Repo: "o/r", Number: 7, Title: "Existing candidate"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.doRefresh(context.Background(), func(jobs.Event) {}); err != nil {
+		t.Fatal(err)
+	}
+	var panel []relevance.Candidate
+	if _, err := st.GetJSON(store.PanelKey, &panel); err != nil {
+		t.Fatal(err)
+	}
+	if len(panel) != 1 {
+		t.Errorf("expected panel untouched (1), got %d", len(panel))
+	}
+}
+
 func TestTriagePanelRendered(t *testing.T) {
 	srv, st := newTestServer(t, nil)
 	if err := st.PutJSON(store.PanelKey, []relevance.Candidate{

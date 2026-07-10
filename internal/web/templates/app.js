@@ -6,6 +6,7 @@
   }
 
   var refresh = document.getElementById("refresh");
+  var triage = document.getElementById("triage");
   var dispatch = document.getElementById("dispatch");
   var cancel = document.getElementById("cancel");
   var bar = document.getElementById("bar");
@@ -13,10 +14,19 @@
   var tokens = document.getElementById("tokens");
   var lanes = document.getElementById("lanes");
 
-  function setBusy(busy) {
-    refresh.disabled = busy;
-    dispatch.disabled = busy;
-    cancel.hidden = !busy;
+  // Jobs run independently — each button is disabled only while its own job is
+  // in flight, so refreshing triage doesn't block a lanes refresh or dispatch.
+  var running = {};
+
+  function applyBusy() {
+    refresh.disabled = !!running.refresh;
+    triage.disabled = !!running.triage;
+    dispatch.disabled = !!running.dispatch;
+    cancel.hidden = !running.dispatch;
+  }
+
+  function anyRunning() {
+    return running.refresh || running.triage || running.dispatch;
   }
 
   function reloadLanes() {
@@ -70,7 +80,8 @@
     try { ev = JSON.parse(e.data); } catch (_) { return; }
 
     if (ev.status === "running") {
-      setBusy(true);
+      running[ev.job] = true;
+      applyBusy();
       var pct = ev.total > 0 ? Math.round((100 * ev.done) / ev.total) : 0;
       bar.style.width = pct + "%";
       var label = ev.phase || "working";
@@ -81,14 +92,18 @@
         tokens.textContent = "⛃ " + fmtTokens(ev.tokens_in) + " in / " + fmtTokens(ev.tokens_out) + " out";
       }
     } else if (ev.status === "done") {
-      bar.style.width = "100%";
-      status.textContent = "done";
-      setBusy(false);
+      delete running[ev.job];
+      applyBusy();
       reloadLanes();
-      setTimeout(function () { bar.style.width = "0%"; status.textContent = ""; }, 1500);
+      if (!anyRunning()) {
+        bar.style.width = "100%";
+        status.textContent = "done";
+        setTimeout(function () { bar.style.width = "0%"; status.textContent = ""; }, 1500);
+      }
     } else if (ev.status === "error") {
+      delete running[ev.job];
+      applyBusy();
       status.textContent = "error: " + (ev.message || "unknown");
-      setBusy(false);
     }
   };
 
@@ -136,6 +151,10 @@
   refresh.addEventListener("click", function () {
     status.textContent = "starting…"; bar.style.width = "0%"; tokens.textContent = "";
     fetch("/refresh", { method: "POST" });
+  });
+  triage.addEventListener("click", function () {
+    status.textContent = "starting…"; bar.style.width = "0%"; tokens.textContent = "";
+    fetch("/triage", { method: "POST" });
   });
   dispatch.addEventListener("click", function () {
     status.textContent = "starting…"; bar.style.width = "0%"; tokens.textContent = "";

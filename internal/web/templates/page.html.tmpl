@@ -12,6 +12,7 @@
     <p class="sub"><b>{{.DateLabel}}</b> · <b>{{.Total}} PRs</b> — {{len .Fresh}} fresh · {{len .Rereview}} re-review · {{.HouseCount}} housekeeping</p>
     <div class="controls">
       <button id="refresh" type="button">↻ Refresh</button>
+      <button id="triage" type="button">↻ Triage</button>
       <button id="dispatch" type="button">▶ Dispatch</button>
       <button id="cancel" type="button" class="cancel" hidden>■ Cancel</button>
       <div class="progress"><div id="bar"></div></div>
@@ -19,7 +20,7 @@
       <span id="tokens" class="tokens"></span>
     </div>
     <div id="lanes">{{template "lanes" .}}</div>
-    <footer>Deterministic pre-assembly (pr-sync). Refresh re-fetches review-relevant PRs and re-derives lanes; no writes to GitHub. SOAP workups and the triage panel arrive in a later phase.</footer>
+    <footer>Deterministic pre-assembly (pr-sync). Refresh re-fetches review-relevant PRs and re-derives lanes; Triage re-ranks self-requested candidates separately. No writes to GitHub.</footer>
   </div>
   <script>{{js}}</script>
 </body>
