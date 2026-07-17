@@ -35,6 +35,7 @@ Usage:
 
 Commands:
   init       set up ~/.pr-residents/ (interactive; repos, tokens, engine)
+  token      inspect/update per-org GitHub tokens (list | set | rm)
   serve      run the local web app (rounds view + Refresh/Dispatch)
   refresh    run the deterministic pipeline once (fetch + derive PRRecords)
   dispatch   run review workups over the fresh/re-review PRs (uses your agent CLI)
@@ -50,6 +51,8 @@ func main() {
 	switch os.Args[1] {
 	case "init":
 		os.Exit(runInit(os.Args[2:]))
+	case "token":
+		os.Exit(runToken(os.Args[2:]))
 	case "refresh":
 		os.Exit(runRefresh(os.Args[2:]))
 	case "serve":
