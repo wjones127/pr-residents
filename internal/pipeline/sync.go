@@ -26,7 +26,7 @@ type API interface {
 	ViewerLogin() (string, error)
 	SearchLight(query string) ([]gh.LightPR, error)
 	SearchCount(query string) (int, error)
-	FetchDetail(owner, name string, number int) (*gh.Detail, error)
+	FetchDetail(owner, name string, number int) (*gh.Detail, []string, error)
 }
 
 // searchCategory pairs a relevance category with its search qualifier. `@me`
@@ -150,10 +150,13 @@ func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, n
 				entry.Record != nil && entry.Record.Relevance.Requested == req {
 				record = entry.Record
 			} else {
-				detail, err := client.FetchDetail(owner, name, number)
+				detail, dwarns, err := client.FetchDetail(owner, name, number)
 				if err != nil {
 					warns = append(warns, fmt.Sprintf("[error] %s#%d: detail failed: %v", repo, number, err))
 					continue
+				}
+				for _, w := range dwarns {
+					warns = append(warns, fmt.Sprintf("[warn] %s#%d: %s", repo, number, w))
 				}
 				if detail == nil {
 					warns = append(warns, fmt.Sprintf("[warn] %s#%d: detail missing, skipped", repo, number))
