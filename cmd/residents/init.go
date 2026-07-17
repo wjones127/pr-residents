@@ -108,13 +108,14 @@ func runWizard(dir, cfgPath string) int {
 
 // collectToken prompts for one org's token, validates it live against the API,
 // and stores it. It re-prompts on a bad token; an empty entry skips the org.
-func collectToken(in *bufio.Reader, dir, org, login string) {
+// It reports whether a token was actually stored.
+func collectToken(in *bufio.Reader, dir, org, login string) bool {
 	for {
 		fmt.Printf("  %s token: ", org)
 		tok := readSecret(in)
 		if tok == "" {
 			fmt.Printf("  … skipped %s\n", org)
-			return
+			return false
 		}
 		who, err := gh.NewClient(tok).ViewerLogin()
 		if err != nil {
@@ -127,10 +128,10 @@ func collectToken(in *bufio.Reader, dir, org, login string) {
 		src, err := secrets.Store(org, tok, dir)
 		if err != nil {
 			fmt.Printf("  ✗ could not store token: %v\n", err)
-			return
+			return false
 		}
 		fmt.Printf("  ✓ %s validated as %s, saved to %s\n", org, who, src)
-		return
+		return true
 	}
 }
 
