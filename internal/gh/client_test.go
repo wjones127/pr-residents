@@ -91,9 +91,12 @@ func TestSearchCount(t *testing.T) {
 }
 
 func TestFetchDetail(t *testing.T) {
-	d, err := stubClient(t).FetchDetail("lancedb", "lance", 7416)
+	d, warns, err := stubClient(t).FetchDetail("lancedb", "lance", 7416)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(warns) != 0 {
+		t.Errorf("unexpected warnings: %v", warns)
 	}
 	if d.Number != 7416 || d.Author.Login != "alice" || d.Mergeable != "MERGEABLE" {
 		t.Errorf("detail scalars: %+v", d)
@@ -124,5 +127,54 @@ func TestGraphQLErrors(t *testing.T) {
 	}}}
 	if _, err := c.ViewerLogin(); err == nil {
 		t.Error("expected error from GraphQL errors payload")
+	}
+}
+
+// fixedBodyClient returns a client whose every GraphQL POST yields body.
+func fixedBodyClient(body string) *Client {
+	c := NewClient("tok")
+	c.endpoint = "http://test/graphql"
+	c.http = &http.Client{Transport: stubRT{fn: func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	}}}
+	return c
+}
+
+// A fine-grained PAT can't read Checks, so statusCheckRollup contexts come back
+// FORBIDDEN alongside otherwise-complete data. FetchDetail should keep the PR and
+// warn, not fail.
+func TestFetchDetailToleratesChecksForbidden(t *testing.T) {
+	body := `{"data":{"repository":{"pullRequest":{
+		"number":6681,"title":"t","url":"u","author":{"login":"alice"},
+		"headRefOid":"abc","mergeable":"MERGEABLE",
+		"commits":{"nodes":[{"commit":{"oid":"abc","committedDate":"2026-06-23T00:00:00Z","statusCheckRollup":null}}]},
+		"timelineItems":{"nodes":[]}
+	}}},"errors":[
+		{"type":"FORBIDDEN","path":["repository","pullRequest","commits","nodes",0,"commit","statusCheckRollup","contexts","nodes",0],"message":"Resource not accessible by personal access token"},
+		{"type":"FORBIDDEN","path":["repository","pullRequest","commits","nodes",0,"commit","statusCheckRollup","contexts","nodes",1],"message":"Resource not accessible by personal access token"}
+	]}`
+	d, warns, err := fixedBodyClient(body).FetchDetail("lancedb", "sophon", 6681)
+	if err != nil {
+		t.Fatalf("expected tolerated partial, got error: %v", err)
+	}
+	if d == nil || d.Number != 6681 {
+		t.Fatalf("expected detail for 6681, got %+v", d)
+	}
+	if len(warns) != 1 {
+		t.Fatalf("expected 1 warning, got %v", warns)
+	}
+}
+
+// An error that isn't confined to statusCheckRollup must still fail the fetch.
+func TestFetchDetailFailsOnNonCheckError(t *testing.T) {
+	body := `{"data":{"repository":{"pullRequest":null}},"errors":[
+		{"type":"FORBIDDEN","path":["repository","pullRequest"],"message":"Resource not accessible by personal access token"}
+	]}`
+	if _, _, err := fixedBodyClient(body).FetchDetail("lancedb", "sophon", 6681); err == nil {
+		t.Error("expected error when a non-statusCheckRollup field is forbidden")
 	}
 }

@@ -214,8 +214,29 @@ func (c *Client) PullFiles(owner, name string, number int) ([]FileDiff, error) {
 
 var retryableStatus = map[int]bool{403: true, 429: true, 502: true, 503: true}
 
-// graphql POSTs a query and returns the raw "data" field.
-func (c *Client) graphql(query string, variables map[string]any) (json.RawMessage, error) {
+// gqlEnvelope is a raw GraphQL response: partial data may accompany field-level
+// errors, so both are kept and interpreted by the caller.
+type gqlEnvelope struct {
+	Data   json.RawMessage `json:"data"`
+	Errors json.RawMessage `json:"errors"`
+}
+
+// gqlError is one entry of a GraphQL "errors" array. Path elements are strings
+// (fields) or numbers (list indices), so they decode as any.
+type gqlError struct {
+	Message string `json:"message"`
+	Path    []any  `json:"path"`
+}
+
+// hasErrors reports whether the envelope carries a non-empty errors array.
+func (e *gqlEnvelope) hasErrors() bool {
+	return len(e.Errors) > 0 && string(e.Errors) != "null"
+}
+
+// postGraphQL POSTs a query and returns the raw response envelope (data +
+// errors). Only transport/HTTP failures are returned as errors; field-level
+// GraphQL errors are left in the envelope for the caller to decide on.
+func (c *Client) postGraphQL(query string, variables map[string]any) (*gqlEnvelope, error) {
 	reqBody, err := json.Marshal(map[string]any{"query": query, "variables": variables})
 	if err != nil {
 		return nil, err
@@ -252,22 +273,55 @@ func (c *Client) graphql(query string, variables map[string]any) (json.RawMessag
 			return nil, &Error{Msg: fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body))}
 		}
 
-		var payload struct {
-			Data   json.RawMessage `json:"data"`
-			Errors json.RawMessage `json:"errors"`
-		}
-		if err := json.Unmarshal(body, &payload); err != nil {
+		var env gqlEnvelope
+		if err := json.Unmarshal(body, &env); err != nil {
 			return nil, &Error{Msg: err.Error()}
 		}
-		if len(payload.Errors) > 0 && string(payload.Errors) != "null" {
-			return nil, &Error{Msg: string(payload.Errors)}
-		}
-		return payload.Data, nil
+		return &env, nil
 	}
 	if lastErr != nil {
 		return nil, &Error{Msg: lastErr.Error()}
 	}
 	return nil, &Error{Msg: "graphql: exhausted retries"}
+}
+
+// graphql POSTs a query and returns the raw "data" field. Any field-level
+// GraphQL error is fatal; callers that can tolerate errors on specific fields
+// use postGraphQL and inspect the envelope themselves (see FetchDetail).
+func (c *Client) graphql(query string, variables map[string]any) (json.RawMessage, error) {
+	env, err := c.postGraphQL(query, variables)
+	if err != nil {
+		return nil, err
+	}
+	if env.hasErrors() {
+		return nil, &Error{Msg: string(env.Errors)}
+	}
+	return env.Data, nil
+}
+
+// errorsAllUnder reports whether every error in raw has a path passing through a
+// field named segment. Used to tell "only the tolerable field failed" (all true)
+// from "something essential also failed" (any false). Empty/unparseable → false.
+func errorsAllUnder(raw json.RawMessage, segment string) bool {
+	var errs []gqlError
+	if err := json.Unmarshal(raw, &errs); err != nil || len(errs) == 0 {
+		return false
+	}
+	for _, e := range errs {
+		if !pathContains(e.Path, segment) {
+			return false
+		}
+	}
+	return true
+}
+
+func pathContains(path []any, segment string) bool {
+	for _, p := range path {
+		if s, ok := p.(string); ok && s == segment {
+			return true
+		}
+	}
+	return false
 }
 
 func backoff(attempt int) time.Duration {
@@ -454,21 +508,33 @@ func (c *Client) SearchWithFiles(query string, limit int) ([]CandidatePR, error)
 }
 
 // FetchDetail fetches the full detail for one PR.
-func (c *Client) FetchDetail(owner, name string, number int) (*Detail, error) {
-	data, err := c.graphql(detailQuery, map[string]any{"owner": owner, "name": name, "number": number})
+//
+// Fine-grained PATs cannot be granted Checks access (GitHub disabled it), so the
+// statusCheckRollup check contexts come back FORBIDDEN. Rather than fail the whole
+// PR, we tolerate errors confined to that field: the rest of the detail is kept
+// and a warning is returned so the CI-check gap is visible, not silent.
+func (c *Client) FetchDetail(owner, name string, number int) (*Detail, []string, error) {
+	env, err := c.postGraphQL(detailQuery, map[string]any{"owner": owner, "name": name, "number": number})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	var warns []string
+	if env.hasErrors() {
+		if !errorsAllUnder(env.Errors, "statusCheckRollup") {
+			return nil, nil, &Error{Msg: string(env.Errors)}
+		}
+		warns = append(warns, "CI check status unavailable (fine-grained tokens can't read Checks); reviewing without it")
 	}
 	var resp struct {
 		Repository struct {
 			PullRequest *Detail `json:"pullRequest"`
 		} `json:"repository"`
 	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
+	if err := json.Unmarshal(env.Data, &resp); err != nil {
+		return nil, nil, &Error{Msg: err.Error()}
 	}
 	if resp.Repository.PullRequest == nil {
-		return nil, &Error{Msg: fmt.Sprintf("no pull request %s/%s#%d", owner, name, number)}
+		return nil, nil, &Error{Msg: fmt.Sprintf("no pull request %s/%s#%d", owner, name, number)}
 	}
-	return resp.Repository.PullRequest, nil
+	return resp.Repository.PullRequest, warns, nil
 }

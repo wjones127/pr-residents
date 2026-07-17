@@ -34,9 +34,9 @@ func (f *fakeAPI) SearchCount(q string) (int, error) {
 	return 5, nil
 }
 
-func (f *fakeAPI) FetchDetail(owner, name string, number int) (*gh.Detail, error) {
+func (f *fakeAPI) FetchDetail(owner, name string, number int) (*gh.Detail, []string, error) {
 	f.detailCount++
-	return f.details[number], nil
+	return f.details[number], nil, nil
 }
 
 func det(number int, author string) *gh.Detail {
