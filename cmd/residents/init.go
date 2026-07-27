@@ -246,6 +246,16 @@ subscribed_repos: []
 exclude_paths:
   - "java/**"
 
+# Extra low-signal files to drop from the review packet (surfaced in its omitted
+# list, not shown in full). These EXTEND the built-ins (common lockfiles,
+# vendor/ node_modules/ third_party/, generated/, *.pb.go/*.pb.rs, ...).
+# diff:
+#   skip:
+#     lockfiles: ["deno.lock"]        # extra lockfile base names
+#     vendored_paths: ["externals/"]  # directory segments
+#     generated_paths: ["autogen/"]   # directory segments
+#     generated_suffixes: [".g.dart"] # filename suffixes
+
 dispatch:
   engine: claude        # claude | codex(planned) | copilot(planned)
   concurrency: 6        # parallel resident agents; 4–8 is a sane range
@@ -273,6 +283,14 @@ interests: []
 subscribed_repos: []
 exclude_paths:
   - "java/**"
+
+# Extra low-signal files to drop from the review packet (extends the built-ins).
+# diff:
+#   skip:
+#     lockfiles: ["deno.lock"]
+#     vendored_paths: ["externals/"]
+#     generated_paths: ["autogen/"]
+#     generated_suffixes: [".g.dart"]
 
 dispatch:
   engine: claude

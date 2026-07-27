@@ -80,7 +80,7 @@ func short(sha string) string {
 // compare(lastReviewed...head) (nil when no anchor / head unchanged); prNetFull
 // is the PR's net changed files with patches. cf (may be nil) enriches small
 // edited files with their full content at head.
-func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff, cf contentFetcher, owner, name string) Delta {
+func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff, cf contentFetcher, owner, name string, rules SkipRules) Delta {
 	d := Delta{Base: lastReviewed, Head: head, Files: []PacketDiffFile{}}
 	if lastReviewed == "" {
 		d.Note = "no prior review by viewer; nothing to anchor a delta on"
@@ -131,7 +131,7 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 		}
 		resolved = append(resolved, f)
 	}
-	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head, defaultBudget())
+	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head, defaultBudget(), rules)
 	if d.Files == nil {
 		d.Files = []PacketDiffFile{}
 	}
@@ -140,8 +140,8 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 
 // BuildReReviewPacket assembles a re-review packet: the reconstructed conditions
 // ledger plus the commit-anchored delta. viewer identifies whose reviews/threads
-// anchor the ledger and delta.
-func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacket, error) {
+// anchor the ledger and delta. rules is the effective file classifier.
+func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string, rules SkipRules) (ReReviewPacket, error) {
 	owner, name := splitRepo(r.Repo)
 	pr, err := f.FetchReReviewData(owner, name, r.Number)
 	if err != nil {
@@ -164,7 +164,7 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacke
 			return ReReviewPacket{}, err
 		}
 	}
-	delta := buildDelta(last, head, cmp, net, f, owner, name)
+	delta := buildDelta(last, head, cmp, net, f, owner, name, rules)
 
 	// CI/mergeability computed with the same mapping as the synced record.
 	msDetail := &gh.Detail{

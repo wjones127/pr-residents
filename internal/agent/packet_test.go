@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wjones127/pr-residents/internal/config"
 	"github.com/wjones127/pr-residents/internal/gh"
 	"github.com/wjones127/pr-residents/internal/prr"
 )
@@ -52,11 +53,36 @@ func TestClassifyFile(t *testing.T) {
 		{"datafusion/core/tests/snapshots/plan.snap", "", false}, // snapshot diff is the review subject
 		{"rust/lance/protos/format.proto", "", false},
 	}
+	rules := DefaultSkipRules()
 	for _, c := range cases {
-		reason, skip := classifyFile(c.path)
+		reason, skip := rules.classify(c.path)
 		if skip != c.skip || reason != c.reason {
-			t.Errorf("classifyFile(%q) = (%q, %v), want (%q, %v)", c.path, reason, skip, c.reason, c.skip)
+			t.Errorf("classify(%q) = (%q, %v), want (%q, %v)", c.path, reason, skip, c.reason, c.skip)
 		}
+	}
+}
+
+func TestSkipRulesExtendFromConfig(t *testing.T) {
+	cfg := &config.Config{Diff: config.Diff{Skip: config.DiffSkip{
+		Lockfiles:      []string{"deno.lock"},
+		VendoredPaths:  []string{"external"}, // no trailing slash -> normalized
+		GeneratedPaths: []string{"autogen/"},
+	}}}
+	rules := skipRulesFromConfig(cfg)
+
+	// Config entries are honored...
+	for path, want := range map[string]string{
+		"js/deno.lock":        "lockfile",
+		"external/dep/x.rs":   "vendored",
+		"a/autogen/b/plan.rs": "generated",
+	} {
+		if got, skip := rules.classify(path); !skip || got != want {
+			t.Errorf("classify(%q) = (%q, %v), want (%q, true)", path, got, skip, want)
+		}
+	}
+	// ...and the built-in defaults still apply (extend, not replace).
+	if got, skip := rules.classify("Cargo.lock"); !skip || got != "lockfile" {
+		t.Errorf("default Cargo.lock lost after extend: (%q, %v)", got, skip)
 	}
 }
 
@@ -81,7 +107,7 @@ func TestBuildPacketPartitionsAndTruncates(t *testing.T) {
 	}}
 	r := &prr.Record{Repo: "o/r", Number: 5, Title: "t", URL: "u", HeadOid: "abc", Lane: "fresh"}
 
-	p, err := BuildPacket(ff, r)
+	p, err := BuildPacket(ff, r, DefaultSkipRules())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +157,7 @@ func TestBuildPacketAttachesFullContentForSmallFiles(t *testing.T) {
 	}
 	r := &prr.Record{Repo: "o/r", Number: 5, HeadOid: "abc", Lane: "fresh"}
 
-	p, err := BuildPacket(ff, r)
+	p, err := BuildPacket(ff, r, DefaultSkipRules())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +183,7 @@ func TestAssembleDiffHardCapOmitsExcessPatches(t *testing.T) {
 		{Filename: "b.go", Status: "modified", Patch: patch},
 	}
 	b := budget{hardTokens: estTokens(patch) + 5} // room for exactly one patch
-	shown, omitted := assembleDiff(files, nil, "o", "r", "head", b)
+	shown, omitted := assembleDiff(files, nil, "o", "r", "head", b, DefaultSkipRules())
 	if len(shown) != 1 || shown[0].Path != "a.go" {
 		t.Fatalf("expected only a.go shown, got %+v", shown)
 	}
@@ -177,7 +203,7 @@ func TestAssembleDiffSoftCapShedsFullContentFirst(t *testing.T) {
 	// Soft cap sits between the first file's patch cost and the running total
 	// after it: a.go gets full content, b.go's is shed while its patch stays.
 	b := budget{softTokens: estTokens(patch) + estTokens(small), hardTokens: 100_000}
-	shown, _ := assembleDiff(files, cf, "o", "r", "head", b)
+	shown, _ := assembleDiff(files, cf, "o", "r", "head", b, DefaultSkipRules())
 	if len(shown) != 2 {
 		t.Fatalf("both patches should be shown, got %d", len(shown))
 	}
@@ -192,7 +218,7 @@ func TestAssembleDiffSoftCapShedsFullContentFirst(t *testing.T) {
 func TestBuildPacketLaneNoteForReReview(t *testing.T) {
 	ff := fakeFetcher{files: []gh.FileDiff{{Filename: "a.go", Patch: "@@"}}}
 	r := &prr.Record{Repo: "o/r", Number: 5, Lane: "re_review", BlockedOn: "me"}
-	p, err := BuildPacket(ff, r)
+	p, err := BuildPacket(ff, r, DefaultSkipRules())
 	if err != nil {
 		t.Fatal(err)
 	}

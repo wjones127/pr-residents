@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wjones127/pr-residents/internal/config"
 	"github.com/wjones127/pr-residents/internal/gh"
 	"github.com/wjones127/pr-residents/internal/prr"
 )
@@ -109,25 +110,92 @@ func defaultBudget() budget { return budget{softTokens: 80_000, hardTokens: 150_
 // estTokens is a cheap chars/4 approximation of an English/code token count.
 func estTokens(s string) int { return len(s) / 4 }
 
-var lockFiles = map[string]bool{
-	"package-lock.json": true, "yarn.lock": true, "pnpm-lock.yaml": true,
-	"Cargo.lock": true, "go.sum": true, "poetry.lock": true,
-	"Gemfile.lock": true, "composer.lock": true, "flake.lock": true,
-	"uv.lock": true, "pdm.lock": true, "bun.lockb": true,
+// SkipRules classifies changed files whose diffs are low review signal so they
+// are surfaced in the packet's omitted list rather than shown in full. The zero
+// value skips nothing; DefaultSkipRules carries the built-ins and config
+// extends it (see skipRulesFromConfig). Vendored/generated paths are matched as
+// directory segments.
+type SkipRules struct {
+	Lockfiles         []string // exact base names, e.g. "Cargo.lock"
+	VendoredSegments  []string // directory segments, e.g. "vendor/"
+	GeneratedSegments []string // directory segments, e.g. "generated/"
+	GeneratedSuffixes []string // filename suffixes, e.g. ".pb.go"
 }
 
-var vendorSegments = []string{"vendor/", "node_modules/", "third_party/"}
+// DefaultSkipRules is the built-in classifier, tuned against the configured
+// repos. Snapshots (.snap) and sqllogictest data (.slt) are deliberately NOT
+// skipped — a snapshot/expected-output diff is often the review subject.
+func DefaultSkipRules() SkipRules {
+	return SkipRules{
+		Lockfiles: []string{
+			"package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+			"Cargo.lock", "go.sum", "poetry.lock",
+			"Gemfile.lock", "composer.lock", "flake.lock",
+			"uv.lock", "pdm.lock", "bun.lockb",
+		},
+		VendoredSegments: []string{"vendor/", "node_modules/", "third_party/"},
+		// datafusion commits its protobuf under src/generated/*.rs, named
+		// nothing like a .pb.rs; the sibling generator dir gen/ is real source.
+		GeneratedSegments: []string{"generated/"},
+		GeneratedSuffixes: []string{
+			".pb.go", ".pb.rs", "_pb2.py", "_pb2_grpc.py",
+			".generated.go", "_generated.go", ".gen.go",
+			".min.js", ".min.css",
+		},
+	}
+}
 
-// generatedSegments are directory names whose subtree is committed machine-
-// generated code (e.g. datafusion's protobuf under src/generated/*.rs, which is
-// named nothing like a .pb.rs). The sibling generator dir (gen/) is real source
-// and deliberately not matched.
-var generatedSegments = []string{"generated/"}
+// extend returns the rules with extra entries appended — config extends the
+// built-in defaults rather than replacing them.
+func (r SkipRules) extend(extra SkipRules) SkipRules {
+	cat := func(a, b []string) []string { return append(append([]string{}, a...), b...) }
+	return SkipRules{
+		Lockfiles:         cat(r.Lockfiles, extra.Lockfiles),
+		VendoredSegments:  cat(r.VendoredSegments, dirSegments(extra.VendoredSegments)),
+		GeneratedSegments: cat(r.GeneratedSegments, dirSegments(extra.GeneratedSegments)),
+		GeneratedSuffixes: cat(r.GeneratedSuffixes, extra.GeneratedSuffixes),
+	}
+}
 
-var generatedSuffixes = []string{
-	".pb.go", ".pb.rs", "_pb2.py", "_pb2_grpc.py",
-	".generated.go", "_generated.go", ".gen.go",
-	".min.js", ".min.css",
+// classify marks a path as machine-generated / vendored / lock, or shown.
+func (r SkipRules) classify(path string) (string, bool) {
+	base := path
+	if i := strings.LastIndexByte(path, '/'); i >= 0 {
+		base = path[i+1:]
+	}
+	for _, lf := range r.Lockfiles {
+		if base == lf {
+			return "lockfile", true
+		}
+	}
+	if hasSegment(path, r.VendoredSegments) {
+		return "vendored", true
+	}
+	if hasSegment(path, r.GeneratedSegments) {
+		return "generated", true
+	}
+	for _, suf := range r.GeneratedSuffixes {
+		if strings.HasSuffix(base, suf) {
+			return "generated", true
+		}
+	}
+	return "", false
+}
+
+// dirSegments normalizes user-supplied directory names to the trailing-slash
+// form hasSegment matches on ("vendor" -> "vendor/").
+func dirSegments(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s = strings.TrimSpace(s); s == "" {
+			continue
+		}
+		if !strings.HasSuffix(s, "/") {
+			s += "/"
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 func hasSegment(path string, segs []string) bool {
@@ -139,29 +207,20 @@ func hasSegment(path string, segs []string) bool {
 	return false
 }
 
-// classifyFile marks machine-generated / vendored / lock files whose diffs cost
-// tokens but carry little review signal. Returns a reason and true to skip.
-// Note: test snapshots (.snap) and sqllogictest data (.slt) are deliberately
-// NOT skipped — a snapshot/expected-output diff is often the review subject.
-func classifyFile(path string) (string, bool) {
-	base := path
-	if i := strings.LastIndexByte(path, '/'); i >= 0 {
-		base = path[i+1:]
+// skipRulesFromConfig builds the effective classifier: the built-in defaults
+// extended with the config's diff.skip lists.
+func skipRulesFromConfig(cfg *config.Config) SkipRules {
+	rules := DefaultSkipRules()
+	if cfg == nil {
+		return rules
 	}
-	switch {
-	case lockFiles[base]:
-		return "lockfile", true
-	case hasSegment(path, vendorSegments):
-		return "vendored", true
-	case hasSegment(path, generatedSegments):
-		return "generated", true
-	}
-	for _, suf := range generatedSuffixes {
-		if strings.HasSuffix(base, suf) {
-			return "generated", true
-		}
-	}
-	return "", false
+	s := cfg.Diff.Skip
+	return rules.extend(SkipRules{
+		Lockfiles:         s.Lockfiles,
+		VendoredSegments:  s.VendoredPaths,
+		GeneratedSegments: s.GeneratedPaths,
+		GeneratedSuffixes: s.GeneratedSuffixes,
+	})
 }
 
 // splitHunks groups a unified-diff patch into its leading header (if any) and
@@ -241,14 +300,14 @@ func countLines(s string) int {
 // ref) attached for context. The budget bounds total size: under pressure it
 // sheds full_content first (context), then whole patches (reason "budget") —
 // patches are ground truth, so they win the last tokens.
-func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string, b budget) (shown []PacketDiffFile, omitted []OmittedFile) {
+func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string, b budget, rules SkipRules) (shown []PacketDiffFile, omitted []OmittedFile) {
 	used := 0
 	for _, f := range files {
 		if f.Patch == "" { // GitHub omits patch for binary / very large files
 			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: "no-patch", Additions: f.Additions, Deletions: f.Deletions})
 			continue
 		}
-		if reason, skip := classifyFile(f.Filename); skip {
+		if reason, skip := rules.classify(f.Filename); skip {
 			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: reason, Additions: f.Additions, Deletions: f.Deletions})
 			continue
 		}
@@ -283,14 +342,15 @@ func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref strin
 // BuildPacket assembles a review packet from an already-derived record plus the
 // PR's net diff fetched via ff. The record carries the deterministic baseline
 // (acuity/effort/escalation/merge_state) so no re-derivation happens here.
-func BuildPacket(ff Fetcher, r *prr.Record) (Packet, error) {
+// rules is the effective file classifier (defaults extended by config).
+func BuildPacket(ff Fetcher, r *prr.Record, rules SkipRules) (Packet, error) {
 	owner, name := splitRepo(r.Repo)
 	files, err := ff.PullFiles(owner, name, r.Number)
 	if err != nil {
 		return Packet{}, err
 	}
 
-	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid, defaultBudget())
+	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid, defaultBudget(), rules)
 
 	var laneNote string
 	if r.Lane != "fresh" {
