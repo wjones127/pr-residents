@@ -76,10 +76,11 @@ func short(sha string) string {
 	return sha
 }
 
-// buildDelta assembles the re-review delta from already-fetched inputs (pure,
-// testable). cmp is compare(lastReviewed...head) (nil when no anchor / head
-// unchanged); prNetFull is the PR's net changed files with patches.
-func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff) Delta {
+// buildDelta assembles the re-review delta from already-fetched inputs. cmp is
+// compare(lastReviewed...head) (nil when no anchor / head unchanged); prNetFull
+// is the PR's net changed files with patches. cf (may be nil) enriches small
+// edited files with their full content at head.
+func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff, cf contentFetcher, owner, name string) Delta {
 	d := Delta{Base: lastReviewed, Head: head, Files: []PacketDiffFile{}}
 	if lastReviewed == "" {
 		d.Note = "no prior review by viewer; nothing to anchor a delta on"
@@ -130,7 +131,7 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 		}
 		resolved = append(resolved, f)
 	}
-	d.Files, d.Omitted = assembleDiff(resolved)
+	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head)
 	if d.Files == nil {
 		d.Files = []PacketDiffFile{}
 	}
@@ -163,7 +164,7 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacke
 			return ReReviewPacket{}, err
 		}
 	}
-	delta := buildDelta(last, head, cmp, net)
+	delta := buildDelta(last, head, cmp, net, f, owner, name)
 
 	// CI/mergeability computed with the same mapping as the synced record.
 	msDetail := &gh.Detail{

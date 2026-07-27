@@ -8,8 +8,12 @@ post to GitHub.
 ## What to do
 
 1. **Read the diff and find, tied to ground truth.** Every finding must anchor
-   to a `file:line`, a test, or a call site that appears in the packet. Look
-   hardest where the path-only baseline can't see:
+   to a `file:line`, a test, or a call site that appears in the packet. The
+   `patch` is the ground truth for **what changed**; when a file also carries
+   `full_content` (small edited files), that is the whole head-side file for
+   surrounding context and **accurate head line numbers** — anchor `RIGHT`-side
+   comments to those line numbers. Look hardest where the path-only baseline
+   can't see:
    - Refine `acuity.risk` from the actual content: concurrency / `unsafe`, IO
      correctness (format read/write, serialization, checksums), error/panic
      paths, API or wire-compat breakage. The baseline never asserts `high` — that

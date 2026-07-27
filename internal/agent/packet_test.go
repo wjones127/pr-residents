@@ -9,8 +9,9 @@ import (
 )
 
 type fakeFetcher struct {
-	files []gh.FileDiff
-	err   error
+	files   []gh.FileDiff
+	err     error
+	content map[string]string // path -> full head content
 }
 
 func (f fakeFetcher) PullFiles(owner, name string, number int) ([]gh.FileDiff, error) {
@@ -25,6 +26,10 @@ func (f fakeFetcher) Compare(owner, name, base, head string) (gh.CompareResult, 
 
 func (f fakeFetcher) FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error) {
 	return gh.ReReviewPR{}, nil
+}
+
+func (f fakeFetcher) FileContent(owner, name, path, ref string) (string, error) {
+	return f.content[path], nil
 }
 
 func omittedReason(omitted []OmittedFile, path string) (string, bool) {
@@ -82,6 +87,38 @@ func TestBuildPacketPartitionsAndTruncates(t *testing.T) {
 	}
 	if p.LaneNote != "" {
 		t.Errorf("fresh lane should have no lane note, got %q", p.LaneNote)
+	}
+}
+
+func TestBuildPacketAttachesFullContentForSmallFiles(t *testing.T) {
+	small := "package x\n\nfunc A() {}\n"                  // 3 lines, modified -> attached
+	huge := strings.Repeat("line\n", smallFileMaxLines+10) // exceeds cap -> not attached
+	ff := fakeFetcher{
+		files: []gh.FileDiff{
+			{Filename: "small.go", Status: "modified", Additions: 2, Deletions: 1, Patch: "@@ -1 +1 @@\n-a\n+b"},
+			{Filename: "big.go", Status: "modified", Additions: 5, Deletions: 1, Patch: "@@ -1 +1 @@\n-a\n+b"},
+			{Filename: "new.go", Status: "added", Additions: 2, Patch: "@@ -0,0 +1,2 @@\n+a\n+b"},
+		},
+		content: map[string]string{"small.go": small, "big.go": huge, "new.go": "irrelevant\n"},
+	}
+	r := &prr.Record{Repo: "o/r", Number: 5, HeadOid: "abc", Lane: "fresh"}
+
+	p, err := BuildPacket(ff, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]PacketDiffFile{}
+	for _, f := range p.Diff.Files {
+		byPath[f.Path] = f
+	}
+	if got := byPath["small.go"]; got.FullContent != small || got.FullContentLines != 3 {
+		t.Errorf("small.go should carry full content (3 lines): content=%q lines=%d", got.FullContent, got.FullContentLines)
+	}
+	if got := byPath["big.go"]; got.FullContent != "" {
+		t.Errorf("big.go exceeds cap; should not carry full content, got %d bytes", len(got.FullContent))
+	}
+	if got := byPath["new.go"]; got.FullContent != "" {
+		t.Errorf("added file's patch is already the whole file; no full content expected")
 	}
 }
 

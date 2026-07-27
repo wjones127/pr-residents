@@ -30,14 +30,19 @@ type PacketPR struct {
 	BlockedOn    string `json:"blocked_on"`
 }
 
-// PacketDiffFile is one reviewable file's patch.
+// PacketDiffFile is one reviewable file's patch. For small modified files the
+// full head-side content is attached too: the patch stays the ground truth for
+// what changed, while full_content gives the surrounding code (and real head
+// line numbers) a bare hunk can't.
 type PacketDiffFile struct {
-	Path           string `json:"path"`
-	Status         string `json:"status"`
-	Additions      int    `json:"additions"`
-	Deletions      int    `json:"deletions"`
-	Patch          string `json:"patch"`
-	PatchTruncated bool   `json:"patch_truncated"`
+	Path             string `json:"path"`
+	Status           string `json:"status"`
+	Additions        int    `json:"additions"`
+	Deletions        int    `json:"deletions"`
+	Patch            string `json:"patch"`
+	PatchTruncated   bool   `json:"patch_truncated"`
+	FullContent      string `json:"full_content,omitempty"`
+	FullContentLines int    `json:"full_content_lines,omitempty"`
 }
 
 // OmittedFile is a changed file whose patch is not in the packet, with the
@@ -76,7 +81,18 @@ type Fetcher interface {
 	PullFiles(owner, name string, number int) ([]gh.FileDiff, error)
 	Compare(owner, name, base, head string) (gh.CompareResult, error)
 	FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error)
+	FileContent(owner, name, path, ref string) (string, error)
 }
+
+// contentFetcher is the slice of Fetcher used to enrich small files with their
+// full head-side content. A nil contentFetcher disables enrichment.
+type contentFetcher interface {
+	FileContent(owner, name, path, ref string) (string, error)
+}
+
+// smallFileMaxLines caps which modified files get full head-side content
+// attached — small enough that the whole file is cheap context.
+const smallFileMaxLines = 400
 
 var lockFiles = map[string]bool{
 	"package-lock.json": true, "yarn.lock": true, "pnpm-lock.yaml": true,
@@ -162,10 +178,35 @@ func truncatePatchToHunks(patch string, maxLines int) (string, bool) {
 	return strings.Join(append(kept, marker), "\n"), true
 }
 
+// wantsFullContent reports whether a file is a candidate for full head-side
+// content: an edit (not a pure add/delete) whose change is small enough that the
+// file plausibly fits under smallFileMaxLines. It bounds the fetch; the fetched
+// content's real line count is the definitive gate.
+func wantsFullContent(f gh.FileDiff) bool {
+	switch f.Status {
+	case "modified", "renamed", "changed":
+		return f.Additions+f.Deletions <= 2*smallFileMaxLines
+	}
+	return false
+}
+
+func countLines(s string) int {
+	if s == "" {
+		return 0
+	}
+	n := strings.Count(s, "\n")
+	if !strings.HasSuffix(s, "\n") {
+		n++
+	}
+	return n
+}
+
 // assembleDiff turns raw changed files into the packet's shown patches plus the
 // reasoned omitted list: binary/no-patch files, deliberately-skipped junk
 // (generated/vendored/lock), and oversized patches hunk-elided to a soft cap.
-func assembleDiff(files []gh.FileDiff) (shown []PacketDiffFile, omitted []OmittedFile) {
+// When cf is non-nil, small edited files get their full head-side content (at
+// ref) attached for context.
+func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string) (shown []PacketDiffFile, omitted []OmittedFile) {
 	for _, f := range files {
 		if f.Patch == "" { // GitHub omits patch for binary / very large files
 			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: "no-patch", Additions: f.Additions, Deletions: f.Deletions})
@@ -176,11 +217,20 @@ func assembleDiff(files []gh.FileDiff) (shown []PacketDiffFile, omitted []Omitte
 			continue
 		}
 		patch, truncated := truncatePatchToHunks(f.Patch, maxPatchLines)
-		shown = append(shown, PacketDiffFile{
+		pf := PacketDiffFile{
 			Path: f.Filename, Status: f.Status,
 			Additions: f.Additions, Deletions: f.Deletions,
 			Patch: patch, PatchTruncated: truncated,
-		})
+		}
+		if cf != nil && wantsFullContent(f) {
+			if content, err := cf.FileContent(owner, name, f.Filename, ref); err == nil && content != "" {
+				if n := countLines(content); n <= smallFileMaxLines {
+					pf.FullContent = content
+					pf.FullContentLines = n
+				}
+			}
+		}
+		shown = append(shown, pf)
 	}
 	return shown, omitted
 }
@@ -195,7 +245,7 @@ func BuildPacket(ff Fetcher, r *prr.Record) (Packet, error) {
 		return Packet{}, err
 	}
 
-	diffFiles, omitted := assembleDiff(files)
+	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid)
 
 	var laneNote string
 	if r.Lane != "fresh" {

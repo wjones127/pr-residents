@@ -8,14 +8,14 @@ import (
 )
 
 func TestBuildDeltaNoAnchor(t *testing.T) {
-	d := buildDelta("", "head", nil, nil)
+	d := buildDelta("", "head", nil, nil, nil, "o", "r")
 	if d.Note == "" || len(d.Files) != 0 {
 		t.Errorf("no-anchor delta: %+v", d)
 	}
 }
 
 func TestBuildDeltaHeadUnchanged(t *testing.T) {
-	d := buildDelta("same", "same", nil, nil)
+	d := buildDelta("same", "same", nil, nil, nil, "o", "r")
 	if d.Note != "head unchanged since last review; delta is empty" {
 		t.Errorf("head-unchanged note: %q", d.Note)
 	}
@@ -33,7 +33,7 @@ func TestBuildDeltaAheadScopesToNet(t *testing.T) {
 		},
 	}
 	net := []gh.FileDiff{{Filename: "a.go", Patch: "@@ a"}}
-	d := buildDelta("old", "head", cmp, net)
+	d := buildDelta("old", "head", cmp, net, nil, "o", "r")
 	if d.CompareStatus != "ahead" || d.AnchorOrphaned {
 		t.Errorf("status: %+v", d)
 	}
@@ -45,7 +45,7 @@ func TestBuildDeltaAheadScopesToNet(t *testing.T) {
 func TestBuildDeltaOrphanedAnchorFallsBackToNet(t *testing.T) {
 	cmp := &gh.CompareResult{Status: "diverged"} // rebase/force-push
 	net := []gh.FileDiff{{Filename: "a.go", Patch: "@@ real patch"}}
-	d := buildDelta("old", "head", cmp, net)
+	d := buildDelta("old", "head", cmp, net, nil, "o", "r")
 	if !d.AnchorOrphaned || len(d.Files) != 1 || d.Files[0].Path != "a.go" {
 		t.Errorf("orphaned anchor should fall back to net diff: %+v", d)
 	}
@@ -55,7 +55,7 @@ func TestBuildDeltaBackfillsPatchFromNet(t *testing.T) {
 	// Compare omits the patch (huge range); net carries the real one.
 	cmp := &gh.CompareResult{Status: "ahead", Files: []gh.FileDiff{{Filename: "a.go", Patch: ""}}}
 	net := []gh.FileDiff{{Filename: "a.go", Patch: "@@ real", Additions: 3}}
-	d := buildDelta("old", "head", cmp, net)
+	d := buildDelta("old", "head", cmp, net, nil, "o", "r")
 	if len(d.Files) != 1 || d.Files[0].Patch != "@@ real" || d.Files[0].Additions != 3 {
 		t.Errorf("patch backfill: %+v", d.Files)
 	}
@@ -92,6 +92,7 @@ func (f rrFetcher) Compare(owner, name, base, head string) (gh.CompareResult, er
 func (f rrFetcher) FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error) {
 	return f.pr, nil
 }
+func (f rrFetcher) FileContent(owner, name, path, ref string) (string, error) { return "", nil }
 
 func TestBuildReReviewPacket(t *testing.T) {
 	f := rrFetcher{
