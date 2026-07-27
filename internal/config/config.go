@@ -24,6 +24,22 @@ type Dispatch struct {
 	ModelRouting map[string]string `yaml:"model_routing"`
 }
 
+// DiffSkip lists extra file patterns whose diffs are low review signal and are
+// dropped from the review packet (surfaced in its omitted list, not shown).
+// These EXTEND the built-in defaults; they do not replace them. Vendored/
+// generated paths are matched as directory segments (a trailing "/" is implied).
+type DiffSkip struct {
+	Lockfiles         []string `yaml:"lockfiles"`
+	VendoredPaths     []string `yaml:"vendored_paths"`
+	GeneratedPaths    []string `yaml:"generated_paths"`
+	GeneratedSuffixes []string `yaml:"generated_suffixes"`
+}
+
+// Diff holds review-packet diff settings.
+type Diff struct {
+	Skip DiffSkip `yaml:"skip"`
+}
+
 // Config is the resolved pr-residents configuration.
 type Config struct {
 	Dir             string // the config directory; token file fallback lives under it
@@ -35,6 +51,7 @@ type Config struct {
 	SubscribedRepos []string
 	Interests       []string
 	Dispatch        Dispatch
+	Diff            Diff
 	Port            int
 }
 
@@ -81,6 +98,7 @@ type configFile struct {
 	SubscribedRepos []string `yaml:"subscribed_repos"`
 	Interests       []string `yaml:"interests"`
 	Dispatch        Dispatch `yaml:"dispatch"`
+	Diff            Diff     `yaml:"diff"`
 	Server          struct {
 		Port int `yaml:"port"`
 	} `yaml:"server"`
@@ -156,6 +174,7 @@ func Load(configDir string) (*Config, error) {
 		SubscribedRepos: cf.SubscribedRepos,
 		Interests:       cf.Interests,
 		Dispatch:        dispatch,
+		Diff:            cf.Diff,
 		Port:            port,
 	}, nil
 }

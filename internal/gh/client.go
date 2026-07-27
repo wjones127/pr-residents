@@ -2,10 +2,13 @@ package gh
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -210,6 +213,43 @@ func (c *Client) PullFiles(owner, name string, number int) ([]FileDiff, error) {
 		}
 	}
 	return files, nil
+}
+
+// FileContent returns the decoded UTF-8 text of a file at ref via the contents
+// API. It returns "" with a nil error when the blob is not inline base64 text
+// (e.g. a file over the API's ~1MB inline limit); callers treat full content as
+// best-effort context, so a miss is never fatal.
+func (c *Client) FileContent(owner, name, path, ref string) (string, error) {
+	p := fmt.Sprintf("/repos/%s/%s/contents/%s?ref=%s", owner, name, encodePath(path), url.QueryEscape(ref))
+	body, err := c.restGet(p)
+	if err != nil {
+		return "", err
+	}
+	var resp struct {
+		Content  string `json:"content"`
+		Encoding string `json:"encoding"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", err
+	}
+	if resp.Encoding != "base64" {
+		return "", nil
+	}
+	// The contents API wraps base64 at 60 columns with embedded newlines.
+	dec, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(resp.Content, "\n", ""))
+	if err != nil {
+		return "", err
+	}
+	return string(dec), nil
+}
+
+// encodePath percent-escapes each path segment while preserving the slashes.
+func encodePath(p string) string {
+	parts := strings.Split(p, "/")
+	for i, s := range parts {
+		parts[i] = url.PathEscape(s)
+	}
+	return strings.Join(parts, "/")
 }
 
 var retryableStatus = map[int]bool{403: true, 429: true, 502: true, 503: true}

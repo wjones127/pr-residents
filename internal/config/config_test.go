@@ -27,6 +27,12 @@ subscribed_repos:
   - lancedb/lancedb
 interests:
   - rust/lance-index
+diff:
+  skip:
+    lockfiles:
+      - deno.lock
+    generated_paths:
+      - autogen/
 env:
   github_token_prefix: GITHUB_TOKEN
 server:
@@ -65,6 +71,12 @@ func TestLoad(t *testing.T) {
 	}
 	if len(cfg.Interests) != 1 || cfg.Interests[0] != "rust/lance-index" {
 		t.Errorf("interests: %+v", cfg.Interests)
+	}
+	if got := cfg.Diff.Skip.Lockfiles; len(got) != 1 || got[0] != "deno.lock" {
+		t.Errorf("diff.skip.lockfiles: %+v", got)
+	}
+	if got := cfg.Diff.Skip.GeneratedPaths; len(got) != 1 || got[0] != "autogen/" {
+		t.Errorf("diff.skip.generated_paths: %+v", got)
 	}
 	if cfg.GithubLogin != "wjones127" {
 		t.Errorf("github_login: %q", cfg.GithubLogin)

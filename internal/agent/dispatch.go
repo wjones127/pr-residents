@@ -56,6 +56,7 @@ type workItem struct {
 	fetcher Fetcher
 	viewer  string
 	model   string
+	rules   SkipRules
 }
 
 // Dispatch runs review workups over the fresh/re_review PRs in records, at
@@ -71,6 +72,8 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 	if progress != nil {
 		emit = progress
 	}
+
+	rules := skipRulesFromConfig(cfg)
 
 	var needing []*prr.Record
 	for _, r := range records {
@@ -140,7 +143,7 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 			fetchers[owner] = ff
 			viewers[owner] = viewer
 		}
-		work = append(work, workItem{rec: r, fetcher: ff, viewer: viewers[owner], model: ModelFor(cfg.Dispatch, r)})
+		work = append(work, workItem{rec: r, fetcher: ff, viewer: viewers[owner], model: ModelFor(cfg.Dispatch, r), rules: rules})
 	}
 
 	workers := cfg.Dispatch.Concurrency
@@ -198,13 +201,13 @@ func Dispatch(ctx context.Context, cfg *config.Config, st *store.FileStore, ag W
 func reviewOne(ctx context.Context, ag WorkupAgent, st *store.FileStore, now time.Time, it workItem) (SOAP, error) {
 	var prompt string
 	if it.rec.Lane == "re_review" {
-		pkt, err := BuildReReviewPacket(it.fetcher, it.rec, it.viewer)
+		pkt, err := BuildReReviewPacket(it.fetcher, it.rec, it.viewer, it.rules)
 		if err != nil {
 			return SOAP{}, err
 		}
 		prompt = reReviewPrompt(pkt)
 	} else {
-		pkt, err := BuildPacket(it.fetcher, it.rec)
+		pkt, err := BuildPacket(it.fetcher, it.rec, it.rules)
 		if err != nil {
 			return SOAP{}, err
 		}

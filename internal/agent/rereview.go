@@ -26,6 +26,7 @@ type Delta struct {
 	Base                   string           `json:"base"`
 	Head                   string           `json:"head"`
 	Files                  []PacketDiffFile `json:"files"`
+	Omitted                []OmittedFile    `json:"omitted"`
 	CommitCount            int              `json:"commit_count"`
 	FilesOffBranchExcluded int              `json:"files_off_branch_excluded"`
 	AnchorOrphaned         bool             `json:"anchor_orphaned"`
@@ -75,10 +76,11 @@ func short(sha string) string {
 	return sha
 }
 
-// buildDelta assembles the re-review delta from already-fetched inputs (pure,
-// testable). cmp is compare(lastReviewed...head) (nil when no anchor / head
-// unchanged); prNetFull is the PR's net changed files with patches.
-func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff) Delta {
+// buildDelta assembles the re-review delta from already-fetched inputs. cmp is
+// compare(lastReviewed...head) (nil when no anchor / head unchanged); prNetFull
+// is the PR's net changed files with patches. cf (may be nil) enriches small
+// edited files with their full content at head.
+func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh.FileDiff, cf contentFetcher, owner, name string, rules SkipRules) Delta {
 	d := Delta{Base: lastReviewed, Head: head, Files: []PacketDiffFile{}}
 	if lastReviewed == "" {
 		d.Note = "no prior review by viewer; nothing to anchor a delta on"
@@ -120,28 +122,26 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 		d.Note = fmt.Sprintf("prior-review anchor %s is orphaned (compare status=%s: branch rebased/force-pushed) — showing full PR net diff, verify conditions fresh-eyes", short(lastReviewed), d.CompareStatus)
 	}
 
+	resolved := make([]gh.FileDiff, 0, len(kept))
 	for _, f := range kept {
-		patch := f.Patch
-		if patch == "" { // backfill patch/counts from the net diff (orphaned-anchor case)
+		if f.Patch == "" { // backfill patch/counts from the net diff (orphaned-anchor case)
 			if alt, ok := netByPath[f.Filename]; ok && alt.Patch != "" {
 				f = alt
-				patch = alt.Patch
 			}
 		}
-		p, truncated := truncatePatch(patch)
-		d.Files = append(d.Files, PacketDiffFile{
-			Path: f.Filename, Status: f.Status,
-			Additions: f.Additions, Deletions: f.Deletions,
-			Patch: p, PatchTruncated: truncated,
-		})
+		resolved = append(resolved, f)
+	}
+	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head, defaultBudget(), rules)
+	if d.Files == nil {
+		d.Files = []PacketDiffFile{}
 	}
 	return d
 }
 
 // BuildReReviewPacket assembles a re-review packet: the reconstructed conditions
 // ledger plus the commit-anchored delta. viewer identifies whose reviews/threads
-// anchor the ledger and delta.
-func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacket, error) {
+// anchor the ledger and delta. rules is the effective file classifier.
+func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string, rules SkipRules) (ReReviewPacket, error) {
 	owner, name := splitRepo(r.Repo)
 	pr, err := f.FetchReReviewData(owner, name, r.Number)
 	if err != nil {
@@ -164,7 +164,7 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string) (ReReviewPacke
 			return ReReviewPacket{}, err
 		}
 	}
-	delta := buildDelta(last, head, cmp, net)
+	delta := buildDelta(last, head, cmp, net, f, owner, name, rules)
 
 	// CI/mergeability computed with the same mapping as the synced record.
 	msDetail := &gh.Detail{

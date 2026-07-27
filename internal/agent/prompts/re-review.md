@@ -35,6 +35,13 @@ last looked introduce something new and bad?** A fix to one condition can break
 something that was never on the list. Surface new findings as draft `issue(...)`
 comments with acceptance criteria.
 
+The `patch` is the ground truth for what changed since your last look; a file's
+`full_content` (present for small edited files) is the whole head-side file for
+surrounding context and accurate head line numbers — anchor `RIGHT`-side
+comments to those. `delta.omitted` lists changed files whose patch isn't in the
+packet, each with a `reason` (`no-patch`/`lockfile`/`generated`/`vendored`/
+`budget`); you did not read those.
+
 When you draft a fresh-eyes comment and the fix is a small, unambiguous drop-in
 (a simplification, a redundant branch, a stdlib one-liner), fill the `suggestion`
 field so it renders as a committable GitHub ```suggestion``` block — show the
