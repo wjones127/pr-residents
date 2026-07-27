@@ -41,6 +41,12 @@ details.soap[open]>summary::after{content:"▾ SOAP"}
 .cloc:hover{text-decoration:underline}
 .copy-btn{margin-left:auto;font:600 11px/1 inherit;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);border-radius:5px;padding:3px 10px;cursor:pointer}
 .copy-btn:hover{border-color:#3a4150;color:var(--text)}.copy-btn.ok{color:var(--green);border-color:var(--green)}
+.cmt-sel{margin:0;accent-color:var(--green);cursor:pointer;flex:0 0 auto}
+.push-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;background:var(--panel);border:1px dashed var(--border);border-radius:7px}
+.push-all{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer}.push-all input{accent-color:var(--green);cursor:pointer}
+.push-btn{font:600 11px/1 inherit;color:var(--green);background:var(--panel-2);border:1px solid #1f6f34;border-radius:6px;padding:5px 12px;cursor:pointer}
+.push-btn:hover{background:#122a18}.push-btn:disabled{opacity:.55;cursor:default}
+.push-status{font-size:11.5px;color:var(--faint)}.push-status.ok,.push-status.ok a{color:var(--green)}.push-status.err{color:var(--red)}
 .cmt-b{font-size:12.5px;color:var(--text);line-height:1.5}
 .md>:first-child{margin-top:0}.md>:last-child{margin-bottom:0}
 .md p{margin:0 0 8px}

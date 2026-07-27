@@ -148,6 +148,80 @@
     }
   });
 
+  // Push selected draft comments to GitHub as a pending (unsubmitted) review.
+  // Delegated so it survives lanes fragment swaps.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".push-btn");
+    if (!b) return;
+    var bar = b.closest(".push-bar");
+    var box = b.closest(".cmts");
+    if (!bar || !box) return;
+    var out = bar.querySelector(".push-status");
+    var sel = Array.prototype.slice
+      .call(box.querySelectorAll(".cmt-sel:checked"))
+      .map(function (c) { return +c.dataset.i; });
+    if (!sel.length) {
+      out.textContent = "select at least one comment";
+      out.className = "push-status err";
+      return;
+    }
+    b.disabled = true;
+    out.textContent = "pushing…";
+    out.className = "push-status";
+    fetch("/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repo: bar.dataset.repo,
+        number: +bar.dataset.number,
+        sha: bar.dataset.sha,
+        comments: sel,
+      }),
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return { ok: false, error: "HTTP " + r.status }; });
+      })
+      .then(function (res) {
+        b.disabled = false;
+        if (res.ok) {
+          out.className = "push-status ok";
+          out.textContent = "";
+          var a = document.createElement("a");
+          a.href = res.url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = "pending review created — submit on GitHub ↗";
+          out.appendChild(a);
+        } else {
+          out.className = "push-status err";
+          out.textContent = "error: " + (res.error || "unknown");
+        }
+      })
+      .catch(function (err) {
+        b.disabled = false;
+        out.className = "push-status err";
+        out.textContent = "error: " + err;
+      });
+  });
+
+  // Keep the per-workup "all" checkbox and its comment checkboxes in sync.
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t.classList) return;
+    var box = t.closest && t.closest(".cmts");
+    if (!box) return;
+    if (t.classList.contains("cmt-all")) {
+      box.querySelectorAll(".cmt-sel").forEach(function (c) { c.checked = t.checked; });
+    } else if (t.classList.contains("cmt-sel")) {
+      var all = box.querySelector(".cmt-all");
+      if (all) {
+        var total = box.querySelectorAll(".cmt-sel").length;
+        var on = box.querySelectorAll(".cmt-sel:checked").length;
+        all.checked = total === on;
+      }
+    }
+  });
+
   refresh.addEventListener("click", function () {
     status.textContent = "starting…"; bar.style.width = "0%"; tokens.textContent = "";
     fetch("/refresh", { method: "POST" });

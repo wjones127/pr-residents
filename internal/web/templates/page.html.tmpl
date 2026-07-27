@@ -20,7 +20,7 @@
       <span id="tokens" class="tokens"></span>
     </div>
     <div id="lanes">{{template "lanes" .}}</div>
-    <footer>Deterministic pre-assembly (pr-sync). Refresh re-fetches review-relevant PRs and re-derives lanes; Triage re-ranks self-requested candidates separately. No writes to GitHub.</footer>
+    <footer>Deterministic pre-assembly (pr-sync). Refresh re-fetches review-relevant PRs and re-derives lanes; Triage re-ranks self-requested candidates separately. The only write to GitHub is Push, which creates an unsubmitted <b>pending</b> review — you submit it yourself on GitHub.</footer>
   </div>
   <script>{{js}}</script>
 </body>

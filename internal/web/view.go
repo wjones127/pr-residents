@@ -46,6 +46,13 @@ type WorkupView struct {
 	SummaryHTML    template.HTML
 	SummaryCopyID  string
 	Comments       []CommentCard
+	// Push target: the PR identity and the head SHA the workup was cached
+	// against, sent verbatim to POST /review. Inline is the count of postable
+	// (file-anchored) comments — the push bar is shown only when it is > 0.
+	Repo   string
+	Number int
+	SHA    string
+	Inline int
 }
 
 // CommentCard is one draft comment with a copy button and deep link. BodyHTML is
@@ -62,6 +69,8 @@ type CommentCard struct {
 	Blocking   bool
 	CopyID     string
 	CopyText   string
+	Index      int  // position in the workup's Comments, sent to POST /review
+	Inline     bool // has a path/line: postable as an inline review comment
 }
 
 var labelClass = map[string]string{
@@ -144,6 +153,9 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 		Summary:        summary,
 		SummaryHTML:    renderMarkdown(summary),
 		SummaryCopyID:  "s-" + base,
+		Repo:           repo,
+		Number:         number,
+		SHA:            doc.SHA,
 	}
 	for i, c := range doc.Comments {
 		card := CommentCard{
@@ -155,6 +167,8 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 			Blocking:   c.Blocking && (c.Label == "issue" || c.Label == "question"),
 			CopyID:     fmt.Sprintf("c-%s-%d", base, i),
 			CopyText:   copyText(c),
+			Index:      i,
+			Inline:     c.Path != "",
 		}
 		if c.Path != "" {
 			loc := c.Path
@@ -163,6 +177,7 @@ func buildWorkupView(repo string, number int, doc agent.WorkupDoc) *WorkupView {
 			}
 			card.LocText = loc
 			card.DeepLink = fmt.Sprintf("https://github.com/%s/pull/%d/files#%s", repo, number, diffAnchor(c.Path, c.Line, c.Side))
+			wv.Inline++
 		} else {
 			card.LocText = "review-level"
 		}

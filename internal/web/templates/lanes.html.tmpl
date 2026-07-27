@@ -1,5 +1,5 @@
 {{define "commentcard"}}      <div class="cmt{{if .Blocking}} blk{{end}}">
-        <div class="cmt-h"><span class="clabel {{.LabelClass}}">{{.Label}}{{.LabelDeco}}</span>{{if .DeepLink}}<a class="cloc" href="{{.DeepLink}}" title="jump to the exact line in Files changed">{{.LocText}} ↗</a>{{else}}<span class="cloc">{{.LocText}}</span>{{end}}<button class="copy-btn" data-t="{{.CopyID}}">Copy</button></div>
+        <div class="cmt-h">{{if .Inline}}<input type="checkbox" class="cmt-sel" checked data-i="{{.Index}}" title="include in the pending review">{{end}}<span class="clabel {{.LabelClass}}">{{.Label}}{{.LabelDeco}}</span>{{if .DeepLink}}<a class="cloc" href="{{.DeepLink}}" title="jump to the exact line in Files changed">{{.LocText}} ↗</a>{{else}}<span class="cloc">{{.LocText}}</span>{{end}}<button class="copy-btn" data-t="{{.CopyID}}">Copy</button></div>
         <div class="cmt-b md">{{.BodyHTML}}</div>
         {{if .Suggestion}}<div class="csug"><span class="csug-h">suggested replacement</span><pre>{{.Suggestion}}</pre></div>{{end}}
         <pre class="copy-src" id="{{.CopyID}}" hidden>{{.CopyText}}</pre>
@@ -16,7 +16,9 @@
         <summary>{{if .Recommendation}}<span class="rec rec-{{.Recommendation}}">{{.Recommendation}}</span> {{end}}{{.HeadLabel}}</summary>
         <div class="soap-body">
           {{if .Summary}}<div class="cmt summary"><div class="cmt-h"><span class="clabel l-summary">review summary</span><button class="copy-btn" data-t="{{.SummaryCopyID}}">Copy</button></div><div class="cmt-b md">{{.SummaryHTML}}</div><pre class="copy-src" id="{{.SummaryCopyID}}" hidden>{{.Summary}}</pre></div>{{end}}
-          {{if .Comments}}<div class="cmts">{{range .Comments}}{{template "commentcard" .}}{{end}}</div>{{end}}
+          {{if .Comments}}<div class="cmts">{{if gt .Inline 0}}
+          <div class="push-bar" data-repo="{{.Repo}}" data-number="{{.Number}}" data-sha="{{.SHA}}"><label class="push-all"><input type="checkbox" class="cmt-all" checked> all {{.Inline}} inline</label><button type="button" class="push-btn">▲ Push to GitHub (pending)</button><span class="push-status"></span></div>{{end}}
+{{range .Comments}}{{template "commentcard" .}}{{end}}</div>{{end}}
         </div>
       </details>{{end}}
     </div>
