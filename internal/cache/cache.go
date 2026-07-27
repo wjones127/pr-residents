@@ -6,6 +6,8 @@ package cache
 import (
 	"database/sql"
 	"encoding/json"
+	"sync"
+	"time"
 
 	_ "modernc.org/sqlite" // pure-Go sqlite driver
 
@@ -25,6 +27,12 @@ type Cache interface {
 	EnsureFingerprint(fingerprint string) error
 	Get(repo string, number int) (*Entry, error)
 	Put(repo string, number int, updatedAt, headOid string, record *prr.Record) error
+	// GetMergedCount returns an author's cached merged-PR count and when it was
+	// fetched; ok is false on a miss. Freshness policy is the caller's — the
+	// cache only records the value and its timestamp. Independent of the record
+	// fingerprint (raw GitHub data), so it survives EnsureFingerprint.
+	GetMergedCount(repo, author string) (count int, fetchedAt time.Time, ok bool, err error)
+	PutMergedCount(repo, author string, count int, fetchedAt time.Time) error
 	Close() error
 }
 
@@ -52,6 +60,16 @@ func OpenSQLite(path string) (*SQLiteCache, error) {
 			PRIMARY KEY (repo, number)
 		)`,
 		`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+		// Author merged-PR counts change slowly, so they persist across runs with
+		// a caller-applied TTL. Kept separate from pr_cache so EnsureFingerprint's
+		// wipe (a derivation-logic change) does not discard this raw GitHub fact.
+		`CREATE TABLE IF NOT EXISTS merged_count (
+			repo       TEXT NOT NULL,
+			author     TEXT NOT NULL,
+			count      INTEGER NOT NULL,
+			fetched_at TEXT NOT NULL,
+			PRIMARY KEY (repo, author)
+		)`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {
@@ -111,20 +129,61 @@ func (c *SQLiteCache) Put(repo string, number int, updatedAt, headOid string, re
 	return err
 }
 
+func (c *SQLiteCache) GetMergedCount(repo, author string) (int, time.Time, bool, error) {
+	var count int
+	var fetchedAt string
+	err := c.db.QueryRow(
+		"SELECT count, fetched_at FROM merged_count WHERE repo = ? AND author = ?",
+		repo, author).Scan(&count, &fetchedAt)
+	if err == sql.ErrNoRows {
+		return 0, time.Time{}, false, nil
+	}
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	t, err := time.Parse(time.RFC3339, fetchedAt)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	return count, t, true, nil
+}
+
+func (c *SQLiteCache) PutMergedCount(repo, author string, count int, fetchedAt time.Time) error {
+	_, err := c.db.Exec(
+		`INSERT INTO merged_count (repo, author, count, fetched_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(repo, author) DO UPDATE SET
+			count = excluded.count,
+			fetched_at = excluded.fetched_at`,
+		repo, author, count, fetchedAt.UTC().Format(time.RFC3339))
+	return err
+}
+
 func (c *SQLiteCache) Close() error { return c.db.Close() }
 
-// Memory is an in-memory Cache for tests and --no-cache runs.
+// mcEntry is a cached merged-count value with its fetch time.
+type mcEntry struct {
+	count     int
+	fetchedAt time.Time
+}
+
+// Memory is an in-memory Cache for tests and --no-cache runs. Its methods are
+// called from Sync's fetch workers, so all access is mutex-guarded.
 type Memory struct {
+	mu      sync.Mutex
 	fp      string
 	entries map[[2]any]*Entry
+	merged  map[[2]any]mcEntry
 }
 
 // NewMemory returns an empty in-memory cache.
 func NewMemory() *Memory {
-	return &Memory{entries: map[[2]any]*Entry{}}
+	return &Memory{entries: map[[2]any]*Entry{}, merged: map[[2]any]mcEntry{}}
 }
 
 func (m *Memory) EnsureFingerprint(fingerprint string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.fp != fingerprint {
 		m.entries = map[[2]any]*Entry{}
 		m.fp = fingerprint
@@ -133,11 +192,29 @@ func (m *Memory) EnsureFingerprint(fingerprint string) error {
 }
 
 func (m *Memory) Get(repo string, number int) (*Entry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.entries[[2]any{repo, number}], nil
 }
 
 func (m *Memory) Put(repo string, number int, updatedAt, headOid string, record *prr.Record) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.entries[[2]any{repo, number}] = &Entry{UpdatedAt: updatedAt, Record: record}
+	return nil
+}
+
+func (m *Memory) GetMergedCount(repo, author string) (int, time.Time, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.merged[[2]any{repo, author}]
+	return e.count, e.fetchedAt, ok, nil
+}
+
+func (m *Memory) PutMergedCount(repo, author string, count int, fetchedAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.merged[[2]any{repo, author}] = mcEntry{count: count, fetchedAt: fetchedAt}
 	return nil
 }
 

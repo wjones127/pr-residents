@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wjones127/pr-residents/internal/cache"
@@ -68,9 +69,36 @@ func splitRepo(repo string) (owner, name string) {
 	return repo, ""
 }
 
+// detailConcurrency bounds the parallel per-PR detail/merged-count fetches.
+// Modest on purpose: GitHub's GraphQL secondary rate limits punish bursts, and
+// this pool spans ALL repos, so it also caps total in-flight detail requests.
+const detailConcurrency = 8
+
+// mergedCountTTL is how long a cached author merged-count stays fresh. Merge
+// history moves slowly, so a count that's stale by up to a week is fine and
+// saves a search round-trip per author on nearly every refresh.
+const mergedCountTTL = 7 * 24 * time.Hour
+
+// repoWork is a repo's resolved client plus its searched PR set, carried from
+// the search phase into the shared detail phase.
+type repoWork struct {
+	repo, owner, name, viewer string
+	client                    API
+	mergedCount               func(author string) *int
+	light                     map[int]gh.LightPR
+	requested                 map[int]bool
+	numbers                   []int
+}
+
 // Sync fetches and derives PRRecords for the config's active repos. newClient
 // builds an API bound to a per-org token. Non-fatal problems are returned as
 // warnings (a failed repo or PR is reported, never aborts the run).
+//
+// Two phases, each parallel: (1) resolve per-owner clients and search every
+// repo concurrently; (2) fan every PR across the configured repos through one
+// shared detail worker pool. A single pool (rather than one per repo) keeps
+// workers busy when repos are unevenly sized and bounds total in-flight
+// requests. Output order is deterministic: repos in config order, PRs by number.
 func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, now time.Time, progress ...ProgressFunc) ([]*prr.Record, []string) {
 	emit := func(Event) {}
 	if len(progress) > 0 && progress[0] != nil {
@@ -78,138 +106,296 @@ func Sync(cfg *config.Config, newClient func(token string) API, c cache.Cache, n
 	}
 
 	var warns []string
-	if err := c.EnsureFingerprint(Fingerprint(cfg.Escalation)); err != nil {
-		warns = append(warns, fmt.Sprintf("[warn] cache fingerprint: %v", err))
+	var warnsMu sync.Mutex
+	warn := func(format string, args ...any) {
+		warnsMu.Lock()
+		warns = append(warns, fmt.Sprintf(format, args...))
+		warnsMu.Unlock()
 	}
 
-	clients := map[string]API{}
-	viewers := map[string]string{}
-	mergedCounts := map[string]int{} // "repo\x00author" -> merged PR count
-	var records []*prr.Record
+	if err := c.EnsureFingerprint(Fingerprint(cfg.Escalation)); err != nil {
+		warn("[warn] cache fingerprint: %v", err)
+	}
 
 	repos := cfg.ActiveRepos()
+	clients, viewers := resolveClients(cfg, newClient, repos, warn)
+
+	// Phase 1: search every repo concurrently. Results are indexed by repo order
+	// so the assembled work list (and thus the output) stays deterministic.
+	works := make([]*repoWork, len(repos))
+	var searchDone int
+	var searchMu sync.Mutex
+	var swg sync.WaitGroup
 	for repoIdx, repo := range repos {
-		emit(Event{Phase: "search", Repo: repo, Done: repoIdx, Total: len(repos)})
 		owner, name := splitRepo(repo)
-		token := cfg.TokenFor(owner)
-		if token == "" {
-			warns = append(warns, fmt.Sprintf("[skip] %s: $%s not set", repo, cfg.EnvVarFor(owner)))
-			continue
-		}
-		if _, ok := clients[owner]; !ok {
-			api := newClient(token)
-			viewer, err := api.ViewerLogin()
-			if err != nil {
-				warns = append(warns, fmt.Sprintf("[error] %s: auth/viewer failed: %v", repo, err))
-				continue
-			}
-			clients[owner] = api
-			viewers[owner] = viewer
-		}
 		client := clients[owner]
-		viewer := viewers[owner]
-
-		// Light pass: which PRs are relevant, and which changed since last sync.
-		light := map[int]gh.LightPR{}
-		requested := map[int]bool{}
-		failed := false
-		for _, cat := range categories {
-			hits, err := client.SearchLight(fmt.Sprintf("repo:%s is:open is:pr %s", repo, cat.qual))
-			if err != nil {
-				warns = append(warns, fmt.Sprintf("[error] %s: search failed: %v", repo, err))
-				failed = true
-				break
-			}
-			for _, h := range hits {
-				light[h.Number] = h
-				if cat.name == "requested" {
-					requested[h.Number] = true
-				}
-			}
+		if client == nil {
+			continue // no token / auth failed — already warned by resolveClients
 		}
-		if failed {
+		swg.Add(1)
+		go func(repoIdx int, repo, owner, name string) {
+			defer swg.Done()
+			light, requested, err := searchRepo(client, repo)
+			searchMu.Lock()
+			searchDone++
+			emit(Event{Phase: "search", Repo: repo, Done: searchDone, Total: len(repos)})
+			searchMu.Unlock()
+			if err != nil {
+				warn("[error] %s: search failed: %v", repo, err)
+				return
+			}
+			works[repoIdx] = &repoWork{
+				repo: repo, owner: owner, name: name, viewer: viewers[owner],
+				client:      client,
+				mergedCount: newMergedCounter(client, c, repo, viewers[owner], now, warn),
+				light:       light, requested: requested, numbers: sortedNumbers(light),
+			}
+		}(repoIdx, repo, owner, name)
+	}
+	swg.Wait()
+
+	// Barrier: flatten into one work list in (repo order, PR number) order.
+	type item struct {
+		rw     *repoWork
+		number int
+	}
+	var work []item
+	for _, rw := range works {
+		if rw == nil {
 			continue
 		}
+		for _, n := range rw.numbers {
+			work = append(work, item{rw: rw, number: n})
+		}
+	}
 
-		numbers := sortedNumbers(light)
-		for i, number := range numbers {
-			emit(Event{Phase: "detail", Repo: repo, Done: i + 1, Total: len(numbers)})
-			lr := light[number]
-			req := requested[number]
+	// Phase 2: one shared pool over every PR, with a single global progress
+	// counter. out is index-keyed, so completion order does not affect output.
+	out := make([]*prr.Record, len(work))
+	var done int
+	var mu sync.Mutex
+	jobs := make(chan int)
+	var wg sync.WaitGroup
+	for w := 0; w < detailConcurrency; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				rec := buildRecord(c, cfg, now, work[i].rw, work[i].number, warn)
+				mu.Lock()
+				out[i] = rec
+				done++
+				emit(Event{Phase: "detail", Done: done, Total: len(work)})
+				mu.Unlock()
+			}
+		}()
+	}
+	for i := range work {
+		jobs <- i
+	}
+	close(jobs)
+	wg.Wait()
 
-			var record *prr.Record
-			entry, err := c.Get(repo, number)
-			if err != nil {
-				warns = append(warns, fmt.Sprintf("[warn] %s#%d: cache read: %v", repo, number, err))
-			}
-			// Reuse the cached record only when the PR is unchanged AND its
-			// requested-status is the same. `requested` flipping (e.g. you just
-			// added yourself as a reviewer) changes blocked_on/lane, which the
-			// cached record was NOT derived with — so re-fetch and re-derive.
-			if entry != nil && entry.UpdatedAt == lr.UpdatedAt &&
-				entry.Record != nil && entry.Record.Relevance.Requested == req {
-				record = entry.Record
-			} else {
-				detail, dwarns, err := client.FetchDetail(owner, name, number)
-				if err != nil {
-					warns = append(warns, fmt.Sprintf("[error] %s#%d: detail failed: %v", repo, number, err))
-					continue
-				}
-				for _, w := range dwarns {
-					warns = append(warns, fmt.Sprintf("[warn] %s#%d: %s", repo, number, w))
-				}
-				if detail == nil {
-					warns = append(warns, fmt.Sprintf("[warn] %s#%d: detail missing, skipped", repo, number))
-					continue
-				}
-				mergedCount := authorMergedCount(client, repo, detail, viewer, mergedCounts, &warns)
-				record = derive.BuildRecord(detail, viewer, req, cfg.Escalation, now, mergedCount)
-				if record != nil {
-					record.Repo = repo
-					if err := c.Put(repo, number, lr.UpdatedAt, lr.HeadRefOid, record); err != nil {
-						warns = append(warns, fmt.Sprintf("[warn] %s#%d: cache write: %v", repo, number, err))
-					}
-				}
-			}
-			if record != nil {
-				// Current head SHA: the workup cache keys on it and it's how a
-				// consumer detects the head moved without another fetch.
-				record.HeadOid = lr.HeadRefOid
-				records = append(records, record)
-			}
+	var records []*prr.Record
+	for _, rec := range out {
+		if rec != nil {
+			records = append(records, rec)
 		}
 	}
 
 	if err := c.Close(); err != nil {
-		warns = append(warns, fmt.Sprintf("[warn] cache close: %v", err))
+		warn("[warn] cache close: %v", err)
 	}
 	return records, warns
 }
 
-// authorMergedCount returns prior merged PRs by this author in this repo, for
-// contributor status. Deduped per (repo, author). nil (-> "unknown") for my own
-// PRs or if the search fails.
-func authorMergedCount(client API, repo string, detail *gh.Detail, viewer string,
-	counts map[string]int, warns *[]string) *int {
+// resolveClients builds one authenticated client per unique owner across repos,
+// in parallel (ViewerLogin is a round-trip). A missing token or failed auth
+// leaves the owner absent from the maps and is warned once; callers skip repos
+// whose owner has no client.
+func resolveClients(cfg *config.Config, newClient func(token string) API, repos []string,
+	warn func(string, ...any)) (map[string]API, map[string]string) {
 
-	author := ""
-	if detail.Author != nil {
-		author = detail.Author.Login
+	tokens := map[string]string{}
+	for _, repo := range repos {
+		owner, _ := splitRepo(repo)
+		if _, seen := tokens[owner]; seen {
+			continue
+		}
+		token := cfg.TokenFor(owner)
+		if token == "" {
+			warn("[skip] %s: $%s not set", repo, cfg.EnvVarFor(owner))
+			continue
+		}
+		tokens[owner] = token
 	}
-	if author == "" || author == viewer {
-		return nil
+
+	clients := map[string]API{}
+	viewers := map[string]string{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for owner, token := range tokens {
+		wg.Add(1)
+		go func(owner, token string) {
+			defer wg.Done()
+			api := newClient(token)
+			viewer, err := api.ViewerLogin()
+			if err != nil {
+				warn("[error] %s: auth/viewer failed: %v", owner, err)
+				return
+			}
+			mu.Lock()
+			clients[owner] = api
+			viewers[owner] = viewer
+			mu.Unlock()
+		}(owner, token)
 	}
-	key := repo + "\x00" + author
-	if v, ok := counts[key]; ok {
-		return &v
-	}
-	n, err := client.SearchCount(fmt.Sprintf("repo:%s is:pr is:merged author:%s", repo, author))
+	wg.Wait()
+	return clients, viewers
+}
+
+// buildRecord turns one PR into its record: a cache hit when unchanged, else a
+// detail fetch + derive. Returns nil to skip (fetch failed / dropped). Safe to
+// call concurrently — all shared state is behind the cache and warn closure.
+func buildRecord(c cache.Cache, cfg *config.Config, now time.Time, rw *repoWork, number int,
+	warn func(string, ...any)) *prr.Record {
+
+	lr := rw.light[number]
+	req := rw.requested[number]
+
+	entry, err := c.Get(rw.repo, number)
 	if err != nil {
-		*warns = append(*warns, fmt.Sprintf("[warn] %s: merged-count for %s failed: %v", repo, author, err))
+		warn("[warn] %s#%d: cache read: %v", rw.repo, number, err)
+	}
+	// Reuse the cached record only when the PR is unchanged AND its
+	// requested-status is the same. `requested` flipping (e.g. you just added
+	// yourself as a reviewer) changes blocked_on/lane, which the cached record
+	// was NOT derived with — so re-fetch and re-derive.
+	if entry != nil && entry.UpdatedAt == lr.UpdatedAt &&
+		entry.Record != nil && entry.Record.Relevance.Requested == req {
+		rec := entry.Record
+		rec.HeadOid = lr.HeadRefOid
+		return rec
+	}
+
+	detail, dwarns, err := rw.client.FetchDetail(rw.owner, rw.name, number)
+	if err != nil {
+		warn("[error] %s#%d: detail failed: %v", rw.repo, number, err)
 		return nil
 	}
-	counts[key] = n
-	return &n
+	for _, dw := range dwarns {
+		warn("[warn] %s#%d: %s", rw.repo, number, dw)
+	}
+	if detail == nil {
+		warn("[warn] %s#%d: detail missing, skipped", rw.repo, number)
+		return nil
+	}
+	rec := derive.BuildRecord(detail, rw.viewer, req, cfg.Escalation, now, rw.mergedCount(authorLogin(detail)))
+	if rec == nil {
+		return nil
+	}
+	rec.Repo = rw.repo
+	if err := c.Put(rw.repo, number, lr.UpdatedAt, lr.HeadRefOid, rec); err != nil {
+		warn("[warn] %s#%d: cache write: %v", rw.repo, number, err)
+	}
+	// Current head SHA: the workup cache keys on it and it's how a consumer
+	// detects the head moved without another fetch.
+	rec.HeadOid = lr.HeadRefOid
+	return rec
+}
+
+// searchRepo runs the relevance searches for a repo. The two categories are
+// independent, so they fire concurrently. An error in either fails the repo
+// (matching the serial behaviour: a partial search set is not trustworthy).
+func searchRepo(client API, repo string) (map[int]gh.LightPR, map[int]bool, error) {
+	type result struct {
+		cat  string
+		hits []gh.LightPR
+		err  error
+	}
+	ch := make(chan result, len(categories))
+	for _, cat := range categories {
+		go func(cat searchCategory) {
+			hits, err := client.SearchLight(fmt.Sprintf("repo:%s is:open is:pr %s", repo, cat.qual))
+			ch <- result{cat: cat.name, hits: hits, err: err}
+		}(cat)
+	}
+	light := map[int]gh.LightPR{}
+	requested := map[int]bool{}
+	var firstErr error
+	for range categories {
+		r := <-ch
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = r.err
+			}
+			continue
+		}
+		for _, h := range r.hits {
+			light[h.Number] = h
+			if r.cat == "requested" {
+				requested[h.Number] = true
+			}
+		}
+	}
+	if firstErr != nil {
+		return nil, nil, firstErr
+	}
+	return light, requested, nil
+}
+
+// newMergedCounter returns a concurrency-safe lookup for an author's prior
+// merged PRs in a repo (contributor status). It reads through the persistent
+// cache with a TTL and memoizes within the run; nil (-> "unknown") for my own
+// PRs or on failure. A rare concurrent miss may fetch the same author twice —
+// idempotent and cheap, so not worth a singleflight.
+func newMergedCounter(client API, c cache.Cache, repo, viewer string, now time.Time,
+	warn func(string, ...any)) func(author string) *int {
+
+	var mu sync.Mutex
+	memo := map[string]*int{}
+
+	return func(author string) *int {
+		if author == "" || author == viewer {
+			return nil
+		}
+		mu.Lock()
+		if v, ok := memo[author]; ok {
+			mu.Unlock()
+			return v
+		}
+		mu.Unlock()
+
+		if count, fetchedAt, ok, err := c.GetMergedCount(repo, author); err != nil {
+			warn("[warn] %s: merged-count cache read for %s: %v", repo, author, err)
+		} else if ok && now.Sub(fetchedAt) < mergedCountTTL {
+			mu.Lock()
+			memo[author] = &count
+			mu.Unlock()
+			return &count
+		}
+
+		n, err := client.SearchCount(fmt.Sprintf("repo:%s is:pr is:merged author:%s", repo, author))
+		if err != nil {
+			warn("[warn] %s: merged-count for %s failed: %v", repo, author, err)
+			return nil
+		}
+		if err := c.PutMergedCount(repo, author, n, now); err != nil {
+			warn("[warn] %s: merged-count cache write for %s: %v", repo, author, err)
+		}
+		mu.Lock()
+		memo[author] = &n
+		mu.Unlock()
+		return &n
+	}
+}
+
+// authorLogin is the PR author's login, or "" when unknown.
+func authorLogin(d *gh.Detail) string {
+	if d.Author != nil {
+		return d.Author.Login
+	}
+	return ""
 }
 
 func sortedNumbers(m map[int]gh.LightPR) []int {

@@ -3,6 +3,7 @@ package pipeline
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,11 +14,13 @@ import (
 
 var now = time.Date(2026, 6, 23, 12, 0, 0, 0, time.UTC)
 
+// fakeAPI is called concurrently by Sync's per-repo worker pool, so its call
+// counters are atomic.
 type fakeAPI struct {
 	requested, reviewed []gh.LightPR
 	details             map[int]*gh.Detail
-	searchCount         int
-	detailCount         int
+	searchCount         atomic.Int64
+	detailCount         atomic.Int64
 }
 
 func (f *fakeAPI) ViewerLogin() (string, error) { return "wjones127", nil }
@@ -30,12 +33,12 @@ func (f *fakeAPI) SearchLight(q string) ([]gh.LightPR, error) {
 }
 
 func (f *fakeAPI) SearchCount(q string) (int, error) {
-	f.searchCount++
+	f.searchCount.Add(1)
 	return 5, nil
 }
 
 func (f *fakeAPI) FetchDetail(owner, name string, number int) (*gh.Detail, []string, error) {
-	f.detailCount++
+	f.detailCount.Add(1)
 	return f.details[number], nil, nil
 }
 
@@ -121,11 +124,11 @@ func TestSyncDedupAndRequested(t *testing.T) {
 	if records[0].AuthorStatus != "regular" { // count 5 -> regular
 		t.Errorf("author_status: %s", records[0].AuthorStatus)
 	}
-	if fake.detailCount != 3 {
-		t.Errorf("expected 3 detail fetches, got %d", fake.detailCount)
+	if got := fake.detailCount.Load(); got != 3 {
+		t.Errorf("expected 3 detail fetches, got %d", got)
 	}
-	if fake.searchCount != 3 { // one merged-count per unique author
-		t.Errorf("expected 3 merged-count searches, got %d", fake.searchCount)
+	if got := fake.searchCount.Load(); got != 3 { // one merged-count per unique author
+		t.Errorf("expected 3 merged-count searches, got %d", got)
 	}
 }
 
@@ -145,8 +148,8 @@ func TestSyncReusesCacheWhenUnchanged(t *testing.T) {
 		details:   map[int]*gh.Detail{}, // must not be consulted
 	}
 	records, _ := Sync(cfg, func(string) API { return second }, c, now)
-	if second.detailCount != 0 {
-		t.Errorf("unchanged PR should be a cache hit, got %d fetches", second.detailCount)
+	if got := second.detailCount.Load(); got != 0 {
+		t.Errorf("unchanged PR should be a cache hit, got %d fetches", got)
 	}
 	if len(records) != 1 || !records[0].Relevance.Requested {
 		t.Errorf("cached record reused: %+v", records)
@@ -172,11 +175,88 @@ func TestSyncReDerivesWhenRequestedFlips(t *testing.T) {
 		details:  map[int]*gh.Detail{1: withReviews(det(1, "alice"), reviewBy("APPROVED", "h1", 5))},
 	}
 	records, _ := Sync(cfg, func(string) API { return second }, c, now)
-	if second.detailCount != 1 {
-		t.Errorf("requested flip should force a re-fetch, got %d fetches", second.detailCount)
+	if got := second.detailCount.Load(); got != 1 {
+		t.Errorf("requested flip should force a re-fetch, got %d fetches", got)
 	}
 	if len(records) != 1 || records[0].Lane != "housekeeping" || records[0].Relevance.Requested {
 		t.Errorf("expected re-derived housekeeping record, got %+v", records)
+	}
+}
+
+func TestSyncMultiRepoOrdersDeterministically(t *testing.T) {
+	// Two repos under two owners, so resolveClients builds a client per owner
+	// and both repos are searched + fetched through the shared detail pool.
+	t.Setenv("GITHUB_TOKEN_O", "tokO")
+	t.Setenv("GITHUB_TOKEN_P", "tokP")
+	cfg := &config.Config{Repos: []string{"o/r", "p/s"}, TokenPrefix: "GITHUB_TOKEN"}
+
+	fakeO := &fakeAPI{
+		requested: []gh.LightPR{light(3, "u3"), light(1, "u1")}, // out of order on purpose
+		details:   map[int]*gh.Detail{1: det(1, "alice"), 3: det(3, "bob")},
+	}
+	fakeP := &fakeAPI{
+		requested: []gh.LightPR{light(2, "u2")},
+		details:   map[int]*gh.Detail{2: det(2, "carol")},
+	}
+	newClient := func(token string) API {
+		if token == "tokO" {
+			return fakeO
+		}
+		return fakeP
+	}
+
+	records, warns := Sync(cfg, newClient, cache.NewMemory(), now)
+	if len(warns) != 0 {
+		t.Fatalf("unexpected warnings: %v", warns)
+	}
+	// Output is repo order (config order), then PR number within a repo.
+	want := []struct {
+		repo string
+		num  int
+	}{{"o/r", 1}, {"o/r", 3}, {"p/s", 2}}
+	if len(records) != len(want) {
+		t.Fatalf("expected %d records, got %d", len(want), len(records))
+	}
+	for i, w := range want {
+		if records[i].Repo != w.repo || records[i].Number != w.num {
+			t.Errorf("records[%d] = %s#%d, want %s#%d", i, records[i].Repo, records[i].Number, w.repo, w.num)
+		}
+	}
+}
+
+func TestSyncCachesMergedCountAcrossRuns(t *testing.T) {
+	cfg := testConfig(t)
+	c := cache.NewMemory()
+
+	// Each run bumps updatedAt so the PR's detail is re-fetched — otherwise a
+	// pure cache hit would skip the merged-count path entirely.
+	run := func(updatedAt string, at time.Time) *fakeAPI {
+		fake := &fakeAPI{
+			requested: []gh.LightPR{light(1, updatedAt)},
+			details:   map[int]*gh.Detail{1: det(1, "alice")},
+		}
+		Sync(cfg, func(string) API { return fake }, c, at)
+		return fake
+	}
+
+	first := run("u1", now)
+	if got := first.searchCount.Load(); got != 1 {
+		t.Fatalf("first run: expected 1 merged-count search, got %d", got)
+	}
+
+	// Second run, count still fresh -> served from cache, no new search.
+	second := run("u2", now.Add(time.Hour))
+	if got := second.detailCount.Load(); got != 1 {
+		t.Fatalf("second run: expected the changed PR to re-fetch, got %d", got)
+	}
+	if got := second.searchCount.Load(); got != 0 {
+		t.Errorf("second run: fresh merged-count should be cached, got %d searches", got)
+	}
+
+	// Third run past the TTL -> the count is stale and re-fetched.
+	third := run("u3", now.Add(mergedCountTTL+time.Hour))
+	if got := third.searchCount.Load(); got != 1 {
+		t.Errorf("third run: expired merged-count should re-fetch, got %d searches", got)
 	}
 }
 
