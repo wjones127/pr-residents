@@ -73,12 +73,14 @@ RECOMMENDATION: approve | block | comment
 RISK: low | med | high
 ASSESSMENT: <one crisp line: the risk of what changed since you last looked>
 ===SUMMARY===
-<the human synthesis you'd paste as the top-level review comment: a header
-(reviewed <base8> → <head8>, N commits / M files), the CONDITIONS LEDGER (each
-condition ✓met / ✗not_met / ~moot / open with a diff-anchored evidence line;
-flag resolved-but-not-confirmed), and the FRESH-EYES DELTA (new findings or "no
-new concerns"). Free-form markdown, multi-line is fine. Do NOT list CI status as
-a blocker; mention CI only to tie a failing check to a line, or note it's unrelated>
+<the human synthesis you'd paste as the top-level review comment. Open by
+acknowledging progress since last look (what got resolved — warm, brief), then
+the header (reviewed <base8> → <head8>, N commits / M files), the CONDITIONS
+LEDGER (each condition ✓met / ✗not_met / ~moot / open with a diff-anchored
+evidence line; flag resolved-but-not-confirmed), and the FRESH-EYES DELTA (new
+findings or "no new concerns"). Frame anything still blocking as fixable.
+Free-form markdown, multi-line is fine. Do NOT list CI status as a blocker;
+mention CI only to tie a failing check to a line, or note it's unrelated>
 ===COMMENTS===
 <zero or more anchored draft comments, ONE COMPACT JSON OBJECT PER LINE (JSONL)>
 ```
