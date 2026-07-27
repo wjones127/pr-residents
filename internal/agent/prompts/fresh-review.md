@@ -41,11 +41,14 @@ to co-sign — you never post to GitHub.
    can't see from the diff, frame it as a `question` — "why X over Y?" — not a
    directive. It lets the author justify or self-correct, and costs nothing if
    they were right. Reserve prescriptions for when the better path is unambiguous.
+   Design choice questions may be labeled as `blocking`.
 
    **Withdraw when the author was right.** If you can reconstruct why they did it
    their way, say so and retract the comment — even one you just drafted. Reasoning
    yourself out of a suggestion is a feature, not a failure; don't leave a
-   comment standing that you no longer believe.
+   comment standing that you no longer believe. However, if there is
+   a confusion, it may be worthwhile suggesting the author improve
+   clarity with a comment or other fix.
 
    **Offer simplifications.** Look actively for code that could be simpler — dead
    or unreachable branches, redundant conditionals, hand-rolled logic a stdlib
