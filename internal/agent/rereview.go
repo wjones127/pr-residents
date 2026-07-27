@@ -26,6 +26,7 @@ type Delta struct {
 	Base                   string           `json:"base"`
 	Head                   string           `json:"head"`
 	Files                  []PacketDiffFile `json:"files"`
+	Omitted                []OmittedFile    `json:"omitted"`
 	CommitCount            int              `json:"commit_count"`
 	FilesOffBranchExcluded int              `json:"files_off_branch_excluded"`
 	AnchorOrphaned         bool             `json:"anchor_orphaned"`
@@ -120,20 +121,18 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 		d.Note = fmt.Sprintf("prior-review anchor %s is orphaned (compare status=%s: branch rebased/force-pushed) — showing full PR net diff, verify conditions fresh-eyes", short(lastReviewed), d.CompareStatus)
 	}
 
+	resolved := make([]gh.FileDiff, 0, len(kept))
 	for _, f := range kept {
-		patch := f.Patch
-		if patch == "" { // backfill patch/counts from the net diff (orphaned-anchor case)
+		if f.Patch == "" { // backfill patch/counts from the net diff (orphaned-anchor case)
 			if alt, ok := netByPath[f.Filename]; ok && alt.Patch != "" {
 				f = alt
-				patch = alt.Patch
 			}
 		}
-		p, truncated := truncatePatch(patch)
-		d.Files = append(d.Files, PacketDiffFile{
-			Path: f.Filename, Status: f.Status,
-			Additions: f.Additions, Deletions: f.Deletions,
-			Patch: p, PatchTruncated: truncated,
-		})
+		resolved = append(resolved, f)
+	}
+	d.Files, d.Omitted = assembleDiff(resolved)
+	if d.Files == nil {
+		d.Files = []PacketDiffFile{}
 	}
 	return d
 }
