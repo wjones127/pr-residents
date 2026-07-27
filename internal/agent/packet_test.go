@@ -122,6 +122,45 @@ func TestBuildPacketAttachesFullContentForSmallFiles(t *testing.T) {
 	}
 }
 
+func TestAssembleDiffHardCapOmitsExcessPatches(t *testing.T) {
+	patch := "@@ -1 +1 @@\n" + strings.Repeat("+x\n", 100)
+	files := []gh.FileDiff{
+		{Filename: "a.go", Status: "modified", Patch: patch},
+		{Filename: "b.go", Status: "modified", Patch: patch},
+	}
+	b := budget{hardTokens: estTokens(patch) + 5} // room for exactly one patch
+	shown, omitted := assembleDiff(files, nil, "o", "r", "head", b)
+	if len(shown) != 1 || shown[0].Path != "a.go" {
+		t.Fatalf("expected only a.go shown, got %+v", shown)
+	}
+	if r, ok := omittedReason(omitted, "b.go"); !ok || r != "budget" {
+		t.Errorf("b.go should be omitted with reason budget, got %q found=%v", r, ok)
+	}
+}
+
+func TestAssembleDiffSoftCapShedsFullContentFirst(t *testing.T) {
+	patch := "@@ -1 +1 @@\n-a\n+b"
+	small := "package x\nfunc A() {}\n"
+	files := []gh.FileDiff{
+		{Filename: "a.go", Status: "modified", Additions: 1, Deletions: 1, Patch: patch},
+		{Filename: "b.go", Status: "modified", Additions: 1, Deletions: 1, Patch: patch},
+	}
+	cf := fakeFetcher{content: map[string]string{"a.go": small, "b.go": small}}
+	// Soft cap sits between the first file's patch cost and the running total
+	// after it: a.go gets full content, b.go's is shed while its patch stays.
+	b := budget{softTokens: estTokens(patch) + estTokens(small), hardTokens: 100_000}
+	shown, _ := assembleDiff(files, cf, "o", "r", "head", b)
+	if len(shown) != 2 {
+		t.Fatalf("both patches should be shown, got %d", len(shown))
+	}
+	if shown[0].FullContent == "" {
+		t.Errorf("a.go should keep full content (under soft cap)")
+	}
+	if shown[1].FullContent != "" {
+		t.Errorf("b.go full content should be shed past the soft cap")
+	}
+}
+
 func TestBuildPacketLaneNoteForReReview(t *testing.T) {
 	ff := fakeFetcher{files: []gh.FileDiff{{Filename: "a.go", Patch: "@@"}}}
 	r := &prr.Record{Repo: "o/r", Number: 5, Lane: "re_review", BlockedOn: "me"}

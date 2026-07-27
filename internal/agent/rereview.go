@@ -131,7 +131,7 @@ func buildDelta(lastReviewed, head string, cmp *gh.CompareResult, prNetFull []gh
 		}
 		resolved = append(resolved, f)
 	}
-	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head)
+	d.Files, d.Omitted = assembleDiff(resolved, cf, owner, name, head, defaultBudget())
 	if d.Files == nil {
 		d.Files = []PacketDiffFile{}
 	}

@@ -94,6 +94,21 @@ type contentFetcher interface {
 // attached — small enough that the whole file is cheap context.
 const smallFileMaxLines = 400
 
+// budget bounds a packet's diff size in estimated input tokens. Patches are
+// ground truth and fill up to hardTokens; full_content is context and is only
+// attached while under softTokens. A zero field means "no limit".
+type budget struct {
+	softTokens int
+	hardTokens int
+}
+
+// defaultBudget targets ~5% of a 5-hour window per review: full_content stops
+// being attached past ~80k tokens of diff, and no packet's diff exceeds ~150k.
+func defaultBudget() budget { return budget{softTokens: 80_000, hardTokens: 150_000} }
+
+// estTokens is a cheap chars/4 approximation of an English/code token count.
+func estTokens(s string) int { return len(s) / 4 }
+
 var lockFiles = map[string]bool{
 	"package-lock.json": true, "yarn.lock": true, "pnpm-lock.yaml": true,
 	"Cargo.lock": true, "go.sum": true, "poetry.lock": true,
@@ -205,8 +220,11 @@ func countLines(s string) int {
 // reasoned omitted list: binary/no-patch files, deliberately-skipped junk
 // (generated/vendored/lock), and oversized patches hunk-elided to a soft cap.
 // When cf is non-nil, small edited files get their full head-side content (at
-// ref) attached for context.
-func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string) (shown []PacketDiffFile, omitted []OmittedFile) {
+// ref) attached for context. The budget bounds total size: under pressure it
+// sheds full_content first (context), then whole patches (reason "budget") —
+// patches are ground truth, so they win the last tokens.
+func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string, b budget) (shown []PacketDiffFile, omitted []OmittedFile) {
+	used := 0
 	for _, f := range files {
 		if f.Patch == "" { // GitHub omits patch for binary / very large files
 			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: "no-patch", Additions: f.Additions, Deletions: f.Deletions})
@@ -217,16 +235,25 @@ func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref strin
 			continue
 		}
 		patch, truncated := truncatePatchToHunks(f.Patch, maxPatchLines)
+		ptok := estTokens(patch)
+		if b.hardTokens > 0 && used+ptok > b.hardTokens {
+			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: "budget", Additions: f.Additions, Deletions: f.Deletions})
+			continue
+		}
+		used += ptok
 		pf := PacketDiffFile{
 			Path: f.Filename, Status: f.Status,
 			Additions: f.Additions, Deletions: f.Deletions,
 			Patch: patch, PatchTruncated: truncated,
 		}
-		if cf != nil && wantsFullContent(f) {
+		if cf != nil && wantsFullContent(f) && (b.softTokens == 0 || used < b.softTokens) {
 			if content, err := cf.FileContent(owner, name, f.Filename, ref); err == nil && content != "" {
 				if n := countLines(content); n <= smallFileMaxLines {
-					pf.FullContent = content
-					pf.FullContentLines = n
+					if ctok := estTokens(content); b.hardTokens == 0 || used+ctok <= b.hardTokens {
+						pf.FullContent = content
+						pf.FullContentLines = n
+						used += ctok
+					}
 				}
 			}
 		}
@@ -245,7 +272,7 @@ func BuildPacket(ff Fetcher, r *prr.Record) (Packet, error) {
 		return Packet{}, err
 	}
 
-	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid)
+	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid, defaultBudget())
 
 	var laneNote string
 	if r.Lane != "fresh" {
