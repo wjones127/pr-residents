@@ -113,30 +113,48 @@ var lockFiles = map[string]bool{
 	"package-lock.json": true, "yarn.lock": true, "pnpm-lock.yaml": true,
 	"Cargo.lock": true, "go.sum": true, "poetry.lock": true,
 	"Gemfile.lock": true, "composer.lock": true, "flake.lock": true,
+	"uv.lock": true, "pdm.lock": true, "bun.lockb": true,
 }
 
 var vendorSegments = []string{"vendor/", "node_modules/", "third_party/"}
 
+// generatedSegments are directory names whose subtree is committed machine-
+// generated code (e.g. datafusion's protobuf under src/generated/*.rs, which is
+// named nothing like a .pb.rs). The sibling generator dir (gen/) is real source
+// and deliberately not matched.
+var generatedSegments = []string{"generated/"}
+
 var generatedSuffixes = []string{
 	".pb.go", ".pb.rs", "_pb2.py", "_pb2_grpc.py",
 	".generated.go", "_generated.go", ".gen.go",
-	".min.js", ".min.css", ".snap",
+	".min.js", ".min.css",
+}
+
+func hasSegment(path string, segs []string) bool {
+	for _, seg := range segs {
+		if strings.HasPrefix(path, seg) || strings.Contains(path, "/"+seg) {
+			return true
+		}
+	}
+	return false
 }
 
 // classifyFile marks machine-generated / vendored / lock files whose diffs cost
 // tokens but carry little review signal. Returns a reason and true to skip.
+// Note: test snapshots (.snap) and sqllogictest data (.slt) are deliberately
+// NOT skipped — a snapshot/expected-output diff is often the review subject.
 func classifyFile(path string) (string, bool) {
 	base := path
 	if i := strings.LastIndexByte(path, '/'); i >= 0 {
 		base = path[i+1:]
 	}
-	if lockFiles[base] {
+	switch {
+	case lockFiles[base]:
 		return "lockfile", true
-	}
-	for _, seg := range vendorSegments {
-		if strings.HasPrefix(path, seg) || strings.Contains(path, "/"+seg) {
-			return "vendored", true
-		}
+	case hasSegment(path, vendorSegments):
+		return "vendored", true
+	case hasSegment(path, generatedSegments):
+		return "generated", true
 	}
 	for _, suf := range generatedSuffixes {
 		if strings.HasSuffix(base, suf) {

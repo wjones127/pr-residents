@@ -32,6 +32,34 @@ func (f fakeFetcher) FileContent(owner, name, path, ref string) (string, error) 
 	return f.content[path], nil
 }
 
+func TestClassifyFile(t *testing.T) {
+	cases := []struct {
+		path   string
+		reason string
+		skip   bool
+	}{
+		{"Cargo.lock", "lockfile", true},
+		{"python/uv.lock", "lockfile", true},                                  // Python projects everywhere
+		{"nodejs/pnpm-lock.yaml", "lockfile", true},                           // lancedb nodejs
+		{"src/enterprise/common/go.sum", "lockfile", true},                    // sophon go services
+		{"datafusion/proto-common/src/generated/prost.rs", "generated", true}, // committed protobuf
+		{"datafusion/proto-common/gen/src/main.rs", "", false},                // the generator itself is source
+		{"vendor/foo/bar.go", "vendored", true},
+		{"api/service.pb.go", "generated", true},
+		{"rust/lance-core/src/lib.rs", "", false},
+		{"benchmarks/sift/requirements.txt", "", false}, // dep spec, sometimes review-relevant
+		{"datafusion/sqllogictest/test_files/join.slt", "", false},
+		{"datafusion/core/tests/snapshots/plan.snap", "", false}, // snapshot diff is the review subject
+		{"rust/lance/protos/format.proto", "", false},
+	}
+	for _, c := range cases {
+		reason, skip := classifyFile(c.path)
+		if skip != c.skip || reason != c.reason {
+			t.Errorf("classifyFile(%q) = (%q, %v), want (%q, %v)", c.path, reason, skip, c.reason, c.skip)
+		}
+	}
+}
+
 func omittedReason(omitted []OmittedFile, path string) (string, bool) {
 	for _, o := range omitted {
 		if o.Path == path {
