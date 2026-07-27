@@ -24,7 +24,10 @@ Each top-level review comment starts with a label and an optional decoration:
 - **The blocking token is the one high-judgment thing you co-sign.** It is the
   signal graduated-autonomy measures (over-calling = timid, under-calling =
   reckless), so resident drafts must use `(blocking)` vs `(non-blocking)`
-  deliberately, never as filler.
+  deliberately, never as filler. Blocking covers correctness, safety, data loss,
+  API/compat breakage, security, a test that no longer tests what it claims —
+  **and scope creep**: changes unrelated to the PR's stated purpose belong in
+  their own PR, not smuggled in here.
 - **Self-conditions dissolve**: a thing *you* want to be convinced of (e.g.
   "lock ordering can't deadlock") is not posted as-is. Either satisfy it this
   sitting, or convert it to a concrete `issue(...)` ask to the author.
