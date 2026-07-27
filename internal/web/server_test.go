@@ -88,6 +88,9 @@ func (fakeFetcher) FetchReReviewData(owner, name string, number int) (gh.ReRevie
 }
 
 func (fakeFetcher) FileContent(owner, name, path, ref string) (string, error) { return "", nil }
+func (fakeFetcher) FetchLinkedIssues(owner, name string, number int) ([]gh.LinkedIssue, error) {
+	return nil, nil
+}
 
 func TestIndexRendersPage(t *testing.T) {
 	srv, _ := newTestServer(t, []*prr.Record{seedRecord()})

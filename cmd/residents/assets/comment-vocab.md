@@ -28,6 +28,12 @@ Each top-level review comment starts with a label and an optional decoration:
   API/compat breakage, security, a test that no longer tests what it claims —
   **and scope creep**: changes unrelated to the PR's stated purpose belong in
   their own PR, not smuggled in here.
+- **Block on what can't be walked back; the test is reversibility, not
+  public-vs-private.** One-way doors block — shipped correctness bugs, missing
+  tests, data/format/wire-compat, and public-API **shape** (a signature/type you
+  can't change later without breaking callers). Two-way doors are non-blocking
+  follow-ups — performance, internal code quality, and purely **additive** API
+  enhancements (exposing one more parameter next time).
 - **Self-conditions dissolve**: a thing *you* want to be convinced of (e.g.
   "lock ordering can't deadlock") is not posted as-is. Either satisfy it this
   sitting, or convert it to a concrete `issue(...)` ask to the author.
