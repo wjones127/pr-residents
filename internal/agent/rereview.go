@@ -36,10 +36,11 @@ type Delta struct {
 
 // ReReviewPacket is the full deterministic input to a re-review.
 type ReReviewPacket struct {
-	PR         ReReviewPR     `json:"pr"`
-	MergeState prr.MergeState `json:"merge_state"`
-	Conditions []Condition    `json:"conditions"`
-	Delta      Delta          `json:"delta"`
+	PR           ReReviewPR     `json:"pr"`
+	MergeState   prr.MergeState `json:"merge_state"`
+	Conditions   []Condition    `json:"conditions"`
+	Delta        Delta          `json:"delta"`
+	LinkedIssues []PacketIssue  `json:"linked_issues,omitempty"`
 }
 
 func lastReviewedSHA(reviews []gh.Review, viewer string) string {
@@ -166,6 +167,12 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string, rules SkipRule
 	}
 	delta := buildDelta(last, head, cmp, net, f, owner, name, rules)
 
+	// Premise context — best-effort, same as the fresh packet.
+	var issues []PacketIssue
+	if li, ierr := f.FetchLinkedIssues(owner, name, r.Number); ierr == nil {
+		issues = assembleIssues(li)
+	}
+
 	// CI/mergeability computed with the same mapping as the synced record.
 	msDetail := &gh.Detail{
 		Mergeable: pr.Mergeable,
@@ -180,8 +187,9 @@ func BuildReReviewPacket(f Fetcher, r *prr.Record, viewer string, rules SkipRule
 			Repo: r.Repo, Number: r.Number, Title: pr.Title, URL: pr.URL,
 			Head: head, LastReviewedSHA: last, Viewer: viewer,
 		},
-		MergeState: derive.MergeStateFromDetail(msDetail),
-		Conditions: ledger,
-		Delta:      delta,
+		MergeState:   derive.MergeStateFromDetail(msDetail),
+		Conditions:   ledger,
+		Delta:        delta,
+		LinkedIssues: issues,
 	}, nil
 }

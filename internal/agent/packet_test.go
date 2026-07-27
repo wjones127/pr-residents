@@ -13,6 +13,7 @@ type fakeFetcher struct {
 	files   []gh.FileDiff
 	err     error
 	content map[string]string // path -> full head content
+	issues  []gh.LinkedIssue
 }
 
 func (f fakeFetcher) PullFiles(owner, name string, number int) ([]gh.FileDiff, error) {
@@ -31,6 +32,10 @@ func (f fakeFetcher) FetchReReviewData(owner, name string, number int) (gh.ReRev
 
 func (f fakeFetcher) FileContent(owner, name, path, ref string) (string, error) {
 	return f.content[path], nil
+}
+
+func (f fakeFetcher) FetchLinkedIssues(owner, name string, number int) ([]gh.LinkedIssue, error) {
+	return f.issues, nil
 }
 
 func TestClassifyFile(t *testing.T) {
@@ -141,6 +146,48 @@ func TestBuildPacketPartitionsAndTruncates(t *testing.T) {
 	}
 	if p.LaneNote != "" {
 		t.Errorf("fresh lane should have no lane note, got %q", p.LaneNote)
+	}
+}
+
+func TestBuildPacketAttachesLinkedIssues(t *testing.T) {
+	longBody := strings.Repeat("z", issueBodyMaxChars+500)
+	longComment := strings.Repeat("c", issueCommentMaxChars+500)
+	comments := make([]gh.IssueComment, maxIssueComments+5)
+	for i := range comments {
+		comments[i] = gh.IssueComment{Author: "alice", Body: "ok"}
+	}
+	comments[0] = gh.IssueComment{Author: "bob", Body: longComment}
+	ff := fakeFetcher{
+		files: []gh.FileDiff{{Filename: "a.go", Status: "modified", Patch: "@@ -1 +1 @@\n-x\n+y"}},
+		issues: []gh.LinkedIssue{
+			{Number: 42, Title: "bug", State: "OPEN", Body: longBody, Comments: comments},
+		},
+	}
+	r := &prr.Record{Repo: "o/r", Number: 5, HeadOid: "abc", Lane: "fresh"}
+
+	p, err := BuildPacket(ff, r, DefaultSkipRules())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.LinkedIssues) != 1 {
+		t.Fatalf("want 1 linked issue, got %d", len(p.LinkedIssues))
+	}
+	is := p.LinkedIssues[0]
+	if is.Number != 42 || is.Title != "bug" || is.State != "OPEN" {
+		t.Errorf("issue identity wrong: %+v", is)
+	}
+	if !strings.Contains(is.Body, "…[truncated]") {
+		t.Errorf("long body should be truncated")
+	}
+	if len([]rune(is.Comments[0].Body)) > issueCommentMaxChars+len([]rune("\n…[truncated]")) {
+		t.Errorf("long comment not truncated: %d runes", len([]rune(is.Comments[0].Body)))
+	}
+	// capped at maxIssueComments kept + 1 "omitted" marker line
+	if len(is.Comments) != maxIssueComments+1 {
+		t.Fatalf("want %d comments (capped + marker), got %d", maxIssueComments+1, len(is.Comments))
+	}
+	if !strings.Contains(is.Comments[maxIssueComments].Body, "more comments omitted") {
+		t.Errorf("expected omitted-comments marker, got %q", is.Comments[maxIssueComments].Body)
 	}
 }
 

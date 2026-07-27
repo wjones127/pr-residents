@@ -93,6 +93,9 @@ func (f rrFetcher) FetchReReviewData(owner, name string, number int) (gh.ReRevie
 	return f.pr, nil
 }
 func (f rrFetcher) FileContent(owner, name, path, ref string) (string, error) { return "", nil }
+func (f rrFetcher) FetchLinkedIssues(owner, name string, number int) ([]gh.LinkedIssue, error) {
+	return nil, nil
+}
 
 func TestBuildReReviewPacket(t *testing.T) {
 	f := rrFetcher{

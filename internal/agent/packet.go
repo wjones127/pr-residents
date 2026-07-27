@@ -65,15 +65,32 @@ type PacketDiff struct {
 	ShownFiles int              `json:"shown_files"`
 }
 
+// PacketIssueComment is one comment on a linked issue.
+type PacketIssueComment struct {
+	Author string `json:"author"`
+	Body   string `json:"body"`
+}
+
+// PacketIssue is one issue the PR closes, with its discussion — the premise
+// context: the problem the change claims to solve, plus the refining discussion.
+type PacketIssue struct {
+	Number   int                  `json:"number"`
+	Title    string               `json:"title"`
+	State    string               `json:"state"`
+	Body     string               `json:"body"`
+	Comments []PacketIssueComment `json:"comments,omitempty"`
+}
+
 // Packet is the full deterministic input to a fresh review.
 type Packet struct {
-	PR         PacketPR       `json:"pr"`
-	Acuity     prr.Acuity     `json:"acuity"`
-	Effort     prr.Effort     `json:"effort"`
-	Escalation prr.Escalation `json:"escalation"`
-	MergeState prr.MergeState `json:"merge_state"`
-	Diff       PacketDiff     `json:"diff"`
-	LaneNote   string         `json:"lane_note,omitempty"`
+	PR           PacketPR       `json:"pr"`
+	Acuity       prr.Acuity     `json:"acuity"`
+	Effort       prr.Effort     `json:"effort"`
+	Escalation   prr.Escalation `json:"escalation"`
+	MergeState   prr.MergeState `json:"merge_state"`
+	Diff         PacketDiff     `json:"diff"`
+	LinkedIssues []PacketIssue  `json:"linked_issues,omitempty"`
+	LaneNote     string         `json:"lane_note,omitempty"`
 }
 
 // Fetcher is the GitHub surface packet building needs. *gh.Client satisfies it.
@@ -83,6 +100,7 @@ type Fetcher interface {
 	Compare(owner, name, base, head string) (gh.CompareResult, error)
 	FetchReReviewData(owner, name string, number int) (gh.ReReviewPR, error)
 	FileContent(owner, name, path, ref string) (string, error)
+	FetchLinkedIssues(owner, name string, number int) ([]gh.LinkedIssue, error)
 }
 
 // contentFetcher is the slice of Fetcher used to enrich small files with their
@@ -352,6 +370,13 @@ func BuildPacket(ff Fetcher, r *prr.Record, rules SkipRules) (Packet, error) {
 
 	diffFiles, omitted := assembleDiff(files, ff, owner, name, r.HeadOid, defaultBudget(), rules)
 
+	// Linked issues are premise context, not load-bearing: a fetch failure
+	// degrades the review (no problem statement) but must not fail the packet.
+	var issues []PacketIssue
+	if li, err := ff.FetchLinkedIssues(owner, name, r.Number); err == nil {
+		issues = assembleIssues(li)
+	}
+
 	var laneNote string
 	if r.Lane != "fresh" {
 		laneNote = "this PR is in the " + r.Lane + " lane (blocked_on=" + r.BlockedOn +
@@ -373,8 +398,52 @@ func BuildPacket(ff Fetcher, r *prr.Record, rules SkipRules) (Packet, error) {
 			Files: diffFiles, Omitted: omitted,
 			TotalFiles: len(files), ShownFiles: len(diffFiles),
 		},
-		LaneNote: laneNote,
+		LinkedIssues: issues,
+		LaneNote:     laneNote,
 	}, nil
+}
+
+// Bounds on linked-issue context. The problem statement and its refining
+// discussion are worth reading, but an issue with hundreds of comments must not
+// dominate the packet — bodies and comments are truncated and the comment list
+// is capped, with a marker so the resident knows it didn't see everything.
+const (
+	issueBodyMaxChars    = 6000
+	issueCommentMaxChars = 2000
+	maxIssueComments     = 30
+)
+
+// truncateChars clips s to max runes, appending an ellipsis marker if it clipped.
+func truncateChars(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max]) + "\n…[truncated]"
+}
+
+// assembleIssues converts fetched linked issues into bounded packet form.
+func assembleIssues(issues []gh.LinkedIssue) []PacketIssue {
+	var out []PacketIssue
+	for _, is := range issues {
+		pi := PacketIssue{
+			Number: is.Number, Title: is.Title, State: is.State,
+			Body: truncateChars(is.Body, issueBodyMaxChars),
+		}
+		for i, c := range is.Comments {
+			if i >= maxIssueComments {
+				pi.Comments = append(pi.Comments, PacketIssueComment{
+					Body: fmt.Sprintf("…[%d more comments omitted]", len(is.Comments)-maxIssueComments),
+				})
+				break
+			}
+			pi.Comments = append(pi.Comments, PacketIssueComment{
+				Author: c.Author, Body: truncateChars(c.Body, issueCommentMaxChars),
+			})
+		}
+		out = append(out, pi)
+	}
+	return out
 }
 
 func splitRepo(repo string) (owner, name string) {
