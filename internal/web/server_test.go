@@ -247,6 +247,9 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 		"guard the nil case",      // the draft comment body
 		"/o/r/pull/5/files#diff-", // deep link to the exact line
 		`class="copy-btn"`,        // a copy button
+		`class="push-btn"`,        // the push-to-GitHub button
+		`class="cmt-sel"`,         // per-comment selection checkbox
+		`data-sha="abc"`,          // push bar carries the reviewed head SHA
 		"refined nil-deref risk",  // resident's refined rationale replaces the baseline on the row
 	} {
 		if !strings.Contains(body, want) {
@@ -256,6 +259,121 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 	// The copy source keeps the raw markdown for pasting into GitHub.
 	if !strings.Contains(body, "## Findings") {
 		t.Error("copy source should retain raw markdown")
+	}
+}
+
+// fakePoster captures the CreatePendingReview call for assertions.
+type fakePoster struct {
+	owner, name, commitID string
+	number                int
+	comments              []gh.ReviewComment
+	err                   error
+	called                bool
+}
+
+func (p *fakePoster) CreatePendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error {
+	p.called = true
+	p.owner, p.name, p.number, p.commitID, p.comments = owner, name, number, commitID, comments
+	return p.err
+}
+
+func seedWorkup(t *testing.T, st *store.FileStore) agent.WorkupDoc {
+	t.Helper()
+	doc := agent.WorkupDoc{
+		Repo: "o/r", Number: 5, SHA: "abc",
+		Comments: []agent.DraftComment{
+			{Path: "a.go", Line: 12, Side: "RIGHT", Label: "issue", Blocking: true, Body: "guard the nil case", Suggestion: "if x != nil {"},
+			{Path: "", Label: "praise", Body: "nice overall"}, // review-level, not postable
+			{Path: "b.go", Line: 3, Side: "RIGHT", Label: "nitpick", Body: "rename this"},
+		},
+	}
+	if err := st.PutJSON(store.WorkupKey("o/r", 5, "abc"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	return doc
+}
+
+func postReview(t *testing.T, srv *Server, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/review", strings.NewReader(body))
+	srv.Handler().ServeHTTP(rr, req)
+	return rr
+}
+
+// A push posts only the selected inline comments (review-level skipped) as a
+// pending review, with bodies rebuilt from the cached workup via copyText.
+func TestHandleReviewPushesSelectedInline(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN_O", "tok")
+	srv, st := newTestServer(t, nil)
+	doc := seedWorkup(t, st)
+	poster := &fakePoster{}
+	srv.newPoster = func(string) ReviewPoster { return poster }
+
+	// Select the inline issue (0) and the review-level praise (1); 1 is dropped.
+	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"abc","comments":[0,1]}`)
+	if rr.Code != 200 {
+		t.Fatalf("status %d: %s", rr.Code, rr.Body.String())
+	}
+	if !poster.called || poster.owner != "o" || poster.name != "r" || poster.number != 5 || poster.commitID != "abc" {
+		t.Fatalf("poster call: %+v", poster)
+	}
+	if len(poster.comments) != 1 {
+		t.Fatalf("expected 1 inline comment (review-level dropped), got %d", len(poster.comments))
+	}
+	got := poster.comments[0]
+	if got.Path != "a.go" || got.Line != 12 || got.Side != "RIGHT" {
+		t.Errorf("comment anchor: %+v", got)
+	}
+	if got.Body != copyText(doc.Comments[0]) {
+		t.Errorf("body should match copyText, got %q", got.Body)
+	}
+	if !strings.Contains(rr.Body.String(), "/o/r/pull/5/files") {
+		t.Errorf("response missing PR link: %s", rr.Body.String())
+	}
+}
+
+func TestHandleReviewStaleSHA(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN_O", "tok")
+	srv, st := newTestServer(t, nil)
+	seedWorkup(t, st)
+	srv.newPoster = func(string) ReviewPoster { return &fakePoster{} }
+
+	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"moved","comments":[0]}`)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409", rr.Code)
+	}
+}
+
+func TestHandleReviewNoToken(t *testing.T) {
+	srv, st := newTestServer(t, nil) // no GITHUB_TOKEN_O set
+	seedWorkup(t, st)
+	poster := &fakePoster{}
+	srv.newPoster = func(string) ReviewPoster { return poster }
+
+	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"abc","comments":[0]}`)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status %d, want 400", rr.Code)
+	}
+	if poster.called {
+		t.Error("poster should not be called without a token")
+	}
+}
+
+func TestHandleReviewNoInlineSelected(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN_O", "tok")
+	srv, st := newTestServer(t, nil)
+	seedWorkup(t, st)
+	poster := &fakePoster{}
+	srv.newPoster = func(string) ReviewPoster { return poster }
+
+	// Only the review-level comment (index 1) is selected — nothing to post.
+	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"abc","comments":[1]}`)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status %d, want 400", rr.Code)
+	}
+	if poster.called {
+		t.Error("poster should not be called with no inline comments")
 	}
 }
 

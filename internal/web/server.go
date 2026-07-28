@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/wjones127/pr-residents/internal/agent"
@@ -28,6 +29,12 @@ import (
 //go:embed templates/*
 var templatesFS embed.FS
 
+// ReviewPoster writes a pending review to GitHub. Abstracted so the /review
+// handler can be tested without a live GitHub.
+type ReviewPoster interface {
+	CreatePendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error
+}
+
 // Server holds the dependencies for the rounds UI.
 type Server struct {
 	store      *store.FileStore
@@ -36,6 +43,7 @@ type Server struct {
 	tmpl       *template.Template
 	agent      agent.WorkupAgent
 	newFetcher func(token string) agent.Fetcher
+	newPoster  func(token string) ReviewPoster
 	now        func() time.Time
 }
 
@@ -62,6 +70,7 @@ func NewServer(st *store.FileStore, cfg *config.Config) (*Server, error) {
 		store: st, cfg: cfg, jobs: jobs.New(), tmpl: tmpl,
 		agent:      agent.NewClaudeAgent(),
 		newFetcher: func(token string) agent.Fetcher { return gh.NewClient(token) },
+		newPoster:  func(token string) ReviewPoster { return gh.NewClient(token) },
 		now:        time.Now,
 	}, nil
 }
@@ -74,6 +83,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /refresh", s.handleRefresh)
 	mux.HandleFunc("POST /triage", s.handleTriage)
 	mux.HandleFunc("POST /dispatch", s.handleDispatch)
+	mux.HandleFunc("POST /review", s.handleReview)
 	mux.HandleFunc("POST /cancel", s.handleCancel)
 	mux.HandleFunc("GET /events", s.handleEvents)
 	return mux
@@ -182,6 +192,86 @@ func (s *Server) handleDispatch(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusAccepted)
 	fmt.Fprint(w, "dispatch started")
+}
+
+// reviewRequest is the POST /review body: the PR identity, the head SHA the
+// workup was cached against, and the indexes of the comments to push.
+type reviewRequest struct {
+	Repo     string `json:"repo"`
+	Number   int    `json:"number"`
+	SHA      string `json:"sha"`
+	Comments []int  `json:"comments"`
+}
+
+// handleReview pushes selected draft comments to GitHub as a single pending
+// (unsubmitted) review. Comment bodies are rebuilt from the cached workup — not
+// trusted from the client — and the SHA pins the review to the reviewed commit,
+// so a stale (force-pushed) workup is rejected rather than posted against a
+// moved head.
+func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
+	writeErr := func(status int, msg string) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": msg})
+	}
+
+	var req reviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(http.StatusBadRequest, "bad request body")
+		return
+	}
+	owner, name, ok := strings.Cut(req.Repo, "/")
+	if !ok || req.Number == 0 || req.SHA == "" {
+		writeErr(http.StatusBadRequest, "repo, number and sha are required")
+		return
+	}
+
+	var doc agent.WorkupDoc
+	found, err := s.store.GetJSON(store.WorkupKey(req.Repo, req.Number, req.SHA), &doc)
+	if err != nil {
+		writeErr(http.StatusInternalServerError, "read workup: "+err.Error())
+		return
+	}
+	if !found {
+		writeErr(http.StatusConflict, "workup is stale — re-dispatch this PR")
+		return
+	}
+
+	token := s.cfg.TokenFor(owner)
+	if token == "" {
+		writeErr(http.StatusBadRequest, "no token for "+owner)
+		return
+	}
+
+	var comments []gh.ReviewComment
+	for _, i := range req.Comments {
+		if i < 0 || i >= len(doc.Comments) {
+			continue
+		}
+		c := doc.Comments[i]
+		if c.Path == "" {
+			continue // review-level comments can't be posted inline
+		}
+		comments = append(comments, gh.ReviewComment{
+			Path: c.Path, Line: c.Line, Side: c.Side, Body: copyText(c),
+		})
+	}
+	if len(comments) == 0 {
+		writeErr(http.StatusBadRequest, "select at least one inline comment")
+		return
+	}
+
+	if err := s.newPoster(token).CreatePendingReview(owner, name, req.Number, req.SHA, comments); err != nil {
+		log.Printf("review: %s#%d: %v", req.Repo, req.Number, err)
+		writeErr(http.StatusBadGateway, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"ok":  true,
+		"url": fmt.Sprintf("https://github.com/%s/pull/%d/files", req.Repo, req.Number),
+	})
 }
 
 func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
