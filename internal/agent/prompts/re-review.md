@@ -100,8 +100,11 @@ Each COMMENTS line is one JSON object on a single line (escape any newline as \n
 {"path":"rust/lance-index/src/x.rs","line":128,"side":"RIGHT","label":"issue","blocking":true,"body":"one crisp sentence in the attending's voice; for a blocking issue include the acceptance criterion","suggestion":"literal replacement for the anchored line(s), only if it's a drop-in"}
 
 Field rules:
-- `path` + `line` must be **real** (head-side line for `"side":"RIGHT"`; `"LEFT"`
-  only for a removed/old line). Omit `path` for a review-level comment.
+- `path` + `line` must anchor **inside the delta**. Each shown file carries
+  `commentable` — the head-side line ranges (e.g. `"12-34, 50-61"`) a `RIGHT`
+  comment may anchor to; the `line` must fall inside one. Use `"LEFT"` only for a
+  removed/old line shown in a hunk. Never pick a line just past the diff to
+  comment on the whole file — omit `path` for a whole-file/review-level comment.
 - `label` ∈ issue | suggestion | question | nitpick | praise | todo | thought | chore.
 - `blocking` only meaningful for `issue` / `question`; it must match your prose.
 - Draft a comment for each still-blocking condition and each new fresh-eyes issue.

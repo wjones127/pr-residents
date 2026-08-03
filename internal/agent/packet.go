@@ -5,6 +5,8 @@ package agent
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/wjones127/pr-residents/internal/config"
@@ -44,6 +46,10 @@ type PacketDiffFile struct {
 	PatchTruncated   bool   `json:"patch_truncated"`
 	FullContent      string `json:"full_content,omitempty"`
 	FullContentLines int    `json:"full_content_lines,omitempty"`
+	// Commentable is the head-side (RIGHT) line ranges of the shown hunks, e.g.
+	// "12-34, 50-61" — the lines a RIGHT-side comment may anchor to. Surfaced so
+	// the resident anchors inside a hunk instead of guessing a line past the diff.
+	Commentable string `json:"commentable,omitempty"`
 }
 
 // OmittedFile is a changed file whose patch is not in the packet, with the
@@ -340,6 +346,7 @@ func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref strin
 			Path: f.Filename, Status: f.Status,
 			Additions: f.Additions, Deletions: f.Deletions,
 			Patch: patch, PatchTruncated: truncated,
+			Commentable: commentableRanges(patch),
 		}
 		if cf != nil && wantsFullContent(f) && (b.softTokens == 0 || used < b.softTokens) {
 			if content, err := cf.FileContent(owner, name, f.Filename, ref); err == nil && content != "" {
@@ -355,6 +362,40 @@ func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref strin
 		shown = append(shown, pf)
 	}
 	return shown, omitted
+}
+
+// commentableRanges renders a patch's head-side hunk lines — the lines a
+// RIGHT-side comment may anchor to — as a compact "a-b, c-d" string. Empty when
+// the patch has no shown hunks.
+func commentableRanges(patch string) string {
+	right, _ := gh.CommentableLines(patch)
+	if len(right) == 0 {
+		return ""
+	}
+	lines := make([]int, 0, len(right))
+	for ln := range right {
+		lines = append(lines, ln)
+	}
+	sort.Ints(lines)
+	var parts []string
+	start, prev := lines[0], lines[0]
+	flush := func() {
+		if start == prev {
+			parts = append(parts, strconv.Itoa(start))
+		} else {
+			parts = append(parts, strconv.Itoa(start)+"-"+strconv.Itoa(prev))
+		}
+	}
+	for _, ln := range lines[1:] {
+		if ln == prev+1 {
+			prev = ln
+			continue
+		}
+		flush()
+		start, prev = ln, ln
+	}
+	flush()
+	return strings.Join(parts, ", ")
 }
 
 // BuildPacket assembles a review packet from an already-derived record plus the

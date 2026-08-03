@@ -149,6 +149,37 @@ func TestBuildPacketPartitionsAndTruncates(t *testing.T) {
 	}
 }
 
+func TestCommentableRanges(t *testing.T) {
+	cases := map[string]string{
+		"":                                  "",
+		"@@ -1 +1 @@\n-x\n+y\n":             "1",
+		"@@ -10,3 +10,3 @@\n a\n-b\n+c\n d": "10-12",
+		// Two hunks -> two ranges, coalesced within each.
+		"@@ -1,2 +1,2 @@\n x\n+y\n@@ -50,1 +51,2 @@\n z\n+w\n": "1-2, 51-52",
+	}
+	for patch, want := range cases {
+		if got := commentableRanges(patch); got != want {
+			t.Errorf("commentableRanges(%q) = %q, want %q", patch, got, want)
+		}
+	}
+}
+
+// A shown file carries its head-side commentable ranges so the resident anchors
+// inside a hunk rather than guessing a line past the diff.
+func TestBuildPacketSetsCommentable(t *testing.T) {
+	ff := fakeFetcher{files: []gh.FileDiff{
+		{Filename: "a.go", Status: "modified", Additions: 1, Deletions: 1, Patch: "@@ -10,3 +10,3 @@\n a\n-b\n+c\n d"},
+	}}
+	r := &prr.Record{Repo: "o/r", Number: 5, Title: "t", URL: "u", HeadOid: "abc", Lane: "fresh"}
+	p, err := BuildPacket(ff, r, DefaultSkipRules())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Diff.Files) != 1 || p.Diff.Files[0].Commentable != "10-12" {
+		t.Fatalf("commentable = %q, want %q", p.Diff.Files[0].Commentable, "10-12")
+	}
+}
+
 func TestBuildPacketAttachesLinkedIssues(t *testing.T) {
 	longBody := strings.Repeat("z", issueBodyMaxChars+500)
 	longComment := strings.Repeat("c", issueCommentMaxChars+500)

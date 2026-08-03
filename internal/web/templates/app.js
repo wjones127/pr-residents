@@ -190,7 +190,7 @@
           a.href = res.url;
           a.target = "_blank";
           a.rel = "noopener";
-          a.textContent = "pending review created — submit on GitHub ↗";
+          a.textContent = "added to pending review — submit on GitHub ↗";
           out.appendChild(a);
         } else {
           out.className = "push-status err";

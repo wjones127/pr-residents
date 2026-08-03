@@ -53,6 +53,80 @@ func TestCreatePendingReview(t *testing.T) {
 	}
 }
 
+// jsonResp is a 200 JSON response for the stub transport.
+func jsonResp(body string) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+}
+
+// When no pending review exists, PostPendingReview falls back to a single REST
+// create carrying all comments.
+func TestPostPendingReviewCreatesWhenNone(t *testing.T) {
+	var restCreated bool
+	var mutations int
+	c := restClient(func(r *http.Request) (*http.Response, error) {
+		b, _ := io.ReadAll(r.Body)
+		body := string(b)
+		if strings.Contains(r.URL.Host, "api.github.com") { // GraphQL
+			if strings.Contains(body, "addPullRequestReviewThread") {
+				mutations++
+			}
+			return jsonResp(`{"data":{"repository":{"pullRequest":{"reviews":{"nodes":[]}}}}}`)
+		}
+		// REST reviews create.
+		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/reviews") {
+			restCreated = true
+		}
+		return jsonResp(`{}`)
+	})
+
+	comments := []ReviewComment{{Path: "a.go", Line: 12, Side: "RIGHT", Body: "x"}}
+	if err := c.PostPendingReview("o", "r", 5, "abc", comments); err != nil {
+		t.Fatal(err)
+	}
+	if !restCreated {
+		t.Error("expected a REST reviews create when no pending review exists")
+	}
+	if mutations != 0 {
+		t.Errorf("expected no thread mutations, got %d", mutations)
+	}
+}
+
+// When a pending review exists, PostPendingReview appends each comment via a
+// GraphQL thread mutation and never hits the REST create (which would 422).
+func TestPostPendingReviewAppendsWhenExisting(t *testing.T) {
+	var restCreated bool
+	var mutations int
+	c := restClient(func(r *http.Request) (*http.Response, error) {
+		b, _ := io.ReadAll(r.Body)
+		body := string(b)
+		if strings.Contains(r.URL.Host, "api.github.com") { // GraphQL
+			if strings.Contains(body, "addPullRequestReviewThread") {
+				mutations++
+				return jsonResp(`{"data":{"addPullRequestReviewThread":{"thread":{"id":"T"}}}}`)
+			}
+			return jsonResp(`{"data":{"repository":{"pullRequest":{"reviews":{"nodes":[{"id":"PRR_1"}]}}}}}`)
+		}
+		if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/reviews") {
+			restCreated = true
+		}
+		return jsonResp(`{}`)
+	})
+
+	comments := []ReviewComment{
+		{Path: "a.go", Line: 12, Side: "RIGHT", Body: "x"},
+		{Path: "b.go", Line: 3, Side: "RIGHT", Body: "y"},
+	}
+	if err := c.PostPendingReview("o", "r", 5, "abc", comments); err != nil {
+		t.Fatal(err)
+	}
+	if restCreated {
+		t.Error("must not create a second review when one is pending")
+	}
+	if mutations != 2 {
+		t.Errorf("expected 2 thread mutations (one per comment), got %d", mutations)
+	}
+}
+
 func TestCreatePendingReviewSurfacesError(t *testing.T) {
 	c := restClient(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{

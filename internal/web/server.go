@@ -29,10 +29,11 @@ import (
 //go:embed templates/*
 var templatesFS embed.FS
 
-// ReviewPoster writes a pending review to GitHub. Abstracted so the /review
-// handler can be tested without a live GitHub.
+// ReviewPoster writes a pending review to GitHub, appending to the viewer's
+// existing pending review when one exists. Abstracted so the /review handler can
+// be tested without a live GitHub.
 type ReviewPoster interface {
-	CreatePendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error
+	PostPendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error
 }
 
 // Server holds the dependencies for the rounds UI.
@@ -261,7 +262,20 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.newPoster(token).CreatePendingReview(owner, name, req.Number, req.SHA, comments); err != nil {
+	// Reject comments anchored outside the diff before posting. The agent
+	// occasionally picks a line just past the last hunk (to "comment on the whole
+	// file"); GitHub would 422 the entire review, so catch it here with the exact
+	// offending anchors named.
+	if bad, err := outOfDiff(s.newFetcher(token), owner, name, req.Number, comments); err != nil {
+		writeErr(http.StatusBadGateway, "read diff: "+err.Error())
+		return
+	} else if len(bad) > 0 {
+		writeErr(http.StatusUnprocessableEntity,
+			"these comments anchor outside the diff — the agent overran the hunk; re-dispatch or edit the workup: "+strings.Join(bad, ", "))
+		return
+	}
+
+	if err := s.newPoster(token).PostPendingReview(owner, name, req.Number, req.SHA, comments); err != nil {
 		log.Printf("review: %s#%d: %v", req.Repo, req.Number, err)
 		writeErr(http.StatusBadGateway, err.Error())
 		return
@@ -272,6 +286,32 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		"ok":  true,
 		"url": fmt.Sprintf("https://github.com/%s/pull/%d/files", req.Repo, req.Number),
 	})
+}
+
+// outOfDiff fetches the PR's current diff and returns the "path:line (side)"
+// anchors of any comment that falls outside a hunk — the lines GitHub would
+// reject. An empty result means every comment is anchorable.
+func outOfDiff(ff agent.Fetcher, owner, name string, number int, comments []gh.ReviewComment) ([]string, error) {
+	files, err := ff.PullFiles(owner, name, number)
+	if err != nil {
+		return nil, err
+	}
+	right := map[string]map[int]bool{}
+	left := map[string]map[int]bool{}
+	for _, f := range files {
+		right[f.Filename], left[f.Filename] = gh.CommentableLines(f.Patch)
+	}
+	var bad []string
+	for _, c := range comments {
+		set := right[c.Path]
+		if c.Side == "LEFT" {
+			set = left[c.Path]
+		}
+		if !set[c.Line] {
+			bad = append(bad, fmt.Sprintf("%s:%d (%s)", c.Path, c.Line, c.Side))
+		}
+	}
+	return bad, nil
 }
 
 func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request) {
