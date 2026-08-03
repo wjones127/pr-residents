@@ -74,7 +74,11 @@ func (fakeAgent) Workup(ctx context.Context, prompt string, model string) (agent
 type fakeFetcher struct{}
 
 func (fakeFetcher) PullFiles(owner, name string, number int) ([]gh.FileDiff, error) {
-	return []gh.FileDiff{{Filename: "a.go", Patch: "@@ -1 +1 @@\n-x\n+y"}}, nil
+	// Hunks large enough to cover the seeded comment anchors (a.go:12, b.go:3).
+	return []gh.FileDiff{
+		{Filename: "a.go", Patch: "@@ -1,20 +1,20 @@\n" + strings.Repeat(" x\n", 20)},
+		{Filename: "b.go", Patch: "@@ -1,5 +1,5 @@\n" + strings.Repeat(" y\n", 5)},
+	}, nil
 }
 
 func (fakeFetcher) ViewerLogin() (string, error) { return "me", nil }
@@ -262,7 +266,7 @@ func TestDoDispatchCachesAndDisplaysSOAP(t *testing.T) {
 	}
 }
 
-// fakePoster captures the CreatePendingReview call for assertions.
+// fakePoster captures the PostPendingReview call for assertions.
 type fakePoster struct {
 	owner, name, commitID string
 	number                int
@@ -271,7 +275,7 @@ type fakePoster struct {
 	called                bool
 }
 
-func (p *fakePoster) CreatePendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error {
+func (p *fakePoster) PostPendingReview(owner, name string, number int, commitID string, comments []gh.ReviewComment) error {
 	p.called = true
 	p.owner, p.name, p.number, p.commitID, p.comments = owner, name, number, commitID, comments
 	return p.err
@@ -309,6 +313,7 @@ func TestHandleReviewPushesSelectedInline(t *testing.T) {
 	doc := seedWorkup(t, st)
 	poster := &fakePoster{}
 	srv.newPoster = func(string) ReviewPoster { return poster }
+	srv.newFetcher = func(string) agent.Fetcher { return fakeFetcher{} }
 
 	// Select the inline issue (0) and the review-level praise (1); 1 is dropped.
 	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"abc","comments":[0,1]}`)
@@ -330,6 +335,42 @@ func TestHandleReviewPushesSelectedInline(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), "/o/r/pull/5/files") {
 		t.Errorf("response missing PR link: %s", rr.Body.String())
+	}
+}
+
+// fetcherWithFiles serves a fixed diff so a test can control which lines are in
+// the hunk.
+type fetcherWithFiles struct {
+	fakeFetcher
+	files []gh.FileDiff
+}
+
+func (f fetcherWithFiles) PullFiles(owner, name string, number int) ([]gh.FileDiff, error) {
+	return f.files, nil
+}
+
+// A comment anchored past the last hunk is rejected before anything is posted,
+// with the offending anchor named.
+func TestHandleReviewRejectsOutOfDiff(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN_O", "tok")
+	srv, st := newTestServer(t, nil)
+	seedWorkup(t, st) // comment 0 anchors a.go:12
+	poster := &fakePoster{}
+	srv.newPoster = func(string) ReviewPoster { return poster }
+	// a.go's diff only covers lines 1-3, so a.go:12 is out of the diff.
+	srv.newFetcher = func(string) agent.Fetcher {
+		return fetcherWithFiles{files: []gh.FileDiff{{Filename: "a.go", Patch: "@@ -1,3 +1,3 @@\n x\n y\n z"}}}
+	}
+
+	rr := postReview(t, srv, `{"repo":"o/r","number":5,"sha":"abc","comments":[0]}`)
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d, want 422: %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "a.go:12") {
+		t.Errorf("error should name the bad anchor, got: %s", rr.Body.String())
+	}
+	if poster.called {
+		t.Error("poster must not be called when a comment is out of diff")
 	}
 }
 

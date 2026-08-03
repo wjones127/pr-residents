@@ -155,8 +155,13 @@ string as \n):
 {"path":"rust/lance-index/src/x.rs","line":128,"side":"RIGHT","label":"issue","blocking":true,"body":"one crisp sentence in the attending's voice; for a blocking issue include the acceptance criterion","suggestion":"exact replacement text for the anchored line(s), only if it's a literal drop-in"}
 
 Field rules:
-- `path` + `line` must be **real** (head-side line for `side":"RIGHT"`; use
-  `"LEFT"` only for a removed/old line). Omit `path` for a review-level comment.
+- `path` + `line` must anchor **inside the diff**. Each shown file carries
+  `commentable` — the head-side line ranges (e.g. `"12-34, 50-61"`) a `RIGHT`
+  comment may anchor to; the `line` must fall inside one of them. Use `"LEFT"`
+  only for a removed/old line shown in a hunk. The last line of a hunk is **not**
+  the end of the file — never pick a line just past the diff to comment on the
+  whole file. For a whole-file or cross-cutting remark, omit `path` (a
+  review-level comment).
 - `label` ∈ issue | suggestion | question | nitpick | praise | todo | thought | chore.
 - `blocking` only meaningful for `issue` / `question`; it must match your prose.
 - `suggestion` only when it's a literal, correct drop-in for the anchored line(s).
