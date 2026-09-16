@@ -17,7 +17,7 @@ import (
 // maxPatchLines is the per-file soft cap on patch size. Real source diffs go
 // through whole up to this; only pathological files (huge generated blobs that
 // slipped past classification) get hunk-elided.
-const maxPatchLines = 1500
+const maxPatchLines = 3000
 
 // PacketPR is the PR identity + triage metadata the resident needs.
 type PacketPR struct {
