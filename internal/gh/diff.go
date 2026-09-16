@@ -76,3 +76,68 @@ func parseSideStart(f string, sign byte) (int, bool) {
 	}
 	return n, true
 }
+
+// SplitUnifiedDiff splits a raw `git diff` (the PR .diff media type) into one
+// hunks-only patch per file, keyed by path, in the same shape as the REST
+// files API's "patch" field: starting at the first "@@" with no file headers
+// and no trailing newline. Files with no hunks (binary, mode-only changes) are
+// absent from the map. It is the fallback source of a patch GitHub omits from
+// the files API because the file's diff is too large.
+func SplitUnifiedDiff(diff string) map[string]string {
+	patches := map[string]string{}
+	var path string
+	var hunks []string
+	flush := func() {
+		if path != "" && len(hunks) > 0 {
+			patches[path] = strings.Join(hunks, "\n")
+		}
+		path, hunks = "", nil
+	}
+	inHunks := false
+	var oldPath string
+	for _, ln := range strings.Split(diff, "\n") {
+		switch {
+		case strings.HasPrefix(ln, "diff --git "):
+			flush()
+			inHunks = false
+			oldPath = ""
+		case !inHunks && strings.HasPrefix(ln, "--- "):
+			oldPath = diffHeaderPath(strings.TrimPrefix(ln, "--- "))
+		case !inHunks && strings.HasPrefix(ln, "+++ "):
+			// A deleted file's new side is /dev/null; key it by its old path.
+			if p := diffHeaderPath(strings.TrimPrefix(ln, "+++ ")); p != "" {
+				path = p
+			} else {
+				path = oldPath
+			}
+		case strings.HasPrefix(ln, "@@"):
+			inHunks = true
+			hunks = append(hunks, ln)
+		case inHunks:
+			hunks = append(hunks, ln)
+		}
+	}
+	flush()
+	for p, patch := range patches {
+		patches[p] = strings.TrimRight(patch, "\n")
+	}
+	return patches
+}
+
+// diffHeaderPath reads the repo-relative path out of a "---"/"+++" header
+// operand ("a/foo.go", `"b/with space.go"`). It returns "" for /dev/null.
+func diffHeaderPath(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, `"`) {
+		if unquoted, err := strconv.Unquote(s); err == nil {
+			s = unquoted
+		}
+	}
+	if s == "/dev/null" {
+		return ""
+	}
+	if i := strings.IndexByte(s, '/'); i >= 0 {
+		return s[i+1:] // strip the a/ or b/ prefix
+	}
+	return s
+}
