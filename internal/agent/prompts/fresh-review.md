@@ -46,7 +46,7 @@ for the attending to co-sign — you never post to GitHub.
      its Rust counterpart); forward-compatible (can evolve without breaking older
      clients); and coherent across the *whole* user workflow, not just one call.
    - `diff.omitted` lists changed files whose patch is NOT in the packet, each
-     with a `reason`: `no-patch` (binary/too-large — GitHub gave no patch),
+     with a `reason`: `no-patch` (binary, or a diff GitHub would not serve),
      `lockfile`/`generated`/`vendored` (deliberately skipped — low review
      signal), or `budget` (dropped to fit the token budget). You did NOT read
      any of these; if an omitted file with a large `additions`/`deletions` could

@@ -157,6 +157,12 @@ type FileDiff struct {
 }
 
 func (c *Client) restGet(path string) ([]byte, error) {
+	return c.restGetAccept(path, "application/vnd.github+json")
+}
+
+// restGetAccept is restGet with an explicit Accept header, for the media types
+// (e.g. the raw .diff) that aren't JSON.
+func (c *Client) restGetAccept(path, accept string) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt < c.maxRetries; attempt++ {
 		req, err := http.NewRequest(http.MethodGet, c.restBase+path, nil)
@@ -164,7 +170,7 @@ func (c *Client) restGet(path string) ([]byte, error) {
 			return nil, err
 		}
 		req.Header.Set("Authorization", "Bearer "+c.token)
-		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("Accept", accept)
 		req.Header.Set("User-Agent", "pr-residents-sync")
 
 		resp, err := c.http.Do(req)
@@ -212,7 +218,47 @@ func (c *Client) PullFiles(owner, name string, number int) ([]FileDiff, error) {
 			break
 		}
 	}
-	return files, nil
+	return fillMissingPatches(files, func() (string, error) {
+		return c.PullDiff(owner, name, number)
+	}), nil
+}
+
+// PullDiff returns the PR's net diff as raw unified-diff text.
+func (c *Client) PullDiff(owner, name string, number int) (string, error) {
+	body, err := c.restGetAccept(fmt.Sprintf("/repos/%s/%s/pulls/%d", owner, name, number), "application/vnd.github.v3.diff")
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+// fillMissingPatches backfills patches the files API omitted (it drops the
+// patch for any file whose diff is large, not just binaries) from the PR's raw
+// unified diff, which carries them. It only fetches when something is missing,
+// and a failed or patch-less fetch leaves the file as it was — an omitted patch
+// degrades the review, it doesn't break it.
+func fillMissingPatches(files []FileDiff, fetchDiff func() (string, error)) []FileDiff {
+	missing := false
+	for _, f := range files {
+		if f.Patch == "" {
+			missing = true
+			break
+		}
+	}
+	if !missing {
+		return files
+	}
+	raw, err := fetchDiff()
+	if err != nil {
+		return files
+	}
+	patches := SplitUnifiedDiff(raw)
+	for i, f := range files {
+		if f.Patch == "" {
+			files[i].Patch = patches[f.Filename]
+		}
+	}
+	return files
 }
 
 // FileContent returns the decoded UTF-8 text of a file at ref via the contents

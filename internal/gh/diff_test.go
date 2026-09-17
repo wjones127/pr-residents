@@ -1,6 +1,9 @@
 package gh
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCommentableLines(t *testing.T) {
 	// A hunk starting at new line 10: context, removal, addition, context.
@@ -58,5 +61,70 @@ func TestCommentableLinesEmpty(t *testing.T) {
 	right, left := CommentableLines("")
 	if len(right) != 0 || len(left) != 0 {
 		t.Errorf("empty patch should yield no lines: right=%v left=%v", right, left)
+	}
+}
+
+func TestSplitUnifiedDiff(t *testing.T) {
+	raw := `diff --git a/a.go b/a.go
+index 111..222 100644
+--- a/a.go
++++ b/a.go
+@@ -1,2 +1,2 @@
+ keep
+-old
++new
+@@ -20,1 +20,2 @@
+ ctx
++added
+diff --git a/img.png b/img.png
+index 333..444 100644
+Binary files a/img.png and b/img.png differ
+diff --git a/gone.txt b/gone.txt
+deleted file mode 100644
+--- a/gone.txt
++++ /dev/null
+@@ -1,1 +0,0 @@
+-bye
+diff --git "a/with space.go" "b/with space.go"
+--- "a/with space.go"
++++ "b/with space.go"
+@@ -1 +1 @@
+-x
++y
+`
+	got := SplitUnifiedDiff(raw)
+
+	wantA := "@@ -1,2 +1,2 @@\n keep\n-old\n+new\n@@ -20,1 +20,2 @@\n ctx\n+added"
+	if got["a.go"] != wantA {
+		t.Errorf("a.go patch:\n%q\nwant:\n%q", got["a.go"], wantA)
+	}
+	if _, ok := got["img.png"]; ok {
+		t.Errorf("binary file should have no patch: %q", got["img.png"])
+	}
+	if want := "@@ -1,1 +0,0 @@\n-bye"; got["gone.txt"] != want {
+		t.Errorf("deleted file keyed/parsed wrong: %q", got["gone.txt"])
+	}
+	if want := "@@ -1 +1 @@\n-x\n+y"; got["with space.go"] != want {
+		t.Errorf("quoted path: %q", got["with space.go"])
+	}
+}
+
+func TestSplitUnifiedDiffKeepsHeaderLikeContent(t *testing.T) {
+	// A hunk body line that itself looks like a diff header must stay in the
+	// patch: content lines carry a leading +/-/space.
+	raw := `diff --git a/doc.md b/doc.md
+--- a/doc.md
++++ b/doc.md
+@@ -1,2 +1,3 @@
+ intro
++--- a/example.txt
++++ b/example.txt
+`
+	got := SplitUnifiedDiff(raw)
+	if !strings.Contains(got["doc.md"], "+--- a/example.txt") {
+		t.Errorf("header-like content dropped: %q", got["doc.md"])
+	}
+	if len(got) != 1 {
+		t.Errorf("header-like content started a new file: %v", got)
 	}
 }

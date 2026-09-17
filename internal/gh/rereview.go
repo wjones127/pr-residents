@@ -147,5 +147,9 @@ func (c *Client) Compare(owner, name, base, head string) (CompareResult, error) 
 	if err := json.Unmarshal(body, &out); err != nil {
 		return CompareResult{}, err
 	}
+	out.Files = fillMissingPatches(out.Files, func() (string, error) {
+		raw, err := c.restGetAccept(fmt.Sprintf("/repos/%s/%s/compare/%s...%s", owner, name, base, head), "application/vnd.github.v3.diff")
+		return string(raw), err
+	})
 	return out, nil
 }

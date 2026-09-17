@@ -17,7 +17,7 @@ import (
 // maxPatchLines is the per-file soft cap on patch size. Real source diffs go
 // through whole up to this; only pathological files (huge generated blobs that
 // slipped past classification) get hunk-elided.
-const maxPatchLines = 1500
+const maxPatchLines = 3000
 
 // PacketPR is the PR identity + triage metadata the resident needs.
 type PacketPR struct {
@@ -53,8 +53,8 @@ type PacketDiffFile struct {
 }
 
 // OmittedFile is a changed file whose patch is not in the packet, with the
-// reason the resident needs to reason about it: "no-patch" (binary/too-large;
-// GitHub gave no patch), or a deliberate skip ("lockfile"/"generated"/
+// reason the resident needs to reason about it: "no-patch" (binary, or a diff
+// neither the files API nor the raw PR diff carried), or a deliberate skip ("lockfile"/"generated"/
 // "vendored") whose diff costs tokens but carries little review signal.
 type OmittedFile struct {
 	Path      string `json:"path"`
@@ -327,7 +327,7 @@ func countLines(s string) int {
 func assembleDiff(files []gh.FileDiff, cf contentFetcher, owner, name, ref string, b budget, rules SkipRules) (shown []PacketDiffFile, omitted []OmittedFile) {
 	used := 0
 	for _, f := range files {
-		if f.Patch == "" { // GitHub omits patch for binary / very large files
+		if f.Patch == "" { // binary, or a diff not even the raw PR diff carried
 			omitted = append(omitted, OmittedFile{Path: f.Filename, Reason: "no-patch", Additions: f.Additions, Deletions: f.Deletions})
 			continue
 		}
